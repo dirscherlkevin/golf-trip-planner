@@ -14,7 +14,9 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   const fetchMe = useAuthStore((s) => s.fetchMe)
-  useEffect(() => { fetchMe() }, [])
+  useEffect(() => {
+    if (useAuthStore.getState().token) fetchMe()
+  }, [])
 
   return (
     <Routes>
