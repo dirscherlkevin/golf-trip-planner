@@ -1,0 +1,12 @@
+node_modules/
+__pycache__/
+*.pyc
+.env
+*.db
+.superpowers/
+.venv/
+dist/
+.DS_Store
+*.egg-info/
+.pytest_cache/
+.worktrees/
