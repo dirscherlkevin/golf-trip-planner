@@ -21,7 +21,6 @@ export default function MemberSidebar({ trip, onInviteSent }) {
   }
 
   const joined = trip.members.filter((m) => m.joined === 'joined')
-  const pending = trip.members.filter((m) => m.joined === 'pending')
 
   const COLORS = ['#2b6cb0', '#553c9a', '#285e61', '#744210', '#276749', '#c05621']
 

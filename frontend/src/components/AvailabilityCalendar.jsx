@@ -64,6 +64,7 @@ export default function AvailabilityCalendar({ tripId, totalMembers }) {
     ranges.push({ start_date: start, end_date: prev })
     await client.post(`/trips/${tripId}/availability`, { date_ranges: ranges })
     setSaved(true)
+    setSelectedDates(new Set())
     const r = await client.get(`/trips/${tripId}/availability/overlap`)
     const map = {}
     r.data.days.forEach((d) => { map[d.date] = d.count })

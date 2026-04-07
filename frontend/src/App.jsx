@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import TripPage from './pages/TripPage'
+import JoinPage from './pages/JoinPage'
 
 function PrivateRoute({ children }) {
   const token = useAuthStore((s) => s.token)
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/trips/:id" element={<PrivateRoute><TripPage /></PrivateRoute>} />
+      <Route path="/join/:token" element={<PrivateRoute><JoinPage /></PrivateRoute>} />
     </Routes>
   )
 }
