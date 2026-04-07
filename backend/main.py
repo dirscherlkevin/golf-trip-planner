@@ -21,3 +21,6 @@ Base.metadata.create_all(bind=engine)
 
 from api.auth import router as auth_router
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
+
+from api.trips import router as trips_router
+app.include_router(trips_router, prefix="/trips", tags=["trips"])
