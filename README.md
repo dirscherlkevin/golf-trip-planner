@@ -20,7 +20,7 @@ cd backend
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp ../.env.example .env    # edit .env with your values
+cp ../.env.example .env    # DB URLs work as-is with Docker; set SECRET_KEY and GOOGLE_PLACES_API_KEY
 uvicorn main:app --reload
 ```
 API runs at http://localhost:8000. Docs at http://localhost:8000/docs
