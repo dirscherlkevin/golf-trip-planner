@@ -5,6 +5,10 @@ from models.trip import Trip, TripMember
 from models.user import User
 from schemas.trip import TripCreate, TripOut, InviteCreate, InviteOut
 from api.auth import get_current_user
+from models.availability import Availability
+from schemas.availability import AvailabilityCreate, OverlapOut
+from services.availability import compute_overlap
+from datetime import datetime
 import uuid
 
 router = APIRouter()
@@ -72,3 +76,24 @@ def _get_trip_for_member(trip_id: int, user_id: int, db: Session) -> Trip:
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this trip")
     return trip
+
+@router.post("/{trip_id}/availability", status_code=204)
+def submit_availability(
+    trip_id: int,
+    data: AvailabilityCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _get_trip_for_member(trip_id, user.id, db)
+    # Delete previous submission for this user on this trip
+    db.query(Availability).filter(
+        Availability.trip_id == trip_id, Availability.user_id == user.id
+    ).delete()
+    for r in data.date_ranges:
+        db.add(Availability(trip_id=trip_id, user_id=user.id, start_date=r.start_date, end_date=r.end_date))
+    db.commit()
+
+@router.get("/{trip_id}/availability/overlap", response_model=OverlapOut)
+def get_overlap(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    _get_trip_for_member(trip_id, user.id, db)
+    return compute_overlap(trip_id, db)
