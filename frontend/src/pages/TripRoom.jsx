@@ -6,11 +6,9 @@ import MemberPanel from '../components/MemberPanel'
 import CostEstimate from '../components/CostEstimate'
 import AvailabilityPhase from '../phases/availability/AvailabilityPhase'
 import DestinationPhase from '../phases/destination/DestinationPhase'
+import PlanningPhase from '../phases/planning/PlanningPhase'
 
 // Placeholder phase components — replaced in Tasks 13, 16
-function PlanningPhase() {
-  return <div style={{ padding: 24 }}><h2>Phase 3: Courses + Lodging</h2><p>Unlock by completing Phase 2.</p></div>
-}
 function LockInPhase() {
   return <div style={{ padding: 24 }}><h2>Phase 4: Lock It In</h2><p>Unlock by completing Phase 3.</p></div>
 }
