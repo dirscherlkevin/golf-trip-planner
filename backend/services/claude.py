@@ -6,7 +6,7 @@ def _client() -> Anthropic:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key or api_key.startswith("sk-ant-REPLACE"):
         raise RuntimeError("ANTHROPIC_API_KEY is not configured")
-    return Anthropic(api_key=api_key)
+    return Anthropic(api_key=api_key, timeout=50.0)  # 50s timeout, below proxy limits
 
 def _parse_json_response(text: str) -> any:
     """Extract and parse JSON from Claude's response. Raises ValueError if invalid."""
@@ -31,6 +31,7 @@ def generate_destinations(
     budget_max: float | None,
     country: str,
     tier_filter: str,
+    planned_rounds: int = 3,
 ) -> list[dict]:
     """Generate 3 destination suggestions. Returns list of destination dicts."""
     budget_note = ""
@@ -47,6 +48,7 @@ Trip details:
 - Skill mix: {skill_mix}
 - Country: {country}
 - Budget tier filter: {tier_filter}
+- Planned rounds: {planned_rounds} rounds of golf
 {budget_note}
 
 Return ONLY a JSON array with exactly 3 objects. Each object must have:

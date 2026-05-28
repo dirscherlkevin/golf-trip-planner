@@ -12,6 +12,7 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
   const [skillMix, setSkillMix] = useState('')
   const [tierFilter, setTierFilter] = useState('show_all')
   const [country, setCountry] = useState('United States')
+  const [plannedRounds, setPlannedRounds] = useState(3)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,6 +26,7 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
         skill_mix: skillMix,
         tier_filter: tierFilter,
         country,
+        planned_rounds: plannedRounds,
       })
       onGenerated(result)
     } catch (err) {
@@ -53,6 +55,18 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
             value={skillMix}
             onChange={e => setSkillMix(e.target.value)}
           />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={{ fontWeight: 600, fontSize: 13 }}>Planned Rounds</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="number" min="1" max="10"
+              value={plannedRounds}
+              onChange={e => setPlannedRounds(parseInt(e.target.value) || 3)}
+              style={{ width: 70 }}
+            />
+            <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>rounds of golf</span>
+          </div>
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontWeight: 600, fontSize: 13 }}>Budget Tier Filter</span>

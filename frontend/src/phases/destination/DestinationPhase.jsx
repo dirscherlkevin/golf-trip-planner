@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store/auth'
 import { useTripStore } from '../../store/trip'
 import { getDestinations } from '../../api/destinations'
+import { getAvailability } from '../../api/availability'
 import GenerateForm from './GenerateForm'
 import DestinationCard from './DestinationCard'
 
@@ -12,6 +13,8 @@ export default function DestinationPhase() {
 
   const [data, setData] = useState(null)  // {suggestion, vote_tallies}
   const [loadError, setLoadError] = useState(null)
+  const [budgetData, setBudgetData] = useState(null)
+  const [showRegenerate, setShowRegenerate] = useState(false)
 
   const load = () => {
     if (!trip) return
@@ -26,6 +29,23 @@ export default function DestinationPhase() {
   useEffect(() => {
     load()
   }, [trip?.id])
+
+  // FIX 6: Fetch Phase 1 budget aggregate for organizer
+  useEffect(() => {
+    if (!trip || !isOrganizer) return
+    getAvailability(trip.id).then(d => setBudgetData(d.budget)).catch(() => {})
+  }, [trip?.id, isOrganizer])
+
+  // FIX 9: Auto-poll for members while generation is pending or not started
+  useEffect(() => {
+    if (!trip) return
+    const status = data?.suggestion?.generation_status
+    // Poll if: no data yet, or status is pending
+    if (data === null || status === 'pending') {
+      const timer = setTimeout(load, 15000)  // poll every 15 seconds
+      return () => clearTimeout(timer)
+    }
+  }, [trip?.id, data])
 
   const handleGenerated = (result) => {
     // After generate call, reload from GET to get full suggestion + tallies
@@ -44,11 +64,12 @@ export default function DestinationPhase() {
 
   const status = suggestion?.generation_status
 
-  // Budget hint from trip store (from Phase 1 aggregate)
-  // For now just show dates
-  const budgetHint = trip?.trip_start
-    ? `Dates: ${trip.trip_start} – ${trip.trip_end}`
-    : null
+  // FIX 6: Budget hint — prefer Phase 1 aggregate, fall back to dates
+  const budgetHint = budgetData
+    ? `Group median: $${budgetData.median_happy?.toLocaleString() ?? '?'}/person happy · $${budgetData.median_hard?.toLocaleString() ?? '?'} max`
+    : trip?.trip_start
+      ? `Trip dates: ${trip.trip_start} – ${trip.trip_end}`
+      : null
 
   return (
     <div>
@@ -65,8 +86,14 @@ export default function DestinationPhase() {
           {isOrganizer ? (
             <GenerateForm trip={trip} budgetHint={budgetHint} onGenerated={handleGenerated} />
           ) : (
-            <div className="card" style={{ color: 'var(--text-secondary)' }}>
-              The organizer is setting up destination suggestions. Check back soon.
+            <div className="card">
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>Waiting for destination suggestions...</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                The organizer is generating AI suggestions. This page will update automatically.
+              </div>
+              <button className="btn-ghost" onClick={load} style={{ marginTop: 12, fontSize: 12 }}>
+                Refresh now
+              </button>
             </div>
           )}
         </>
@@ -112,11 +139,31 @@ export default function DestinationPhase() {
                 index={i}
                 tally={tallies.find(t => t.destination_index === i)}
                 isOrganizer={isOrganizer && !suggestion.locked_destination}
+                isLocked={!!suggestion.locked_destination}
                 onVoted={handleVoted}
                 onLocked={handleLocked}
               />
             ))}
           </div>
+
+          {/* FIX 7: Regenerate button for organizer when not locked */}
+          {isOrganizer && !suggestion.locked_destination && (
+            <div style={{ marginTop: 20, padding: '12px 16px', background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
+              <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Not what you were looking for?</div>
+              {!showRegenerate ? (
+                <button className="btn-ghost" onClick={() => setShowRegenerate(true)} style={{ fontSize: 13 }}>
+                  Try Different Options
+                </button>
+              ) : (
+                <div>
+                  <div style={{ color: '#cc9900', fontSize: 12, marginBottom: 12 }}>
+                    ⚠️ Regenerating will replace current suggestions and reset all votes.
+                  </div>
+                  <GenerateForm trip={trip} budgetHint={budgetHint} onGenerated={(result) => { setShowRegenerate(false); handleGenerated(result) }} />
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

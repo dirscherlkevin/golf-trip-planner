@@ -19,6 +19,7 @@ class Trip(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     trip_start = Column(Date, nullable=True)
     trip_end = Column(Date, nullable=True)
+    planned_rounds = Column(Integer, nullable=True)
 
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
 

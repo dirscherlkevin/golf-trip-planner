@@ -21,6 +21,7 @@ class TripOut(BaseModel):
     created_at: datetime
     trip_start: Optional[date] = None
     trip_end: Optional[date] = None
+    planned_rounds: Optional[int] = None
     members: list[TripMemberOut]
 
     model_config = {"from_attributes": True}

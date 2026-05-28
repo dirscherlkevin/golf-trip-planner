@@ -13,7 +13,7 @@ from schemas.destination import (
 )
 from services.phases import get_phase, lock_phase
 from services.claude import generate_destinations
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import statistics
 
 router = APIRouter()
@@ -77,13 +77,27 @@ def generate_destination_suggestions(
 
     budget_median, budget_max = _get_budget_from_availability(trip_id, db)
 
+    # Save planned_rounds to trip for future reference
+    if body.planned_rounds and body.planned_rounds > 0:
+        trip.planned_rounds = body.planned_rounds
+        db.flush()
+
     # Create or update the suggestion row
     suggestion = db.query(DestinationSuggestion).filter(
         DestinationSuggestion.trip_id == trip_id
     ).first()
-    if not suggestion:
+    is_new = suggestion is None
+    if is_new:
         suggestion = DestinationSuggestion(trip_id=trip_id)
         db.add(suggestion)
+        db.flush()
+
+    # FIX 1: Guard against concurrent generate calls — if already pending, return current state
+    # (only applies to existing rows, not newly created ones)
+    if not is_new and suggestion.generation_status == GenerationStatus.pending:
+        db.commit()
+        db.refresh(suggestion)
+        return suggestion  # return 200 with current pending state — client already shows loading
 
     suggestion.generation_status = GenerationStatus.pending
     suggestion.prompt_inputs = {
@@ -93,6 +107,8 @@ def generate_destination_suggestions(
         "trip_start": str(trip.trip_start),
         "trip_end": str(trip.trip_end),
         "group_size": group_size,
+        "planned_rounds": body.planned_rounds,
+        "_started_at": datetime.now(timezone.utc).isoformat(),
     }
     db.commit()
     db.refresh(suggestion)
@@ -108,6 +124,7 @@ def generate_destination_suggestions(
             budget_max=budget_max,
             country=body.country,
             tier_filter=body.tier_filter,
+            planned_rounds=body.planned_rounds,
         )
         suggestion.suggestions = results
         suggestion.generation_status = GenerationStatus.complete
@@ -133,6 +150,17 @@ def get_destination_suggestions(
     if not suggestion:
         raise HTTPException(status_code=404, detail="No destination suggestions generated yet")
 
+    # FIX 2b: Auto-reset stuck pending rows (e.g., killed by proxy timeout)
+    if suggestion.generation_status == GenerationStatus.pending:
+        started_at_str = (suggestion.prompt_inputs or {}).get("_started_at")
+        if started_at_str:
+            started_at = datetime.fromisoformat(started_at_str)
+            if datetime.now(timezone.utc) - started_at > timedelta(minutes=3):
+                suggestion.generation_status = GenerationStatus.failed
+                suggestion.prompt_inputs = {**suggestion.prompt_inputs, "error": "Generation timed out"}
+                db.commit()
+                db.refresh(suggestion)
+
     num = len(suggestion.suggestions) if suggestion.suggestions else 0
     tallies = _build_vote_tallies(trip_id, user.id, num, db)
 
@@ -155,6 +183,15 @@ def vote_on_destination(
     phase = get_phase(trip_id, PhaseName.destination, db)
     if phase.status == PhaseStatus.locked:
         raise HTTPException(status_code=409, detail="Destination phase is locked")
+
+    # FIX 4: Bounds check — ensure suggestions exist and index is valid
+    suggestion = db.query(DestinationSuggestion).filter(
+        DestinationSuggestion.trip_id == trip_id
+    ).first()
+    if not suggestion or suggestion.generation_status != GenerationStatus.complete:
+        raise HTTPException(status_code=400, detail="No complete suggestions available to vote on")
+    if body.destination_index < 0 or body.destination_index >= len(suggestion.suggestions or []):
+        raise HTTPException(status_code=400, detail="Invalid destination index")
 
     existing = db.query(DestinationVote).filter(
         DestinationVote.trip_id == trip_id,

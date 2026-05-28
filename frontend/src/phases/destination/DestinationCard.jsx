@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { voteOnDestination, lockDestination } from '../../api/destinations'
 
-export default function DestinationCard({ trip, destination, index, tally, isOrganizer, onVoted, onLocked }) {
+export default function DestinationCard({ trip, destination, index, tally, isOrganizer, isLocked, onVoted, onLocked }) {
   const [voting, setVoting] = useState(false)
   const [locking, setLocking] = useState(false)
+  const [confirmLock, setConfirmLock] = useState(false)
 
   const vote = async (v) => {
     setVoting(true)
@@ -74,31 +75,53 @@ export default function DestinationCard({ trip, destination, index, tally, isOrg
 
       {/* Vote + lock */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid #333', paddingTop: 12 }}>
-        <button
-          className={myVote === 'up' ? 'btn-primary' : 'btn-ghost'}
-          onClick={() => vote('up')} disabled={voting}
-          style={{ padding: '6px 14px' }}
-        >
-          👍 {tally?.up_votes ?? 0}
-        </button>
-        <button
-          className={myVote === 'down' ? 'btn-primary' : 'btn-ghost'}
-          onClick={() => vote('down')} disabled={voting}
-          style={{ padding: '6px 14px' }}
-        >
-          👎 {tally?.down_votes ?? 0}
-        </button>
-        <span style={{ color: netVotes > 0 ? 'var(--accent-green)' : netVotes < 0 ? '#e55' : 'var(--text-muted)', fontSize: 13, marginLeft: 4 }}>
-          {netVotes > 0 ? `+${netVotes}` : netVotes} net
-        </span>
-        {isOrganizer && (
+        {!isLocked && (
+          <>
+            <button
+              className={myVote === 'up' ? 'btn-primary' : 'btn-ghost'}
+              onClick={() => vote('up')} disabled={voting}
+              style={{ padding: '6px 14px' }}
+            >
+              👍 {tally?.up_votes ?? 0}
+            </button>
+            <button
+              className={myVote === 'down' ? 'btn-primary' : 'btn-ghost'}
+              onClick={() => vote('down')} disabled={voting}
+              style={{ padding: '6px 14px' }}
+            >
+              👎 {tally?.down_votes ?? 0}
+            </button>
+            <span style={{ color: netVotes > 0 ? 'var(--accent-green)' : netVotes < 0 ? '#e55' : 'var(--text-muted)', fontSize: 13, marginLeft: 4 }}>
+              {netVotes > 0 ? `+${netVotes}` : netVotes} net
+            </span>
+          </>
+        )}
+        {isLocked && (
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            {tally?.up_votes ?? 0} 👍 · {tally?.down_votes ?? 0} 👎 (voting closed)
+          </span>
+        )}
+        {isOrganizer && !confirmLock && (
           <button
-            className="btn-primary"
-            onClick={lock} disabled={locking}
-            style={{ marginLeft: 'auto', padding: '6px 16px' }}
+            className="btn-ghost"
+            onClick={() => setConfirmLock(true)}
+            style={{ marginLeft: 'auto', padding: '6px 16px', border: '1px solid var(--accent-green)', color: 'var(--accent-green)' }}
           >
-            {locking ? 'Locking...' : 'Lock This Destination'}
+            Lock This Destination
           </button>
+        )}
+        {isOrganizer && confirmLock && (
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              Lock {destination.name}? This opens Phase 3.
+            </span>
+            <button className="btn-primary" onClick={lock} disabled={locking} style={{ padding: '4px 12px', fontSize: 12 }}>
+              {locking ? 'Locking...' : 'Yes, Lock'}
+            </button>
+            <button className="btn-ghost" onClick={() => setConfirmLock(false)} style={{ padding: '4px 10px', fontSize: 12 }}>
+              Cancel
+            </button>
+          </div>
         )}
       </div>
     </div>
