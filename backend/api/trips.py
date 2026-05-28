@@ -23,7 +23,7 @@ def create_trip(data: TripCreate, db: Session = Depends(get_db), user: User = De
         joined="joined",
     )
     db.add(member)
-    db.commit()
+    db.flush()
     initialize_phases(trip.id, db)
     db.commit()
     db.refresh(trip)
@@ -59,6 +59,8 @@ def join_trip(invite_token: str, db: Session = Depends(get_db), user: User = Dep
         raise HTTPException(status_code=404, detail="Invite not found")
     if member.joined == "joined":
         raise HTTPException(status_code=400, detail="Invite already used")
+    if member.invite_email and member.invite_email.lower() != user.email.lower():
+        raise HTTPException(status_code=403, detail="This invite was sent to a different email address")
     member.user_id = user.id
     member.joined = "joined"
     db.commit()

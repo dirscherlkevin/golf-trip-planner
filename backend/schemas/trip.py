@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 
 class TripCreate(BaseModel):
     name: str
@@ -19,6 +19,8 @@ class TripOut(BaseModel):
     organizer_id: int
     status: str
     created_at: datetime
+    trip_start: Optional[date] = None
+    trip_end: Optional[date] = None
     members: list[TripMemberOut]
 
     model_config = {"from_attributes": True}

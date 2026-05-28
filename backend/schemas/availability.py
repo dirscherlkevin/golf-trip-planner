@@ -35,6 +35,7 @@ class AvailabilityOut(BaseModel):
     responses: list[MemberAvailabilityOut]
     budget: Optional[BudgetAggregate] = None  # only returned for organizer
     own_response: Optional[MemberAvailabilityOut] = None
+    responded_user_ids: list[int] = []  # always returned; all members can see who has responded (not what)
 
 class OverlapDay(BaseModel):
     date: str  # ISO date string

@@ -7,7 +7,9 @@ from models.user import User
 from models.trip import Trip, TripMember
 from models.availability import AvailabilityResponse
 from models.email_queue import EmailQueue, EmailStatus
+from models.phase import PhaseName, PhaseStatus
 from schemas.availability import AvailabilityIn, AvailabilityOut, MemberAvailabilityOut, OverlapOut, OverlapDay, BudgetAggregate
+from services.phases import get_phase
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 import statistics
@@ -35,6 +37,9 @@ def submit_availability(
     user: User = Depends(get_current_user),
 ):
     _get_trip_member(trip_id, user.id, db)
+    phase = get_phase(trip_id, PhaseName.availability, db)
+    if phase.status == PhaseStatus.locked:
+        raise HTTPException(status_code=409, detail="Availability phase is locked")
     existing = db.query(AvailabilityResponse).filter(
         AvailabilityResponse.trip_id == trip_id,
         AvailabilityResponse.user_id == user.id
@@ -89,10 +94,13 @@ def get_availability(
             responded_count=len(responses),
         )
 
+    responded_user_ids = [r.user_id for r in responses]
+
     return AvailabilityOut(
         responses=member_outs if is_organizer else [],
         budget=budget,
         own_response=own,
+        responded_user_ids=responded_user_ids,
     )
 
 @router.get("/{trip_id}/availability/overlap", response_model=OverlapOut)

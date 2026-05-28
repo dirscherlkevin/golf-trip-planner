@@ -14,10 +14,7 @@ export default function MemberPanel({ trip }) {
       .catch(() => {})
   }, [trip?.id])
 
-  const respondedIds = new Set(
-    (availability?.responses ?? []).map(r => r.user_id)
-      .concat(availability?.own_response ? [availability.own_response.user_id] : [])
-  )
+  const respondedIds = new Set(availability?.responded_user_ids ?? [])
 
   const nudge = async () => {
     setNudging(true)
@@ -26,6 +23,7 @@ export default function MemberPanel({ trip }) {
 
   const isOrganizer = user?.id === trip?.organizer_id
   const members = trip?.members?.filter(m => m.joined === 'joined') ?? []
+  const nonResponderCount = members.filter(m => m.user_id && !respondedIds.has(m.user_id)).length
 
   return (
     <div style={{ minWidth: 180 }}>
@@ -45,7 +43,7 @@ export default function MemberPanel({ trip }) {
           style={{ marginTop: 12, fontSize: 12, padding: '4px 10px' }}
           className="btn-ghost"
         >
-          {nudging ? 'Sending...' : 'Nudge non-responders'}
+          {nudging ? 'Sending...' : `Nudge ${nonResponderCount} non-responder${nonResponderCount !== 1 ? 's' : ''}`}
         </button>
       )}
     </div>

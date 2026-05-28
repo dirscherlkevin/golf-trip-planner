@@ -16,15 +16,29 @@ export default function AvailabilityPhase() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [locking, setLocking] = useState(false)
+  const [lockStart, setLockStart] = useState('')
+  const [lockEnd, setLockEnd] = useState('')
+  const [budgetData, setBudgetData] = useState(null)
 
   useEffect(() => {
     if (!trip) return
     getAvailability(trip.id).then(data => {
       if (data.own_response) {
         setDateRanges(data.own_response.date_ranges)
+        setSaved(true)  // already submitted
+      }
+      if (isOrganizer && data.budget) {
+        setBudgetData(data.budget)
       }
     }).catch(() => {})
   }, [trip?.id])
+
+  useEffect(() => {
+    if (!trip || !isOrganizer) return
+    getAvailability(trip.id).then(data => {
+      setBudgetData(data.budget)
+    }).catch(() => {})
+  }, [trip?.id, isOrganizer])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -40,9 +54,13 @@ export default function AvailabilityPhase() {
   }
 
   const handleLock = async () => {
+    if (!lockStart || !lockEnd) return
     setLocking(true)
-    try { await lockPhase('availability') }
-    finally { setLocking(false) }
+    try {
+      await lockPhase('availability', { trip_start: lockStart, trip_end: lockEnd })
+    } finally {
+      setLocking(false)
+    }
   }
 
   return (
@@ -65,12 +83,20 @@ export default function AvailabilityPhase() {
                   onChange={setBudget}
                 />
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {saved && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>Availability submitted ✓</span>
+                  <button type="button" className="btn-ghost" style={{ fontSize: 12 }}
+                    onClick={() => setSaved(false)}>
+                    Edit
+                  </button>
+                </div>
+              )}
+              {!saved && (
                 <button type="submit" className="btn-primary" disabled={saving || dateRanges.length === 0}>
-                  {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Submit Availability'}
+                  {saving ? 'Saving...' : 'Submit Availability'}
                 </button>
-                {saved && <span style={{ color: 'var(--accent-green)', fontSize: 13 }}>Submitted!</span>}
-              </div>
+              )}
             </form>
           </div>
         </div>
@@ -79,12 +105,20 @@ export default function AvailabilityPhase() {
         {isOrganizer && (
           <div style={{ flex: '1 1 320px' }}>
             <div className="card">
-              <OverlapHeatmap trip={trip} />
+              <OverlapHeatmap trip={trip} budget={budgetData} />
               <div style={{ marginTop: 20, borderTop: '1px solid #333', paddingTop: 16 }}>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Choose the trip dates:</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input type="date" value={lockStart} onChange={e => setLockStart(e.target.value)} style={{ width: 150 }} />
+                    <span style={{ color: 'var(--text-secondary)' }}>to</span>
+                    <input type="date" value={lockEnd} onChange={e => setLockEnd(e.target.value)} style={{ width: 150 }} />
+                  </div>
+                </div>
                 <button
                   className="btn-primary"
                   onClick={handleLock}
-                  disabled={locking}
+                  disabled={locking || !lockStart || !lockEnd}
                   style={{ width: '100%' }}
                 >
                   {locking ? 'Locking...' : 'Lock These Dates → Phase 2'}

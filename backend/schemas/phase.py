@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 from models.phase import PhaseStatus, PhaseName
 
@@ -15,3 +15,5 @@ class LockPhaseIn(BaseModel):
     entity_id: Optional[int] = None
     entity_type: Optional[str] = None
     override: bool = False
+    trip_start: Optional[date] = None  # required when locking availability phase
+    trip_end: Optional[date] = None

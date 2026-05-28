@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Date
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -17,6 +17,8 @@ class Trip(Base):
     organizer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     status = Column(Enum(TripStatus), default=TripStatus.planning, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    trip_start = Column(Date, nullable=True)
+    trip_end = Column(Date, nullable=True)
 
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
 
