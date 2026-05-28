@@ -182,6 +182,8 @@ def generate_more_courses(
     ).first()
     if not trip_round:
         raise HTTPException(status_code=404, detail="Round not found")
+    if trip_round.generation_status == RoundGenerationStatus.pending:
+        raise HTTPException(status_code=409, detail="Generation already in progress for this round")
 
     destination = _get_destination_name(trip_id, db)
 

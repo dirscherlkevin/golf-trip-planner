@@ -92,6 +92,14 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
           <CourseDetail label="Pace of play" value={cd.pace_of_play} />
           <CourseDetail label="Tee times" value={cd.tee_time_window} />
           <CourseDetail label="Source" value={cd.rating_source} />
+          {cd.website && (
+            <div style={{ fontSize: 12, marginTop: 4 }}>
+              <a href={cd.website} target="_blank" rel="noopener noreferrer"
+                style={{ color: 'var(--accent-green)' }}>
+                Book tee times ↗
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Vote + lock controls */}

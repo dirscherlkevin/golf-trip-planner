@@ -128,7 +128,8 @@ Return ONLY a JSON array. Each object must have:
   "architect": "Tom Fazio",
   "pace_of_play": "4:15 average",
   "tee_time_window": "Opens 60 days in advance",
-  "rating_source": "Golf Digest / GolfAdvisor / local"
+  "rating_source": "Golf Digest / GolfAdvisor / USGA (include data year if known, e.g. 'USGA 2024')",
+  "website": "https://www.coursename.com (official course booking page)"
 }}
 
 Return only the JSON array, no other text."""
@@ -192,6 +193,11 @@ Return ONLY a JSON array. Each object must have:
   "booking_link": "https://vrbo.com/... or https://marriott.com/... (realistic placeholder OK)",
   "highlights": "2-sentence description of why this works for a golf group"
 }}
+
+IMPORTANT: `price_per_night` must be the TOTAL nightly cost for the entire group — not per person.
+For a rental house: total property cost per night.
+For a hotel: total cost for all rooms needed for the group per night (e.g., 5 rooms × $189 = $945).
+This will be divided by group size to show per-person cost.
 
 Return only the JSON array, no other text."""
 
