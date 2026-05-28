@@ -45,3 +45,12 @@ def auth_client(client):
     })
     token = r.json()["access_token"]
     return client, token
+
+@pytest.fixture
+def db():
+    """Raw DB session using the test database (tables already created by setup_db)."""
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

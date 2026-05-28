@@ -6,6 +6,7 @@ from models.user import User
 from schemas.trip import TripCreate, TripOut, InviteCreate, InviteOut
 from api.auth import get_current_user
 from services.phases import initialize_phases
+from services.cost import compute_cost_estimate
 import uuid
 
 router = APIRouter()
@@ -66,6 +67,18 @@ def join_trip(invite_token: str, db: Session = Depends(get_db), user: User = Dep
     db.commit()
     db.refresh(member)
     return member.trip
+
+@router.get("/{trip_id}/cost")
+def get_cost_estimate(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    member = db.query(TripMember).filter(
+        TripMember.trip_id == trip_id,
+        TripMember.user_id == user.id,
+        TripMember.joined == "joined",
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this trip")
+    return compute_cost_estimate(trip_id, db)
+
 
 def _get_trip_for_member(trip_id: int, user_id: int, db: Session) -> Trip:
     trip = db.query(Trip).filter(Trip.id == trip_id).first()
