@@ -5,6 +5,7 @@ from models.trip import Trip, TripMember
 from models.user import User
 from schemas.trip import TripCreate, TripOut, InviteCreate, InviteOut
 from api.auth import get_current_user
+from services.phases import initialize_phases
 import uuid
 
 router = APIRouter()
@@ -22,6 +23,8 @@ def create_trip(data: TripCreate, db: Session = Depends(get_db), user: User = De
         joined="joined",
     )
     db.add(member)
+    db.commit()
+    initialize_phases(trip.id, db)
     db.commit()
     db.refresh(trip)
     return trip

@@ -26,3 +26,9 @@ app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 from api.trips import router as trips_router
 app.include_router(trips_router, prefix="/trips", tags=["trips"])
+
+from api.phases import router as phases_router
+app.include_router(phases_router, prefix="/trips", tags=["phases"])
+
+from api.availability import router as availability_router
+app.include_router(availability_router, prefix="/trips", tags=["availability"])
