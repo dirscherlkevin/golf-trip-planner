@@ -4,6 +4,10 @@ from database import engine, Base
 
 import models.user  # noqa
 import models.trip  # noqa
+import models.phase  # noqa
+import models.availability  # noqa
+import models.decision  # noqa
+import models.email_queue  # noqa
 
 app = FastAPI(title="Golf Trip Planner API")
 
