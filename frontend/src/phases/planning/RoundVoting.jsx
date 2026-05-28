@@ -25,17 +25,19 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
   const [locking, setLocking] = useState(false)
   const [voting, setVoting] = useState(false)
   const [lockError, setLockError] = useState(null)
+  const [voteError, setVoteError] = useState(null)
 
   const isThisLocked = lockedNomId === id
 
   const handleVote = async (vote) => {
     if (voting || isLocked) return
     setVoting(true)
+    setVoteError(null)
     try {
       await voteOnCourse(tripId, roundId, id, vote)
       onUpdated()
     } catch {
-      // ignore vote error silently
+      setVoteError('Vote failed. Try again.')
     } finally {
       setVoting(false)
     }
@@ -129,6 +131,10 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
             </div>
           )}
 
+          {voteError && (
+            <div style={{ fontSize: 11, color: '#e55' }}>{voteError}</div>
+          )}
+
           {isLocked && (
             <div style={{ display: 'flex', gap: 6 }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -180,6 +186,7 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
 
 export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
   const [generatingMore, setGeneratingMore] = useState(false)
+  const [generateError, setGenerateError] = useState(null)
   const [manualName, setManualName] = useState('')
   const [manualLocation, setManualLocation] = useState('')
   const [addingManual, setAddingManual] = useState(false)
@@ -193,11 +200,12 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
   const handleGenerateMore = async () => {
     if (generatingMore) return
     setGeneratingMore(true)
+    setGenerateError(null)
     try {
       await generateMoreCourses(tripId, round.id)
       onUpdated()
     } catch {
-      // silently ignore; parent will reload
+      setGenerateError('Failed to request more suggestions.')
     } finally {
       setGeneratingMore(false)
     }
@@ -252,14 +260,17 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
           )}
         </div>
         {isOrganizer && !isLocked && (
-          <button
-            className="btn-ghost"
-            onClick={handleGenerateMore}
-            disabled={generatingMore || round.generation_status === 'pending'}
-            style={{ fontSize: 12 }}
-          >
-            {generatingMore ? 'Requesting...' : 'Suggest More'}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            <button
+              className="btn-ghost"
+              onClick={handleGenerateMore}
+              disabled={generatingMore || round.generation_status === 'pending'}
+              style={{ fontSize: 12 }}
+            >
+              {generatingMore ? 'Requesting...' : 'Suggest More'}
+            </button>
+            {generateError && <div style={{ fontSize: 11, color: '#e55' }}>{generateError}</div>}
+          </div>
         )}
       </div>
 

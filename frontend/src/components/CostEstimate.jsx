@@ -37,7 +37,7 @@ export default function CostEstimate({ tripId }) {
     <div style={{ fontSize: 13, color: 'var(--accent-green)', fontWeight: 600 }}>
       {sameRange
         ? fmt(estimate.total_low)
-        : `${fmt(estimate.total_low)} – ${fmt(estimate.total_high)}`}/person
+        : `~${fmt(estimate.total_low)}–${fmt(estimate.total_high)}`}/person
       {estimate.is_estimate && (
         <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> (est.)</span>
       )}

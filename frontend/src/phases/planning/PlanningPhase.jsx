@@ -87,7 +87,12 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsS
   if (!trip) return null
 
   if (loadError) {
-    return <div style={{ color: '#e55' }}>{loadError}</div>
+    return (
+      <div>
+        <div style={{ color: '#e55', marginBottom: 12 }}>{loadError}</div>
+        <button className="btn-ghost" onClick={onRoundUpdated} style={{ fontSize: 12 }}>Retry</button>
+      </div>
+    )
   }
 
   // Still loading
@@ -103,9 +108,12 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsS
     return (
       <div className="card">
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Waiting for the organizer to set up rounds...</div>
-        <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+        <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 12 }}>
           The organizer is configuring the rounds. This page will update automatically.
         </div>
+        <button className="btn-ghost" onClick={onRoundUpdated} style={{ fontSize: 12 }}>
+          Refresh now
+        </button>
       </div>
     )
   }

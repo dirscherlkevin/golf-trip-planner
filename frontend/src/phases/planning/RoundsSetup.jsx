@@ -81,7 +81,7 @@ export default function RoundsSetup({ trip, onSetup }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
         {rounds.map((round, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div key={round.round_number} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ minWidth: 80, fontWeight: 600, fontSize: 13 }}>
               Round {round.round_number}
             </div>
