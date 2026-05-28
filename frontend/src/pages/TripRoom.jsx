@@ -4,11 +4,9 @@ import { useTripStore } from '../store/trip'
 import { useAuthStore } from '../store/auth'
 import MemberPanel from '../components/MemberPanel'
 import CostEstimate from '../components/CostEstimate'
+import AvailabilityPhase from '../phases/availability/AvailabilityPhase'
 
 // Placeholder phase components — replaced in Tasks 6, 9, 13, 16
-function AvailabilityPhase() {
-  return <div style={{ padding: 24 }}><h2>Phase 1: Availability</h2><p>Coming soon...</p></div>
-}
 function DestinationPhase() {
   return <div style={{ padding: 24 }}><h2>Phase 2: AI Destinations</h2><p>Unlock by completing Phase 1.</p></div>
 }
