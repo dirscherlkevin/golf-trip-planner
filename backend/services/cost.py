@@ -78,7 +78,6 @@ def compute_cost_estimate(trip_id: int, db: Session) -> dict:
         lodging_low = price_per_night * nights / group_size
         lodging_high = lodging_low
     else:
-        any_lodging_unlocked = True
         options = db.query(LodgingOption).filter(
             LodgingOption.trip_id == trip_id
         ).all()
@@ -90,6 +89,7 @@ def compute_cost_estimate(trip_id: int, db: Session) -> dict:
             if ppn is not None:
                 prices.append(float(ppn))
         if prices:
+            any_lodging_unlocked = True  # only uncertain when options exist but none is locked
             lodging_low = min(prices) * nights / group_size
             lodging_high = max(prices) * nights / group_size
         else:
