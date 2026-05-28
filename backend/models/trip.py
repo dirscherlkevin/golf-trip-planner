@@ -20,6 +20,7 @@ class Trip(Base):
     trip_start = Column(Date, nullable=True)
     trip_end = Column(Date, nullable=True)
     planned_rounds = Column(Integer, nullable=True)
+    locked_lodging_option_id = Column(Integer, ForeignKey("lodging_options.id", use_alter=True, name="fk_trips_locked_lodging_option"), nullable=True)
 
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
 

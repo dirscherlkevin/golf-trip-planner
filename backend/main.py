@@ -10,6 +10,7 @@ import models.decision  # noqa
 import models.email_queue  # noqa
 import models.destination  # noqa
 import models.round  # noqa
+import models.lodging  # noqa
 
 app = FastAPI(title="Golf Trip Planner API")
 
@@ -40,3 +41,6 @@ app.include_router(destinations_router, prefix="/trips", tags=["destinations"])
 
 from api.rounds import router as rounds_router
 app.include_router(rounds_router, prefix="/trips", tags=["rounds"])
+
+from api.lodging import router as lodging_router
+app.include_router(lodging_router, prefix="/trips", tags=["lodging"])
