@@ -30,6 +30,7 @@ export const useAuthStore = create((set) => ({
       const { data } = await client.get('/auth/me')
       set({ user: data })
     } catch {
+      localStorage.removeItem('token')
       set({ user: null, token: null })
     }
   },
