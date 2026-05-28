@@ -5,11 +5,9 @@ import { useAuthStore } from '../store/auth'
 import MemberPanel from '../components/MemberPanel'
 import CostEstimate from '../components/CostEstimate'
 import AvailabilityPhase from '../phases/availability/AvailabilityPhase'
+import DestinationPhase from '../phases/destination/DestinationPhase'
 
-// Placeholder phase components — replaced in Tasks 6, 9, 13, 16
-function DestinationPhase() {
-  return <div style={{ padding: 24 }}><h2>Phase 2: AI Destinations</h2><p>Unlock by completing Phase 1.</p></div>
-}
+// Placeholder phase components — replaced in Tasks 13, 16
 function PlanningPhase() {
   return <div style={{ padding: 24 }}><h2>Phase 3: Courses + Lodging</h2><p>Unlock by completing Phase 2.</p></div>
 }

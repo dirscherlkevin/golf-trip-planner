@@ -1,0 +1,124 @@
+import { useState, useEffect } from 'react'
+import { useAuthStore } from '../../store/auth'
+import { useTripStore } from '../../store/trip'
+import { getDestinations } from '../../api/destinations'
+import GenerateForm from './GenerateForm'
+import DestinationCard from './DestinationCard'
+
+export default function DestinationPhase() {
+  const { trip, lockPhase, refreshPhases } = useTripStore()
+  const user = useAuthStore(s => s.user)
+  const isOrganizer = user?.id === trip?.organizer_id
+
+  const [data, setData] = useState(null)  // {suggestion, vote_tallies}
+  const [loadError, setLoadError] = useState(null)
+
+  const load = () => {
+    if (!trip) return
+    getDestinations(trip.id)
+      .then(setData)
+      .catch(err => {
+        if (err.response?.status !== 404) setLoadError('Failed to load suggestions')
+        // 404 = no suggestions yet, data stays null
+      })
+  }
+
+  useEffect(() => {
+    load()
+  }, [trip?.id])
+
+  const handleGenerated = (result) => {
+    // After generate call, reload from GET to get full suggestion + tallies
+    load()
+  }
+
+  const handleVoted = () => load()
+
+  const handleLocked = async () => {
+    await refreshPhases()
+    load()
+  }
+
+  const suggestion = data?.suggestion
+  const tallies = data?.vote_tallies ?? []
+
+  const status = suggestion?.generation_status
+
+  // Budget hint from trip store (from Phase 1 aggregate)
+  // For now just show dates
+  const budgetHint = trip?.trip_start
+    ? `Dates: ${trip.trip_start} – ${trip.trip_end}`
+    : null
+
+  return (
+    <div>
+      <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Phase 2: AI Destinations</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>
+        The AI will suggest 3 geographically diverse destinations based on your dates, group size, and budget.
+      </p>
+
+      {loadError && <div style={{ color: '#e55', marginBottom: 16 }}>{loadError}</div>}
+
+      {/* No suggestions yet */}
+      {!suggestion && (
+        <>
+          {isOrganizer ? (
+            <GenerateForm trip={trip} budgetHint={budgetHint} onGenerated={handleGenerated} />
+          ) : (
+            <div className="card" style={{ color: 'var(--text-secondary)' }}>
+              The organizer is setting up destination suggestions. Check back soon.
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Generation in progress */}
+      {status === 'pending' && (
+        <div className="card" style={{ textAlign: 'center', padding: 32 }}>
+          <div style={{ fontSize: 24, marginBottom: 12 }}>⛳</div>
+          <div style={{ fontWeight: 600 }}>Generating destination suggestions...</div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 8 }}>
+            This usually takes 20–30 seconds.
+          </div>
+        </div>
+      )}
+
+      {/* Generation failed */}
+      {status === 'failed' && (
+        <div className="card">
+          <div style={{ color: '#e55', fontWeight: 600, marginBottom: 12 }}>
+            Suggestion generation failed.
+          </div>
+          {isOrganizer && (
+            <GenerateForm trip={trip} budgetHint={budgetHint} onGenerated={handleGenerated} />
+          )}
+        </div>
+      )}
+
+      {/* Destination cards */}
+      {status === 'complete' && suggestion?.suggestions && (
+        <>
+          {suggestion.locked_destination && (
+            <div style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13 }}>
+              ✅ <strong>Destination locked:</strong> {suggestion.locked_destination.name} — {suggestion.locked_destination.region}. Phase 3 is now open!
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {suggestion.suggestions.map((dest, i) => (
+              <DestinationCard
+                key={i}
+                trip={trip}
+                destination={dest}
+                index={i}
+                tally={tallies.find(t => t.destination_index === i)}
+                isOrganizer={isOrganizer && !suggestion.locked_destination}
+                onVoted={handleVoted}
+                onLocked={handleLocked}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
