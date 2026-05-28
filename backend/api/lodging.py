@@ -1,5 +1,8 @@
+import os
+import logging
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 from database import get_db
 from api.auth import get_current_user
 from models.user import User
@@ -15,6 +18,9 @@ from schemas.lodging import (
 from services.phases import get_phase
 from services.claude import generate_lodging
 from datetime import datetime, timezone, timedelta
+
+load_dotenv()
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -62,6 +68,7 @@ def _get_locked_course_names(trip_id: int, db: Session) -> list[str]:
 
 
 def _build_option_out(opt: LodgingOption, user_id: int, db: Session) -> LodgingOptionOut:
+    """Build a single option out — used for single-option responses (nominate)."""
     votes = db.query(LodgingVote).filter(LodgingVote.option_id == opt.id).all()
     up = sum(1 for v in votes if v.vote == "up")
     down = sum(1 for v in votes if v.vote == "down")
@@ -82,7 +89,30 @@ def _build_setup_out(setup: LodgingSetup, trip: Trip, user_id: int, db: Session)
     options = db.query(LodgingOption).filter(
         LodgingOption.trip_id == setup.trip_id
     ).order_by(LodgingOption.created_at).all()
-    option_outs = [_build_option_out(opt, user_id, db) for opt in options]
+
+    # Bulk-fetch all votes to avoid N+1 queries
+    option_ids = [o.id for o in options]
+    all_votes = db.query(LodgingVote).filter(
+        LodgingVote.option_id.in_(option_ids)
+    ).all() if option_ids else []
+
+    option_outs = []
+    for opt in options:
+        votes = [v for v in all_votes if v.option_id == opt.id]
+        up = sum(1 for v in votes if v.vote == "up")
+        down = sum(1 for v in votes if v.vote == "down")
+        my_vote = next((v.vote for v in votes if v.user_id == user_id), None)
+        tally = LodgingVoteTally(option_id=opt.id, up_votes=up, down_votes=down, my_vote=my_vote)
+        option_outs.append(LodgingOptionOut(
+            id=opt.id,
+            trip_id=opt.trip_id,
+            lodging_type=opt.lodging_type.value,
+            option_data=opt.option_data,
+            added_by=opt.added_by,
+            source=opt.source,
+            vote_tally=tally,
+        ))
+
     return LodgingSetupOut(
         lodging_type=setup.lodging_type.value,
         generation_status=setup.generation_status.value,
@@ -123,7 +153,8 @@ def _generate_lodging_bg(
                     generation_status=LodgingGenerationStatus.complete,
                 ))
             setup.generation_status = LodgingGenerationStatus.complete
-        except Exception:
+        except Exception as e:
+            logger.exception("Lodging generation failed for setup_id=%s: %s", setup_id, e)
             setup.generation_status = LodgingGenerationStatus.failed
         db.commit()
     finally:
@@ -193,9 +224,6 @@ def setup_lodging(
     db.commit()
     db.refresh(setup)
 
-    import os
-    from dotenv import load_dotenv
-    load_dotenv()
     db_url = os.getenv("DATABASE_URL")
 
     background_tasks.add_task(
@@ -265,9 +293,6 @@ def generate_more_lodging(
     }
     db.commit()
 
-    import os
-    from dotenv import load_dotenv
-    load_dotenv()
     db_url = os.getenv("DATABASE_URL")
 
     background_tasks.add_task(
