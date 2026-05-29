@@ -9,6 +9,10 @@ from models.email_queue import EmailQueue, EmailStatus
 logger = logging.getLogger(__name__)
 
 
+def _base_url() -> str:
+    return os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+
+
 def _email_to_display_name(email: str) -> str:
     local = email.split('@')[0]
     return local.replace('.', ' ').replace('_', ' ').replace('-', ' ').title()
@@ -162,7 +166,7 @@ def check_and_enqueue_reminders(db: Session):
                 "trip_name": trip.name if trip else "Golf Trip",
                 "name": _email_to_display_name(member_user.email) if member_user else "there",
                 "organizer_name": _email_to_display_name(organizer.email) if organizer else "The organizer",
-                "url": f"https://golftrip.app/trips/{trip_id}",
+                "url": f"{_base_url()}/trips/{trip_id}",
             })
 
 

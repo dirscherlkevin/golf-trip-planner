@@ -7,6 +7,7 @@ from schemas.trip import TripCreate, TripOut, InviteCreate, InviteOut
 from api.auth import get_current_user
 from services.phases import initialize_phases
 from services.cost import compute_cost_estimate
+import os
 import uuid
 
 router = APIRouter()
@@ -53,7 +54,8 @@ def invite_member(trip_id: int, data: InviteCreate, db: Session = Depends(get_db
     member = TripMember(trip_id=trip_id, invite_email=data.email, invite_token=token)
     db.add(member)
     db.commit()
-    return InviteOut(invite_token=token, invite_url=f"http://localhost:5173/join/{token}")
+    base = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+    return InviteOut(invite_token=token, invite_url=f"{base}/join/{token}")
 
 @router.post("/join/{invite_token}", response_model=TripOut)
 def join_trip(invite_token: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

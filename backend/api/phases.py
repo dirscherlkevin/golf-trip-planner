@@ -125,7 +125,7 @@ def lock_trip(
     ).all()
 
     from models.user import User as UserModel
-    from services.email import _email_to_display_name
+    from services.email import _email_to_display_name, _base_url
     for member in members:
         member_user = db.query(UserModel).filter(UserModel.id == member.user_id).first()
         enqueue_email(db, trip_id, member.user_id, "trip_summary", {
@@ -135,7 +135,7 @@ def lock_trip(
             "destination": destination_name,
             "courses": ", ".join(course_names) if course_names else "TBD",
             "lodging_name": lodging_name,
-            "url": f"https://golftrip.app/trips/{trip_id}",
+            "url": f"{_base_url()}/trips/{trip_id}",
         })
 
     return {"status": "finalized", "trip_id": trip_id}
