@@ -104,3 +104,101 @@ def test_reopen_availability_when_destination_not_locked(db, trip_with_organizer
     dest = get_phase(trip.id, PhaseName.destination, db)
     assert avail.status == PhaseStatus.open
     assert dest.status == PhaseStatus.pending
+
+
+def test_lock_trip_finalizes_trip():
+    """POST /trips/{id}/lock finalizes the trip and enqueues trip_summary emails.
+
+    This test uses the HTTP layer end-to-end via TestClient with the conftest
+    test database (test_engine / TestingSessionLocal).
+    """
+    from fastapi.testclient import TestClient
+    from main import app
+    from database import get_db, Base
+    from models.email_queue import EmailQueue
+    from models.trip import Trip, TripStatus
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    TEST_DB = os.getenv(
+        "TEST_DATABASE_URL",
+        "postgresql://postgres:postgres@localhost:5433/golf_trip_planner_test",
+    )
+    engine = create_engine(TEST_DB)
+    Base.metadata.create_all(bind=engine)
+    Session = sessionmaker(bind=engine)
+
+    def override_get_db():
+        session = Session()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        with TestClient(app) as client:
+            # 1. Register organizer
+            r = client.post("/auth/register", json={
+                "email": "locktrip@test.com",
+                "name": "LockOrg",
+                "password": "testpass123",
+            })
+            assert r.status_code == 200, r.text
+            token = r.json()["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+            # 2. Create a trip
+            r = client.post("/trips/", json={"name": "Finalize Me"}, headers=headers)
+            assert r.status_code == 200, r.text
+            trip_id = r.json()["id"]
+
+            # 3. Lock all phases up to locked_in via HTTP
+            r = client.post(
+                f"/trips/{trip_id}/phases/availability/lock",
+                json={"trip_start": "2026-08-01", "trip_end": "2026-08-05"},
+                headers=headers,
+            )
+            assert r.status_code == 200, r.text
+
+            r = client.post(
+                f"/trips/{trip_id}/phases/destination/lock",
+                json={},
+                headers=headers,
+            )
+            assert r.status_code == 200, r.text
+
+            r = client.post(
+                f"/trips/{trip_id}/phases/planning/lock",
+                json={},
+                headers=headers,
+            )
+            assert r.status_code == 200, r.text
+
+            # locked_in phase is now open — call /lock
+            r = client.post(f"/trips/{trip_id}/lock", headers=headers)
+            assert r.status_code == 200, r.text
+            data = r.json()
+            assert data["status"] == "finalized"
+            assert data["trip_id"] == trip_id
+
+        # Verify in DB
+        check_session = Session()
+        try:
+            trip = check_session.query(Trip).filter(Trip.id == trip_id).first()
+            assert trip.status == TripStatus.finalized
+
+            email_rows = check_session.query(EmailQueue).filter(
+                EmailQueue.trip_id == trip_id,
+                EmailQueue.template == "trip_summary",
+            ).all()
+            assert len(email_rows) >= 1
+        finally:
+            check_session.close()
+    finally:
+        app.dependency_overrides.clear()
+        Base.metadata.drop_all(bind=engine)

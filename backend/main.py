@@ -1,3 +1,5 @@
+import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
@@ -12,7 +14,21 @@ import models.destination  # noqa
 import models.round  # noqa
 import models.lodging  # noqa
 
-app = FastAPI(title="Golf Trip Planner API")
+from services.email import email_worker
+
+
+@asynccontextmanager
+async def lifespan(app):
+    task = asyncio.create_task(email_worker())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="Golf Trip Planner API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

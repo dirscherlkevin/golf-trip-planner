@@ -4,7 +4,7 @@ from database import get_db
 from api.auth import get_current_user
 from models.user import User
 from models.phase import PhaseName
-from models.trip import Trip
+from models.trip import Trip, TripStatus
 from schemas.phase import TripPhaseOut, LockPhaseIn
 from services.phases import get_phases, lock_phase, reopen_phase
 
@@ -53,3 +53,86 @@ def reopen_trip_phase(
     db.commit()
     db.refresh(reopened)
     return reopened
+
+
+@router.post("/{trip_id}/lock")
+def lock_trip(
+    trip_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(404, "Trip not found")
+    if trip.organizer_id != user.id:
+        raise HTTPException(403, "Only the organizer can lock the trip")
+
+    # Validate all rounds locked (if any exist)
+    from models.round import TripRound
+    rounds = db.query(TripRound).filter(TripRound.trip_id == trip_id).all()
+    if rounds and any(r.locked_course_id is None for r in rounds):
+        raise HTTPException(400, "All rounds must be locked before finalizing")
+
+    # Validate lodging locked (if lodging was set up)
+    from models.lodging import LodgingSetup
+    lodging_setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
+    if lodging_setup and trip.locked_lodging_option_id is None:
+        raise HTTPException(400, "Lodging must be locked before finalizing")
+
+    # Lock the locked_in phase (validates phase is open)
+    lock_phase(trip_id, PhaseName.locked_in, user.id, db)
+
+    # Finalize the trip
+    trip.status = TripStatus.finalized
+    db.commit()
+    db.refresh(trip)
+
+    # Enqueue trip_summary emails for all joined members
+    from models.trip import TripMember
+    from models.destination import DestinationSuggestion
+    from models.lodging import LodgingOption
+    from models.round import CourseNomination
+    from services.email import enqueue_email
+
+    destination_name = "TBD"
+    suggestion = db.query(DestinationSuggestion).filter(DestinationSuggestion.trip_id == trip_id).first()
+    if suggestion and suggestion.locked_destination:
+        destination_name = suggestion.locked_destination.get("name", "TBD")
+
+    lodging_name = "TBD"
+    if trip.locked_lodging_option_id:
+        opt = db.query(LodgingOption).filter(LodgingOption.id == trip.locked_lodging_option_id).first()
+        if opt and opt.option_data:
+            lodging_name = opt.option_data.get("name", "TBD")
+
+    course_names = []
+    for r in rounds:
+        if r.locked_course_id:
+            nom = db.query(CourseNomination).filter(CourseNomination.id == r.locked_course_id).first()
+            if nom and nom.course_data:
+                course_names.append(nom.course_data.get("name", "?"))
+
+    dates = ""
+    if trip.trip_start and trip.trip_end:
+        dates = f"{trip.trip_start} – {trip.trip_end}"
+
+    members = db.query(TripMember).filter(
+        TripMember.trip_id == trip_id,
+        TripMember.joined == "joined",
+        TripMember.user_id.isnot(None),
+    ).all()
+
+    from models.user import User as UserModel
+    for member in members:
+        member_user = db.query(UserModel).filter(UserModel.id == member.user_id).first()
+        enqueue_email(db, trip_id, member.user_id, "trip_summary", {
+            "trip_name": trip.name,
+            "name": member_user.email if member_user else str(member.user_id),
+            "dates": dates,
+            "destination": destination_name,
+            "courses": ", ".join(course_names) if course_names else "TBD",
+            "lodging_name": lodging_name,
+            "url": f"https://golftrip.app/trips/{trip_id}",
+        })
+
+    return {"status": "finalized", "trip_id": trip_id}
