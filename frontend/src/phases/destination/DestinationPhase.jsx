@@ -65,10 +65,15 @@ export default function DestinationPhase() {
   const status = suggestion?.generation_status
 
   // FIX 6: Budget hint — prefer Phase 1 aggregate, fall back to dates
+  const fmtDate = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso + 'T00:00:00')
+    return `${d.toLocaleString('en-US', { month: 'short' })} ${d.getDate()}, ${d.getFullYear()}`
+  }
   const budgetHint = budgetData
     ? `Group median: $${budgetData.median_happy?.toLocaleString() ?? '?'}/person happy · $${budgetData.median_hard?.toLocaleString() ?? '?'} max`
     : trip?.trip_start
-      ? `Trip dates: ${trip.trip_start} – ${trip.trip_end}`
+      ? `Trip dates: ${fmtDate(trip.trip_start)} – ${fmtDate(trip.trip_end)}`
       : null
 
   return (

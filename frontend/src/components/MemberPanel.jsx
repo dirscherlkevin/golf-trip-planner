@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../store/auth'
+import { useTripStore } from '../store/trip'
 import client from '../api/client'
 
 export default function MemberPanel({ trip }) {
   const user = useAuthStore(s => s.user)
+  const phases = useTripStore(s => s.phases)
+  const openPhase = phases.find(p => p.status === 'open')?.phase ?? null
   const [availability, setAvailability] = useState(null)
   const [nudging, setNudging] = useState(false)
 
@@ -36,7 +39,7 @@ export default function MemberPanel({ trip }) {
           <span>{m.invite_email ?? `Member ${m.user_id}`}</span>
         </div>
       ))}
-      {isOrganizer && (
+      {isOrganizer && openPhase === 'availability' && nonResponderCount > 0 && (
         <button
           onClick={nudge}
           disabled={nudging}
