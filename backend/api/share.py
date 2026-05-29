@@ -10,6 +10,17 @@ from models.lodging import LodgingOption
 router = APIRouter()
 
 
+def _email_to_display_name(email: str) -> str:
+    local = email.split('@')[0]
+    return local.replace('.', ' ').replace('_', ' ').replace('-', ' ').title()
+
+
+def _fmt_date(d) -> str:
+    if not d:
+        return ''
+    return f"{d.strftime('%b')} {d.day}, {d.year}"
+
+
 @router.get("/{trip_id}")
 def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
     # 1. Load trip; 404 if not found
@@ -25,7 +36,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
 
     # Dates
     if trip.trip_start and trip.trip_end:
-        dates = f"{trip.trip_start} – {trip.trip_end}"
+        dates = f"{_fmt_date(trip.trip_start)} – {_fmt_date(trip.trip_end)}"
     else:
         dates = "TBD"
 
@@ -49,7 +60,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
     members = []
     if member_user_ids:
         users = db.query(User).filter(User.id.in_(member_user_ids)).all()
-        user_map = {u.id: u.email for u in users}
+        user_map = {u.id: _email_to_display_name(u.email) for u in users}
         members = [user_map[uid] for uid in member_user_ids if uid in user_map]
 
     # Rounds

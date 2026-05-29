@@ -95,10 +95,10 @@ def test_share_returns_summary_when_finalized(client, db):
     data = r.json()
     assert data["trip_id"] == trip.id
     assert data["trip_name"] == "Masters Trip 2026"
-    assert data["dates"] == "2026-10-01 – 2026-10-05"
+    assert data["dates"] == "Oct 1, 2026 – Oct 5, 2026"
     assert data["destination"] == "Scottsdale, AZ"
     assert data["destination_region"] == "Arizona, US"
-    assert "organizer@test.com" in data["members"]
+    assert "Organizer" in data["members"]
 
     assert len(data["rounds"]) == 1
     r0 = data["rounds"][0]

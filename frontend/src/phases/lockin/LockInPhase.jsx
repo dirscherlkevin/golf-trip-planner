@@ -4,13 +4,19 @@ import { useAuthStore } from '../../store/auth'
 import client from '../../api/client'
 import HypeMoment from './HypeMoment'
 
+function formatDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso + 'T00:00:00')
+  return `${d.toLocaleString('en-US', { month: 'short' })} ${d.getDate()}, ${d.getFullYear()}`
+}
+
 export default function LockInPhase() {
   const { trip } = useTripStore()
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
   const [locking, setLocking] = useState(false)
-  const [locked, setLocked] = useState(false)
+  const [locked, setLocked] = useState(trip?.status === 'finalized')
   const [error, setError] = useState(null)
 
   const [rounds, setRounds] = useState([])
@@ -18,28 +24,41 @@ export default function LockInPhase() {
   const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
-    if (!trip?.id) return
+    if (!trip?.id || locked) return
 
-    const fetchData = async () => {
-      setLoadingData(true)
+    let cancelled = false
+
+    const poll = async (isInitial) => {
+      if (isInitial) setLoadingData(true)
       try {
         const roundsRes = await client.get(`/trips/${trip.id}/rounds`)
-        setRounds(roundsRes.data || [])
+        if (!cancelled) setRounds(roundsRes.data || [])
       } catch {
-        setRounds([])
+        if (!cancelled) setRounds([])
       }
       try {
         const lodgingRes = await client.get(`/trips/${trip.id}/lodging`)
-        setLodging(lodgingRes.data || null)
-      } catch (e) {
-        if (e.response?.status === 404) setLodging(null)
-        else setLodging(null)
+        if (!cancelled) setLodging(lodgingRes.data || null)
+      } catch {
+        if (!cancelled) setLodging(null)
       }
-      setLoadingData(false)
+      if (!isOrganizer && !cancelled) {
+        try {
+          const tripRes = await client.get(`/trips/${trip.id}`)
+          if (!cancelled && tripRes.data?.status === 'finalized') setLocked(true)
+        } catch {}
+      }
+      if (isInitial && !cancelled) setLoadingData(false)
     }
 
-    fetchData()
-  }, [trip?.id])
+    poll(true)
+    const interval = setInterval(() => { if (!cancelled) poll(false) }, 10000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [trip?.id, isOrganizer, locked])
 
   // Determine checklist status
   const allRoundsLocked = rounds.length > 0 && rounds.every(r => r.locked_course_id != null)
@@ -84,7 +103,7 @@ export default function LockInPhase() {
           <ChecklistItem
             label="Dates confirmed"
             detail={trip.trip_start && trip.trip_end
-              ? `${trip.trip_start} – ${trip.trip_end}`
+              ? `${formatDate(trip.trip_start)} – ${formatDate(trip.trip_end)}`
               : 'Dates set'}
             done={true}
           />
@@ -160,6 +179,9 @@ export default function LockInPhase() {
           borderTop: '1px solid #2a2a2a',
         }}>
           Waiting for the organizer to lock the trip.
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            This page refreshes automatically.
+          </div>
         </div>
       )}
     </div>
