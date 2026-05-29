@@ -9,7 +9,25 @@ export default function SharePage() {
   useEffect(() => {
     fetch(`/share/${id}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(setData)
+      .then(d => {
+        setData(d)
+        document.title = `${d.trip_name} — Golf Trip`
+        // Open Graph tags for link previews in iMessage / Slack / Discord
+        const ogTags = [
+          { property: 'og:title', content: `⛳ ${d.trip_name}` },
+          { property: 'og:description', content: `${d.dates || ''} · ${d.destination || ''} · ${d.rounds?.length ?? 0} rounds` },
+          { property: 'og:type', content: 'website' },
+        ]
+        ogTags.forEach(({ property, content }) => {
+          let el = document.querySelector(`meta[property="${property}"]`)
+          if (!el) {
+            el = document.createElement('meta')
+            el.setAttribute('property', property)
+            document.head.appendChild(el)
+          }
+          el.setAttribute('content', content)
+        })
+      })
       .catch(err => {
         if (err === 404) setError("This trip isn't locked in yet.")
         else setError("Failed to load trip.")

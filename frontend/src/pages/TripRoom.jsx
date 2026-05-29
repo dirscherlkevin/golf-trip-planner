@@ -79,13 +79,22 @@ function PhaseGate({ phases, isOrganizer, onReopen }) {
 export default function TripRoom() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { trip, phases, loading, error, loadTrip, reopenPhase } = useTripStore()
+  const { trip, phases, loading, error, loadTrip, refreshPhases, reopenPhase } = useTripStore()
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
   useEffect(() => {
     loadTrip(id)
   }, [id])
+
+  // Poll phases every 15s so members see phase transitions without manual refresh
+  useEffect(() => {
+    if (!trip?.id) return
+    const interval = setInterval(async () => {
+      await refreshPhases()
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [trip?.id])
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
   if (error) return <div style={{ padding: 40, color: 'red' }}>Error: {error}</div>
