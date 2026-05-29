@@ -60,3 +60,6 @@ app.include_router(rounds_router, prefix="/trips", tags=["rounds"])
 
 from api.lodging import router as lodging_router
 app.include_router(lodging_router, prefix="/trips", tags=["lodging"])
+
+from api.share import router as share_router
+app.include_router(share_router, prefix="/share", tags=["share"])
