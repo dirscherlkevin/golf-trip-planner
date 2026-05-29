@@ -8,6 +8,7 @@ import AvailabilityPhase from '../phases/availability/AvailabilityPhase'
 import DestinationPhase from '../phases/destination/DestinationPhase'
 import PlanningPhase from '../phases/planning/PlanningPhase'
 import LockInPhase from '../phases/lockin/LockInPhase'
+import HypeMoment from '../phases/lockin/HypeMoment'
 
 const PHASE_COMPONENTS = {
   availability: AvailabilityPhase,
@@ -25,7 +26,7 @@ const PHASE_LABELS = {
 
 const REOPENABLE = new Set(['availability', 'destination', 'planning'])
 
-function PhaseGate({ phases, isOrganizer, onReopen }) {
+function PhaseGate({ phases, isOrganizer, onReopen, trip }) {
   const openPhase = phases.find(p => p.status === 'open')
   const openIdx = phases.findIndex(p => p.status === 'open')
   // The locked phase immediately before the open phase is the one that can be reopened.
@@ -68,10 +69,14 @@ function PhaseGate({ phases, isOrganizer, onReopen }) {
       </div>
 
       {/* Active phase content */}
-      {openPhase && (() => {
-        const Component = PHASE_COMPONENTS[openPhase.phase]
-        return Component ? <Component /> : null
-      })()}
+      {openPhase ? (
+        (() => {
+          const Component = PHASE_COMPONENTS[openPhase.phase]
+          return Component ? <Component /> : null
+        })()
+      ) : trip?.status === 'finalized' ? (
+        <HypeMoment trip={trip} />
+      ) : null}
     </div>
   )
 }
@@ -121,6 +126,7 @@ export default function TripRoom() {
         <PhaseGate
           phases={phases}
           isOrganizer={isOrganizer}
+          trip={trip}
           onReopen={async (phase) => {
             try { await reopenPhase(phase) } catch {}
           }}
