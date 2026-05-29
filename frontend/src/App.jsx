@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useAuthStore } from './store/auth'
 import Login from './pages/Login'
-import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import TripRoom from './pages/TripRoom'
 import JoinPage from './pages/JoinPage'
@@ -22,7 +21,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/register" element={<Login />} />
       <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/trips/:id" element={<PrivateRoute><TripRoom /></PrivateRoute>} />
       <Route path="/join/:token" element={<PrivateRoute><JoinPage /></PrivateRoute>} />

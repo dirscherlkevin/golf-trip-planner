@@ -15,3 +15,6 @@ class UserOut(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+class GoogleLoginIn(BaseModel):
+    id_token: str

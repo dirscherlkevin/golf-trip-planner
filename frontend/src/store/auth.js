@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import client from '../api/client'
+import { getGoogleIdToken } from '../firebase'
 
 export const useAuthStore = create((set) => ({
   user: null,
@@ -15,6 +16,14 @@ export const useAuthStore = create((set) => ({
 
   register: async (email, name, password) => {
     const { data } = await client.post('/auth/register', { email, name, password })
+    localStorage.setItem('token', data.access_token)
+    const me = await client.get('/auth/me')
+    set({ token: data.access_token, user: me.data })
+  },
+
+  loginWithGoogle: async () => {
+    const idToken = await getGoogleIdToken()
+    const { data } = await client.post('/auth/google', { id_token: idToken })
     localStorage.setItem('token', data.access_token)
     const me = await client.get('/auth/me')
     set({ token: data.access_token, user: me.data })

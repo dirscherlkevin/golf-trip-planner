@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
-from schemas.user import UserCreate, UserOut, Token
+from schemas.user import UserCreate, UserOut, Token, GoogleLoginIn
 from services.auth import hash_password, verify_password, create_access_token, get_user_from_token
 
 router = APIRouter()
@@ -34,6 +34,30 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     user = db.query(User).filter(User.email == form.username).first()
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")
+    return Token(access_token=create_access_token(user.id), token_type="bearer")
+
+@router.post("/google", response_model=Token)
+def google_login(data: GoogleLoginIn, db: Session = Depends(get_db)):
+    from services.firebase_verify import verify_firebase_token
+    import uuid
+    try:
+        firebase_user = verify_firebase_token(data.id_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid Google token")
+    email = firebase_user.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Google account has no email")
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        display_name = firebase_user.get("name") or email.split("@")[0]
+        user = User(
+            email=email,
+            name=display_name,
+            hashed_password=hash_password(str(uuid.uuid4())),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return Token(access_token=create_access_token(user.id), token_type="bearer")
 
 @router.get("/me", response_model=UserOut)
