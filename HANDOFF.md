@@ -1,6 +1,6 @@
 # Golf Trip Planner — Handoff Notes
 
-**Last updated:** 2026-05-29  
+**Last updated:** 2026-05-29 (session 2)  
 **Branch:** `main`  
 **Status:** Full 4-phase Trip Room implemented, 55/55 tests passing
 
@@ -159,12 +159,11 @@ frontend/
 | Item | Priority | Notes |
 |---|---|---|
 | Email dedup UNIQUE constraint | Medium | Can't use simple `UNIQUE(trip_id, user_id, template)` — breaks availability reminders that recur. Idempotency guard on lock endpoint already prevents double trip_summary. |
-| `python-jose` CVE | Medium | Known CVEs; consider switching to `PyJWT` before prod |
 | Display names are email-derived | Low | No name field on User model; display names come from email local part |
 | Share page privacy | Low | Display names shown (not emails), but names are still guessable from email |
 | Real SMTP setup | Low | Email sends fail in dev (no SMTP configured); emails still queue in DB |
 | `locked_in` phase cannot be reopened | By design | Finalizing sends emails — no un-finalize |
-| No CORS restriction | Low | `allow_origins=["*"]` in main.py — tighten for production |
+| No CORS restriction | Low | `allow_origins=["*"]` in main.py — tighten for production (JWT + credentials=False makes this safe for now) |
 
 ---
 
