@@ -31,7 +31,12 @@ export const useTripStore = create((set, get) => ({
   lockPhase: async (phase, body = {}) => {
     const { trip } = get()
     await lockPhase(trip.id, phase, body)
-    await get().refreshPhases()
+    // Refresh both — locking availability sets trip_start/trip_end on the trip row
+    const [tripRes, phases] = await Promise.all([
+      client.get(`/trips/${trip.id}`),
+      getPhases(trip.id),
+    ])
+    set({ trip: tripRes.data, phases })
   },
 
   reopenPhase: async (phase) => {
