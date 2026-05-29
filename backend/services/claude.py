@@ -122,6 +122,53 @@ Return only the JSON array, no other text."""
     return data
 
 
+def preview_destination_courses(
+    destination_name: str,
+    region: str,
+    planned_rounds: int = 3,
+) -> list[dict]:
+    """Return 5-8 recommended courses at a destination for research/preview (not saved to DB)."""
+    location_note = f"{destination_name}, {region}" if region.strip() else destination_name
+
+    prompt = f"""You are a golf travel expert. List the top golf courses at this destination.
+
+Destination: {location_note}
+Planning: {planned_rounds} rounds of golf
+
+Return ONLY a JSON array of 5-8 courses ordered by prestige/reputation. Each object must have:
+{{
+  "name": "Course name",
+  "location": "City, State",
+  "tier": "premium / midrange / value",
+  "green_fee": 175,
+  "cart_fee": 20,
+  "rating": 72.5,
+  "slope": 128,
+  "par": 72,
+  "walking_policy": "Walking allowed / Cart required / Caddie recommended",
+  "architect": "Tom Fazio",
+  "tee_time_window": "Opens 60 days in advance",
+  "rating_source": "Golf Digest / USGA / etc",
+  "website": "https://www.coursename.com"
+}}
+
+Return only the JSON array, no other text."""
+
+    client = _client()
+    message = _call_with_retry(lambda: client.messages.create(
+        model="claude-opus-4-7",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}],
+    ))
+    raw = message.content[0].text
+    data = _parse_json_response(raw)
+
+    if not isinstance(data, list) or len(data) == 0:
+        raise ValueError("Expected a non-empty JSON array of courses")
+
+    return data
+
+
 def generate_courses_for_round(
     destination: str,
     tier: str,

@@ -402,7 +402,38 @@ def lock_lodging(
     return _build_setup_out(setup, trip, user.id, db)
 
 
-@router.delete("/{trip_id}/lodging/options/lock", response_model=LodgingSetupOut)
+@router.delete("/{trip_id}/lodging/options/{opt_id}", response_model=LodgingSetupOut)
+def remove_lodging_option(
+    trip_id: int,
+    opt_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can remove lodging options")
+
+    if trip.locked_lodging_option_id == opt_id:
+        raise HTTPException(status_code=409, detail="Cannot remove the locked lodging option — unlock lodging first")
+
+    setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
+    if not setup:
+        raise HTTPException(status_code=404, detail="Lodging not set up yet")
+
+    opt = db.query(LodgingOption).filter(
+        LodgingOption.id == opt_id, LodgingOption.trip_id == trip_id
+    ).first()
+    if not opt:
+        raise HTTPException(status_code=404, detail="Lodging option not found")
+
+    db.query(LodgingVote).filter(LodgingVote.option_id == opt_id).delete()
+    db.delete(opt)
+    db.commit()
+    db.refresh(trip)
+    return _build_setup_out(setup, trip, user.id, db)
+
+
+@router.delete("/{trip_id}/lodging/lock", response_model=LodgingSetupOut)
 def unlock_lodging(
     trip_id: int,
     db: Session = Depends(get_db),

@@ -15,6 +15,11 @@ class NominateDestinationIn(BaseModel):
     region: str = ""
     why_it_fits: str = ""
 
+class PreviewCoursesIn(BaseModel):
+    destination_name: str
+    region: str = ""
+    planned_rounds: int = 3
+
 class VoteIn(BaseModel):
     destination_index: int
     vote: str  # "up" or "down"

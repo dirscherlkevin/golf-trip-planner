@@ -17,3 +17,13 @@ export const nominateDestination = (tripId, data) =>
 
 export const unlockDestination = (tripId) =>
   client.delete(`/trips/${tripId}/destinations/lock`).then(r => r.data)
+
+export const removeDestinationNomination = (tripId, index) =>
+  client.delete(`/trips/${tripId}/destinations/nominations/${index}`).then(r => r.data)
+
+export const previewDestinationCourses = (tripId, destinationName, region, plannedRounds) =>
+  client.post(`/trips/${tripId}/destinations/preview-courses`, {
+    destination_name: destinationName,
+    region,
+    planned_rounds: plannedRounds,
+  }).then(r => r.data)

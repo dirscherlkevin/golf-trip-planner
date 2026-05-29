@@ -8,11 +8,11 @@ from models.destination import DestinationSuggestion, DestinationVote, Generatio
 from models.phase import PhaseName, PhaseStatus
 from models.decision import TripDecision, DecisionType
 from schemas.destination import (
-    GenerateDestinationsIn, NominateDestinationIn, VoteIn, LockDestinationIn,
+    GenerateDestinationsIn, NominateDestinationIn, PreviewCoursesIn, VoteIn, LockDestinationIn,
     DestinationSuggestionOut, DestinationVoteTally, DestinationSuggestionWithVotesOut
 )
 from services.phases import get_phase, lock_phase, reopen_phase
-from services.claude import generate_destinations
+from services.claude import generate_destinations, preview_destination_courses
 from datetime import datetime, timezone, timedelta
 import statistics
 
@@ -317,6 +317,68 @@ def unlock_destination(
     dest_phase = get_phase(trip_id, PhaseName.destination, db)
     if dest_phase.status == PhaseStatus.locked:
         reopen_phase(trip_id, PhaseName.destination, user.id, db)
+
+    db.commit()
+    db.refresh(suggestion)
+    return suggestion
+
+
+@router.post("/{trip_id}/destinations/preview-courses")
+def preview_courses(
+    trip_id: int,
+    body: PreviewCoursesIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _get_trip_member(trip_id, user.id, db)
+    try:
+        courses = preview_destination_courses(
+            destination_name=body.destination_name,
+            region=body.region,
+            planned_rounds=body.planned_rounds,
+        )
+        return {"courses": courses}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate course preview: {str(e)}")
+
+
+@router.delete("/{trip_id}/destinations/nominations/{dest_index}", response_model=DestinationSuggestionOut)
+def remove_destination_nomination(
+    trip_id: int,
+    dest_index: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can remove destination nominations")
+
+    phase = get_phase(trip_id, PhaseName.destination, db)
+    if phase.status != PhaseStatus.open:
+        raise HTTPException(status_code=400, detail="Destination phase is not open")
+
+    suggestion = db.query(DestinationSuggestion).filter(
+        DestinationSuggestion.trip_id == trip_id
+    ).first()
+    if not suggestion or not suggestion.suggestions:
+        raise HTTPException(status_code=404, detail="No destination suggestions found")
+    if dest_index < 0 or dest_index >= len(suggestion.suggestions):
+        raise HTTPException(status_code=400, detail="Invalid destination index")
+
+    current = list(suggestion.suggestions)
+    current.pop(dest_index)
+    suggestion.suggestions = current
+
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(suggestion, "suggestions")
+
+    # Remove votes for this index and shift higher votes down
+    votes = db.query(DestinationVote).filter(DestinationVote.trip_id == trip_id).all()
+    for v in votes:
+        if v.destination_index == dest_index:
+            db.delete(v)
+        elif v.destination_index > dest_index:
+            v.destination_index -= 1
 
     db.commit()
     db.refresh(suggestion)

@@ -221,8 +221,10 @@ export default function DestinationPhase() {
                 tally={tallies.find(t => t.destination_index === i)}
                 isOrganizer={isOrganizer && !suggestion.locked_destination}
                 isLocked={!!suggestion.locked_destination}
+                plannedRounds={trip?.planned_rounds}
                 onVoted={handleVoted}
                 onLocked={handleLocked}
+                onRemoved={load}
               />
             ))}
           </div>

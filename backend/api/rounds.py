@@ -316,6 +316,39 @@ def lock_round(
     return _build_round_with_nominations(trip_round, user.id, db)
 
 
+@router.delete("/{trip_id}/rounds/{round_id}/nominations/{nom_id}", response_model=TripRoundOut)
+def remove_course_nomination(
+    trip_id: int,
+    round_id: int,
+    nom_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can remove course nominations")
+
+    trip_round = db.query(TripRound).filter(
+        TripRound.id == round_id, TripRound.trip_id == trip_id
+    ).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    if trip_round.locked_course_id == nom_id:
+        raise HTTPException(status_code=409, detail="Cannot remove the locked course — unlock the round first")
+
+    nom = db.query(CourseNomination).filter(
+        CourseNomination.id == nom_id, CourseNomination.round_id == round_id
+    ).first()
+    if not nom:
+        raise HTTPException(status_code=404, detail="Nomination not found")
+
+    # Delete votes for this nomination first
+    db.query(CourseVote).filter(CourseVote.nomination_id == nom_id).delete()
+    db.delete(nom)
+    db.commit()
+    return _build_round_with_nominations(trip_round, user.id, db)
+
+
 @router.delete("/{trip_id}/rounds/{round_id}/lock", response_model=TripRoundOut)
 def unlock_round(
     trip_id: int,

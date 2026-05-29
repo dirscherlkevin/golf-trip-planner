@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { voteOnCourse, lockRound, unlockRound, generateMoreCourses, nominateCourse } from '../../api/rounds'
+import { voteOnCourse, lockRound, unlockRound, generateMoreCourses, nominateCourse, removeCourseNomination } from '../../api/rounds'
 
 const TIER_LABELS = {
   premium: 'Premium',
@@ -26,6 +26,8 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
   const [voting, setVoting] = useState(false)
   const [lockError, setLockError] = useState(null)
   const [voteError, setVoteError] = useState(null)
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   const isThisLocked = lockedNomId === id
 
@@ -53,6 +55,17 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
       setLockError('Failed to lock. Try again.')
       setLocking(false)
       setConfirmLock(false)
+    }
+  }
+
+  const handleRemove = async () => {
+    setRemoving(true)
+    try {
+      await removeCourseNomination(tripId, roundId, id)
+      onUpdated()
+    } catch {
+      setRemoving(false)
+      setConfirmRemove(false)
     }
   }
 
@@ -152,34 +165,43 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
           )}
 
           {isOrganizer && !isLocked && (
-            <div>
-              {!confirmLock ? (
-                <button
-                  className="btn-ghost"
-                  onClick={() => setConfirmLock(true)}
-                  style={{ fontSize: 12 }}
-                >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+              {/* Remove */}
+              {!confirmRemove && !confirmLock && (
+                <button className="btn-ghost" onClick={() => setConfirmRemove(true)}
+                  style={{ fontSize: 11, padding: '3px 8px', color: '#e55', borderColor: '#e55' }}>
+                  Remove
+                </button>
+              )}
+              {confirmRemove && (
+                <div style={{ display: 'flex', gap: 6, flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <div style={{ fontSize: 11, color: '#e55' }}>Remove this option?</div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn-ghost" onClick={handleRemove} disabled={removing}
+                      style={{ fontSize: 11, padding: '4px 8px', color: '#e55', borderColor: '#e55' }}>
+                      {removing ? '...' : 'Yes, Remove'}
+                    </button>
+                    <button className="btn-ghost" onClick={() => setConfirmRemove(false)}
+                      style={{ fontSize: 11, padding: '4px 8px' }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+              {/* Lock */}
+              {!confirmRemove && !confirmLock && (
+                <button className="btn-ghost" onClick={() => setConfirmLock(true)} style={{ fontSize: 12 }}>
                   Lock This Course
                 </button>
-              ) : (
+              )}
+              {confirmLock && (
                 <div style={{ display: 'flex', gap: 6, flexDirection: 'column', alignItems: 'flex-end' }}>
                   <div style={{ fontSize: 11, color: '#cc9900' }}>Lock this course?</div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      className="btn-primary"
-                      onClick={handleLock}
-                      disabled={locking}
-                      style={{ fontSize: 11, padding: '4px 8px' }}
-                    >
+                    <button className="btn-primary" onClick={handleLock} disabled={locking}
+                      style={{ fontSize: 11, padding: '4px 8px' }}>
                       {locking ? 'Locking...' : 'Yes, Lock'}
                     </button>
-                    <button
-                      className="btn-ghost"
-                      onClick={() => setConfirmLock(false)}
-                      style={{ fontSize: 11, padding: '4px 8px' }}
-                    >
-                      Cancel
-                    </button>
+                    <button className="btn-ghost" onClick={() => setConfirmLock(false)}
+                      style={{ fontSize: 11, padding: '4px 8px' }}>Cancel</button>
                   </div>
                   {lockError && <div style={{ fontSize: 11, color: '#e55' }}>{lockError}</div>}
                 </div>
