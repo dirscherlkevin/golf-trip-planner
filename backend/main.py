@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,9 +31,10 @@ async def lifespan(app):
 
 app = FastAPI(title="Golf Trip Planner API", lifespan=lifespan)
 
+_cors_origins = os.getenv("CORS_ORIGINS", "*")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins.split(",") if _cors_origins != "*" else ["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
