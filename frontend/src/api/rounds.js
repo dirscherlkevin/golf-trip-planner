@@ -6,3 +6,4 @@ export const generateMoreCourses = (tripId, roundId) => client.post(`/trips/${tr
 export const nominateCourse = (tripId, roundId, courseData) => client.post(`/trips/${tripId}/rounds/${roundId}/nominate`, { course_data: courseData }).then(r => r.data)
 export const voteOnCourse = (tripId, roundId, nomId, vote) => client.post(`/trips/${tripId}/rounds/${roundId}/nominations/${nomId}/vote`, { vote })
 export const lockRound = (tripId, roundId, nominationId) => client.post(`/trips/${tripId}/rounds/${roundId}/lock`, { nomination_id: nominationId }).then(r => r.data)
+export const unlockRound = (tripId, roundId) => client.delete(`/trips/${tripId}/rounds/${roundId}/lock`).then(r => r.data)

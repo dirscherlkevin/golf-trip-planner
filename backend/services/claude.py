@@ -55,6 +55,7 @@ def generate_destinations(
     country: str,
     tier_filter: str,
     planned_rounds: int = 3,
+    region: str = "",
 ) -> list[dict]:
     """Generate 3 destination suggestions. Returns list of destination dicts."""
     budget_note = ""
@@ -63,13 +64,15 @@ def generate_destinations(
     if budget_max:
         budget_note += f" Max budget: ${budget_max:,.0f}/person."
 
+    region_note = f"\n- Preferred region/area: {region}" if region.strip() else ""
+
     prompt = f"""You are a golf travel expert. Suggest 3 golf destinations for a group trip.
 
 Trip details:
 - Dates: {trip_start} to {trip_end}
 - Group size: {group_size} people
 - Skill mix: {skill_mix}
-- Country: {country}
+- Country: {country}{region_note}
 - Budget tier filter: {tier_filter}
 - Planned rounds: {planned_rounds} rounds of golf
 {budget_note}

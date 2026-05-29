@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store/auth'
 import { useTripStore } from '../../store/trip'
-import { getDestinations } from '../../api/destinations'
+import { getDestinations, nominateDestination, unlockDestination } from '../../api/destinations'
 import { getAvailability } from '../../api/availability'
 import GenerateForm from './GenerateForm'
 import DestinationCard from './DestinationCard'
@@ -15,6 +15,12 @@ export default function DestinationPhase() {
   const [loadError, setLoadError] = useState(null)
   const [budgetData, setBudgetData] = useState(null)
   const [showRegenerate, setShowRegenerate] = useState(false)
+  const [showManualForm, setShowManualForm] = useState(false)
+  const [manualName, setManualName] = useState('')
+  const [manualRegion, setManualRegion] = useState('')
+  const [addingManual, setAddingManual] = useState(false)
+  const [manualError, setManualError] = useState('')
+  const [unlocking, setUnlocking] = useState(false)
 
   const load = () => {
     if (!trip) return
@@ -59,6 +65,36 @@ export default function DestinationPhase() {
     load()
   }
 
+  const handleAddManual = async () => {
+    if (!manualName.trim()) return
+    setAddingManual(true)
+    setManualError('')
+    try {
+      await nominateDestination(trip.id, { name: manualName.trim(), region: manualRegion.trim() })
+      setManualName('')
+      setManualRegion('')
+      setShowManualForm(false)
+      load()
+    } catch {
+      setManualError('Failed to add destination. Try again.')
+    } finally {
+      setAddingManual(false)
+    }
+  }
+
+  const handleUnlock = async () => {
+    setUnlocking(true)
+    try {
+      await unlockDestination(trip.id)
+      await refreshPhases()
+      load()
+    } catch {
+      // ignore
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
   const suggestion = data?.suggestion
   const tallies = data?.vote_tallies ?? []
 
@@ -89,7 +125,37 @@ export default function DestinationPhase() {
       {!suggestion && (
         <>
           {isOrganizer ? (
-            <GenerateForm trip={trip} budgetHint={budgetHint} onGenerated={handleGenerated} />
+            <>
+              <GenerateForm trip={trip} budgetHint={budgetHint} onGenerated={handleGenerated} />
+              <div style={{ marginTop: 16, padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a' }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Or add a destination manually</div>
+                {!showManualForm ? (
+                  <button className="btn-ghost" onClick={() => setShowManualForm(true)} style={{ fontSize: 13 }}>
+                    + Add Manually
+                  </button>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Destination name</label>
+                        <input type="text" value={manualName} onChange={e => setManualName(e.target.value)} placeholder="e.g. Pinehurst, NC"
+                          style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: 200 }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Region</label>
+                        <input type="text" value={manualRegion} onChange={e => setManualRegion(e.target.value)} placeholder="e.g. North Carolina, USA"
+                          style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: 200 }} />
+                      </div>
+                      <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
+                        {addingManual ? 'Adding...' : 'Add'}
+                      </button>
+                      <button className="btn-ghost" onClick={() => { setShowManualForm(false); setManualError('') }} style={{ fontSize: 13 }}>Cancel</button>
+                    </div>
+                    {manualError && <div style={{ fontSize: 12, color: '#e55' }}>{manualError}</div>}
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <div className="card">
               <div style={{ fontWeight: 600, marginBottom: 8 }}>Waiting for destination suggestions...</div>
@@ -131,8 +197,18 @@ export default function DestinationPhase() {
       {status === 'complete' && suggestion?.suggestions && (
         <>
           {suggestion.locked_destination && (
-            <div style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13 }}>
-              ✅ <strong>Destination locked:</strong> {suggestion.locked_destination.name} — {suggestion.locked_destination.region}. Phase 3 is now open!
+            <div style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <span>✅ <strong>Destination locked:</strong> {suggestion.locked_destination.name} — {suggestion.locked_destination.region}. Phase 3 is now open!</span>
+              {isOrganizer && (
+                <button
+                  className="btn-ghost"
+                  onClick={handleUnlock}
+                  disabled={unlocking}
+                  style={{ fontSize: 11, padding: '4px 8px', whiteSpace: 'nowrap' }}
+                >
+                  {unlocking ? 'Unlocking...' : 'Unlock'}
+                </button>
+              )}
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -151,7 +227,56 @@ export default function DestinationPhase() {
             ))}
           </div>
 
-          {/* FIX 7: Regenerate button for organizer when not locked */}
+          {/* Manual destination nomination (organizer, not locked) */}
+          {isOrganizer && !suggestion.locked_destination && (
+            <div style={{ marginTop: 16, padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a', marginBottom: 12 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Add a Destination Manually</div>
+              {!showManualForm ? (
+                <button className="btn-ghost" onClick={() => setShowManualForm(true)} style={{ fontSize: 13 }}>
+                  + Add Manually
+                </button>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Destination name</label>
+                      <input
+                        type="text"
+                        value={manualName}
+                        onChange={e => setManualName(e.target.value)}
+                        placeholder="e.g. Pinehurst, NC"
+                        style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: 200 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Region</label>
+                      <input
+                        type="text"
+                        value={manualRegion}
+                        onChange={e => setManualRegion(e.target.value)}
+                        placeholder="e.g. North Carolina, USA"
+                        style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: 200 }}
+                      />
+                    </div>
+                    <button
+                      className="btn-primary"
+                      onClick={handleAddManual}
+                      disabled={addingManual || !manualName.trim()}
+                      style={{ fontSize: 13 }}
+                    >
+                      {addingManual ? 'Adding...' : 'Add'}
+                    </button>
+                    <button className="btn-ghost" onClick={() => { setShowManualForm(false); setManualError('') }} style={{ fontSize: 13 }}>
+                      Cancel
+                    </button>
+                  </div>
+                  {manualError && <div style={{ fontSize: 12, color: '#e55' }}>{manualError}</div>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Regenerate button for organizer when not locked */}
           {isOrganizer && !suggestion.locked_destination && (
             <div style={{ marginTop: 20, padding: '12px 16px', background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
               <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Not what you were looking for?</div>

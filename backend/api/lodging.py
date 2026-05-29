@@ -400,3 +400,27 @@ def lock_lodging(
     db.refresh(trip)
 
     return _build_setup_out(setup, trip, user.id, db)
+
+
+@router.delete("/{trip_id}/lodging/options/lock", response_model=LodgingSetupOut)
+def unlock_lodging(
+    trip_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can unlock lodging")
+
+    if trip.locked_lodging_option_id is None:
+        raise HTTPException(status_code=400, detail="Lodging is not locked")
+
+    setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
+    if not setup:
+        raise HTTPException(status_code=404, detail="Lodging not set up yet")
+
+    trip.locked_lodging_option_id = None
+    db.commit()
+    db.refresh(trip)
+
+    return _build_setup_out(setup, trip, user.id, db)

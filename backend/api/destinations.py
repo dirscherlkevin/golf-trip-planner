@@ -8,10 +8,10 @@ from models.destination import DestinationSuggestion, DestinationVote, Generatio
 from models.phase import PhaseName, PhaseStatus
 from models.decision import TripDecision, DecisionType
 from schemas.destination import (
-    GenerateDestinationsIn, VoteIn, LockDestinationIn,
+    GenerateDestinationsIn, NominateDestinationIn, VoteIn, LockDestinationIn,
     DestinationSuggestionOut, DestinationVoteTally, DestinationSuggestionWithVotesOut
 )
-from services.phases import get_phase, lock_phase
+from services.phases import get_phase, lock_phase, reopen_phase
 from services.claude import generate_destinations
 from datetime import datetime, timezone, timedelta
 import statistics
@@ -104,6 +104,7 @@ def generate_destination_suggestions(
         "skill_mix": body.skill_mix,
         "tier_filter": body.tier_filter,
         "country": body.country,
+        "region": body.region,
         "trip_start": str(trip.trip_start),
         "trip_end": str(trip.trip_end),
         "group_size": group_size,
@@ -125,6 +126,7 @@ def generate_destination_suggestions(
             country=body.country,
             tier_filter=body.tier_filter,
             planned_rounds=body.planned_rounds,
+            region=body.region,
         )
         suggestion.suggestions = results
         suggestion.generation_status = GenerationStatus.complete
@@ -239,6 +241,83 @@ def lock_destination(
         entity_id=suggestion.id, entity_type="destination_suggestion",
         override=body.override
     )
+    db.commit()
+    db.refresh(suggestion)
+    return suggestion
+
+
+@router.post("/{trip_id}/destinations/nominate", response_model=DestinationSuggestionOut)
+def nominate_destination(
+    trip_id: int,
+    body: NominateDestinationIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can add destination nominations")
+
+    phase = get_phase(trip_id, PhaseName.destination, db)
+    if phase.status != PhaseStatus.open:
+        raise HTTPException(status_code=400, detail="Destination phase is not open")
+
+    suggestion = db.query(DestinationSuggestion).filter(
+        DestinationSuggestion.trip_id == trip_id
+    ).first()
+    if not suggestion:
+        suggestion = DestinationSuggestion(
+            trip_id=trip_id,
+            generation_status=GenerationStatus.complete,
+            suggestions=[],
+        )
+        db.add(suggestion)
+        db.flush()
+
+    new_dest = {
+        "name": body.name.strip(),
+        "region": body.region.strip(),
+        "why_it_fits": body.why_it_fits.strip() or "Manually added by organizer.",
+        "top_courses": [],
+        "est_cost_per_person_rounds": None,
+        "booking_warning": None,
+    }
+    current = list(suggestion.suggestions or [])
+    current.append(new_dest)
+    suggestion.suggestions = current
+    if suggestion.generation_status != GenerationStatus.complete:
+        suggestion.generation_status = GenerationStatus.complete
+
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(suggestion, "suggestions")
+    db.commit()
+    db.refresh(suggestion)
+    return suggestion
+
+
+@router.delete("/{trip_id}/destinations/lock", response_model=DestinationSuggestionOut)
+def unlock_destination(
+    trip_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can unlock the destination")
+
+    suggestion = db.query(DestinationSuggestion).filter(
+        DestinationSuggestion.trip_id == trip_id
+    ).first()
+    if not suggestion or not suggestion.locked_destination:
+        raise HTTPException(status_code=400, detail="No destination is locked")
+
+    suggestion.locked_destination = None
+    db.flush()
+
+    # Reopen destination phase (sets planning back to pending) only if currently locked
+    dest_phase = get_phase(trip_id, PhaseName.destination, db)
+    if dest_phase.status == PhaseStatus.locked:
+        reopen_phase(trip_id, PhaseName.destination, user.id, db)
+
     db.commit()
     db.refresh(suggestion)
     return suggestion

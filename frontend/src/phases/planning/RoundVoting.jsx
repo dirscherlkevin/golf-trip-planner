@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { voteOnCourse, lockRound, generateMoreCourses, nominateCourse } from '../../api/rounds'
+import { voteOnCourse, lockRound, unlockRound, generateMoreCourses, nominateCourse } from '../../api/rounds'
 
 const TIER_LABELS = {
   premium: 'Premium',
@@ -199,9 +199,22 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
   const [manualLocation, setManualLocation] = useState('')
   const [addingManual, setAddingManual] = useState(false)
   const [manualError, setManualError] = useState(null)
+  const [unlocking, setUnlocking] = useState(false)
 
   const lockedNomId = round.locked_course_id
   const isLocked = lockedNomId !== null
+
+  const handleUnlock = async () => {
+    setUnlocking(true)
+    try {
+      await unlockRound(tripId, round.id)
+      onUpdated()
+    } catch {
+      // ignore
+    } finally {
+      setUnlocking(false)
+    }
+  }
   const lockedNom = isLocked ? round.nominations?.find(n => n.id === lockedNomId) : null
   const tierLabel = TIER_LABELS[round.tier] ?? round.tier
 
@@ -267,6 +280,16 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
             </span>
           )}
         </div>
+        {isOrganizer && isLocked && (
+          <button
+            className="btn-ghost"
+            onClick={handleUnlock}
+            disabled={unlocking}
+            style={{ fontSize: 12 }}
+          >
+            {unlocking ? 'Unlocking...' : 'Unlock Course'}
+          </button>
+        )}
         {isOrganizer && !isLocked && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
             <button

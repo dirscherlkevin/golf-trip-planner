@@ -6,3 +6,4 @@ export const generateMoreLodging = (tripId) => client.post(`/trips/${tripId}/lod
 export const nominateLodging = (tripId, optionData) => client.post(`/trips/${tripId}/lodging/nominate`, { option_data: optionData }).then(r => r.data)
 export const voteOnLodging = (tripId, optId, vote) => client.post(`/trips/${tripId}/lodging/options/${optId}/vote`, { vote })
 export const lockLodging = (tripId, optId) => client.post(`/trips/${tripId}/lodging/options/${optId}/lock`).then(r => r.data)
+export const unlockLodging = (tripId) => client.delete(`/trips/${tripId}/lodging/options/lock`).then(r => r.data)

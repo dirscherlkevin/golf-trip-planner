@@ -314,3 +314,27 @@ def lock_round(
 
     db.commit()
     return _build_round_with_nominations(trip_round, user.id, db)
+
+
+@router.delete("/{trip_id}/rounds/{round_id}/lock", response_model=TripRoundOut)
+def unlock_round(
+    trip_id: int,
+    round_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can unlock a round")
+
+    trip_round = db.query(TripRound).filter(
+        TripRound.id == round_id, TripRound.trip_id == trip_id
+    ).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    if trip_round.locked_course_id is None:
+        raise HTTPException(status_code=400, detail="Round is not locked")
+
+    trip_round.locked_course_id = None
+    db.commit()
+    return _build_round_with_nominations(trip_round, user.id, db)

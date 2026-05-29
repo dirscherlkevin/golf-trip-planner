@@ -2,18 +2,21 @@ import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store/auth'
 import { useTripStore } from '../../store/trip'
 import { getRounds } from '../../api/rounds'
+import { getLodging } from '../../api/lodging'
 import RoundsSetup from './RoundsSetup'
 import RoundVoting from './RoundVoting'
 import LodgingVoting from './LodgingVoting'
 
 export default function PlanningPhase() {
-  const { trip } = useTripStore()
+  const { trip, lockPhase } = useTripStore()
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
   const [tab, setTab] = useState('courses')
   const [rounds, setRounds] = useState(null)   // null = not loaded yet
   const [loadError, setLoadError] = useState(null)
+  const [lodgingLocked, setLodgingLocked] = useState(false)
+  const [advancing, setAdvancing] = useState(false)
 
   const loadRounds = () => {
     if (!trip) return
@@ -27,8 +30,16 @@ export default function PlanningPhase() {
       })
   }
 
+  const checkLodging = () => {
+    if (!trip) return
+    getLodging(trip.id)
+      .then(data => setLodgingLocked(!!data.locked_option_id))
+      .catch(() => {})
+  }
+
   useEffect(() => {
     loadRounds()
+    checkLodging()
   }, [trip?.id])
 
   // Poll every 10s while any round has generation_status === 'pending'
@@ -42,6 +53,17 @@ export default function PlanningPhase() {
   }, [trip?.id, rounds])
 
   const hasRounds = rounds && rounds.length > 0
+  const allRoundsLocked = hasRounds && rounds.every(r => r.locked_course_id !== null)
+  const readyToAdvance = isOrganizer && allRoundsLocked && lodgingLocked
+
+  const handleAdvance = async () => {
+    setAdvancing(true)
+    try {
+      await lockPhase('planning')
+    } catch {
+      setAdvancing(false)
+    }
+  }
 
   return (
     <div>
@@ -77,7 +99,37 @@ export default function PlanningPhase() {
       )}
 
       {tab === 'lodging' && (
-        <LodgingVoting trip={trip} />
+        <LodgingVoting trip={trip} onLodgingUpdated={checkLodging} />
+      )}
+
+      {/* Advance to Lock It In */}
+      {isOrganizer && hasRounds && (
+        <div style={{ marginTop: 32, padding: '16px 20px', background: readyToAdvance ? '#1a2a1a' : '#141414', borderRadius: 10, border: readyToAdvance ? '1px solid var(--accent-green)' : '1px solid #2a2a2a' }}>
+          {readyToAdvance ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--accent-green)', marginBottom: 4 }}>
+                  All set — ready to lock it in!
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                  All courses and lodging are locked. Advance to review and finalize the trip.
+                </div>
+              </div>
+              <button
+                className="btn-primary"
+                onClick={handleAdvance}
+                disabled={advancing}
+                style={{ whiteSpace: 'nowrap', marginLeft: 16 }}
+              >
+                {advancing ? 'Advancing...' : 'Advance to Lock It In →'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              Lock all courses{!lodgingLocked ? ' and lodging' : ''} to advance to Lock It In.
+            </div>
+          )}
+        </div>
       )}
     </div>
   )

@@ -8,6 +8,7 @@ import {
   nominateLodging,
   voteOnLodging,
   lockLodging,
+  unlockLodging,
 } from '../../api/lodging'
 
 const LODGING_TYPES = [
@@ -189,7 +190,7 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, lockedOptId,
   )
 }
 
-export default function LodgingVoting({ trip }) {
+export default function LodgingVoting({ trip, onLodgingUpdated }) {
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
@@ -208,6 +209,7 @@ export default function LodgingVoting({ trip }) {
   const [manualType, setManualType] = useState('')
   const [addingManual, setAddingManual] = useState(false)
   const [manualError, setManualError] = useState(null)
+  const [unlocking, setUnlocking] = useState(false)
 
   const loadLodging = () => {
     if (!trip) return
@@ -216,6 +218,7 @@ export default function LodgingVoting({ trip }) {
         setLodging(data)
         setNotSetUp(false)
         setLoadError(null)
+        onLodgingUpdated?.()
       })
       .catch(err => {
         if (err.response?.status === 404) {
@@ -232,11 +235,11 @@ export default function LodgingVoting({ trip }) {
     loadLodging()
   }, [trip?.id])
 
-  // Poll every 10s while pending
+  // Poll every 5s while pending
   useEffect(() => {
     if (!trip) return
     if (lodging?.generation_status === 'pending') {
-      const timer = setTimeout(loadLodging, 10000)
+      const timer = setTimeout(loadLodging, 5000)
       return () => clearTimeout(timer)
     }
   }, [trip?.id, lodging?.generation_status])
@@ -265,6 +268,19 @@ export default function LodgingVoting({ trip }) {
       // ignore
     } finally {
       setGeneratingMore(false)
+    }
+  }
+
+  const handleUnlock = async () => {
+    setUnlocking(true)
+    try {
+      const data = await unlockLodging(trip.id)
+      setLodging(data)
+      onLodgingUpdated?.()
+    } catch {
+      // ignore
+    } finally {
+      setUnlocking(false)
     }
   }
 
@@ -373,8 +389,18 @@ export default function LodgingVoting({ trip }) {
 
       {/* Locked banner */}
       {isLocked && (
-        <div style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13 }}>
-          ✅ <strong>Lodging locked.</strong>
+        <div style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>✅ <strong>Lodging locked.</strong></span>
+          {isOrganizer && (
+            <button
+              className="btn-ghost"
+              onClick={handleUnlock}
+              disabled={unlocking}
+              style={{ fontSize: 11, padding: '4px 8px' }}
+            >
+              {unlocking ? 'Unlocking...' : 'Unlock'}
+            </button>
+          )}
         </div>
       )}
 

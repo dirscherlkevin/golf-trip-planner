@@ -11,3 +11,9 @@ export const voteOnDestination = (tripId, destinationIndex, vote) =>
 
 export const lockDestination = (tripId, destinationIndex, override = false) =>
   client.post(`/trips/${tripId}/destinations/lock`, { destination_index: destinationIndex, override }).then(r => r.data)
+
+export const nominateDestination = (tripId, data) =>
+  client.post(`/trips/${tripId}/destinations/nominate`, data).then(r => r.data)
+
+export const unlockDestination = (tripId) =>
+  client.delete(`/trips/${tripId}/destinations/lock`).then(r => r.data)

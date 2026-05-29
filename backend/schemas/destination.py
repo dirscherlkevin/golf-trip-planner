@@ -7,7 +7,13 @@ class GenerateDestinationsIn(BaseModel):
     skill_mix: str
     tier_filter: str = "show_all"  # "show_all", "budget", "midrange", "luxury"
     country: str = "United States"
+    region: str = ""
     planned_rounds: int = 3
+
+class NominateDestinationIn(BaseModel):
+    name: str
+    region: str = ""
+    why_it_fits: str = ""
 
 class VoteIn(BaseModel):
     destination_index: int
