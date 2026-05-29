@@ -12,6 +12,7 @@ export default defineConfig({
     proxy: {
       '/auth': 'http://localhost:8000',
       '/trips': 'http://localhost:8000',
+      '/share': 'http://localhost:8000',
     }
   }
 })
