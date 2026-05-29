@@ -1,17 +1,22 @@
-# Handoff Notes for Michael
+# Golf Trip Planner — Handoff Notes
 
-**Date:** 2026-04-07  
-**Branch:** `feature/plan1-foundation`  
-**Picked up by:** Dan + Claude (claude-sonnet-4-6)
+**Last updated:** 2026-05-29  
+**Branch:** `main`  
+**Status:** Full 4-phase Trip Room implemented, 55/55 tests passing
 
 ---
 
-## What This Project Is
+## What This Is
 
-A collaborative golf trip planning web app. A group organizer creates a trip, invites friends, each member submits their availability, and the app recommends the best trip dates based on group availability + weather patterns + course preferences.
+A collaborative golf trip planning web app. An organizer creates a trip, invites friends, and the group works through 4 sequential phases to finalize plans:
 
-**Full design spec:** `docs/superpowers/specs/2026-04-07-golf-trip-planner-design.md`  
-**Full implementation plan (Plan 1):** `docs/superpowers/plans/2026-04-07-foundation-availability.md`
+1. **Availability** — Members submit available date ranges + budget. Organizer picks and locks trip dates.
+2. **AI Destinations** — Organizer generates AI-suggested destinations via Claude. Members vote. Organizer locks one.
+3. **Courses + Lodging** — Organizer sets up rounds (with AI course suggestions). Members vote on courses and lodging. Organizer locks each.
+4. **Lock It In** — Organizer finalizes the trip. All members get a summary email. A public shareable page is generated.
+
+**Design spec:** `docs/superpowers/specs/2026-05-28-golf-trip-planner-design.md`  
+**Implementation plan:** `docs/superpowers/plans/2026-05-28-trip-room-rebuild.md`
 
 ---
 
@@ -19,132 +24,150 @@ A collaborative golf trip planning web app. A group organizer creates a trip, in
 
 | Layer | Tech |
 |---|---|
-| Backend | Python 3.14, FastAPI 0.135.3, SQLAlchemy 2.0.49 |
-| Database | PostgreSQL (running locally on port 5432) |
+| Backend | Python 3.11, FastAPI, SQLAlchemy 2.0 |
+| Database | PostgreSQL 15 (dev: port 5432, test: port 5433) |
 | Auth | JWT via python-jose, bcrypt via passlib |
-| Frontend | React 18, Vite, Zustand, Axios, React Router 6 (not started yet) |
-| Course data | OpenStreetMap/Overpass API (free, no key) |
-| Reviews/lodging | Google Places API (free tier — needs API key in .env) |
-| Weather | Open-Meteo (free, no key) |
+| AI | Anthropic claude-opus-4-7 — destinations, courses, lodging |
+| Frontend | React 18, Vite 8, Zustand, Axios, React Router 6 |
+| Email | SMTP queue with asyncio worker (asyncio.create_task in FastAPI lifespan) |
 
 ---
 
-## What's Done (Tasks 1–4 of 11)
+## How to Run
 
-### ✅ Task 1 — Project Scaffold
-- `docker-compose.yml` — two Postgres 15 services: `db` (port 5432) and `db_test` (port 5433)
-- `.env.example` — template with DATABASE_URL, TEST_DATABASE_URL, SECRET_KEY, GOOGLE_PLACES_API_KEY
-- `README.md` — quick start guide
-
-### ✅ Task 2 — Backend Foundation
-- `backend/requirements.txt` — all dependencies pinned
-- `backend/database.py` — SQLAlchemy engine, SessionLocal, Base, get_db()
-- `backend/main.py` — FastAPI app with CORS for localhost:5173
-- Empty `__init__.py` files in api/, models/, schemas/, services/, tests/
-- `backend/pytest.ini`
-
-### ✅ Task 3 — User Model & Auth Service
-- `backend/models/user.py` — User table (id, email, name, hashed_password, created_at)
-- `backend/schemas/user.py` — UserCreate, UserOut, Token (Pydantic v2)
-- `backend/services/auth.py` — hash_password, verify_password, create_access_token, get_user_from_token
-
-### ✅ Task 4 — Auth API Endpoints & Tests
-- `backend/api/auth.py` — POST /auth/register, POST /auth/login, GET /auth/me
-- `backend/tests/conftest.py` — pytest fixtures (client, auth_client, test DB setup/teardown)
-- `backend/tests/test_auth.py` — 6 tests, all passing ✅
-- `backend/main.py` — updated to register auth router
-- **Stub files** created for models/trip.py and models/availability.py (just `from database import Base`) — these will be replaced in Tasks 5 and 6
-
----
-
-## What's Left (Tasks 5–11)
-
-### Task 5 — Trip Model & CRUD API
-Files to create:
-- `backend/models/trip.py` — Trip (id, name, organizer_id, status, created_at) + TripMember (id, trip_id, user_id, invite_token, invite_email, joined, joined_at)
-- `backend/schemas/trip.py` — TripCreate, TripOut, TripMemberOut, InviteCreate, InviteOut
-- `backend/api/trips.py` — POST /trips, GET /trips, GET /trips/{id}, POST /trips/{id}/invite, POST /trips/join/{token}
-- `backend/tests/test_trips.py` — 4 tests
-
-Full code for all files is in the plan doc: `docs/superpowers/plans/2026-04-07-foundation-availability.md` — search for "## Task 5"
-
-### Task 6 — Availability Model, Service & API
-Files to create:
-- `backend/models/availability.py` — Availability (id, trip_id, user_id, start_date, end_date)
-- `backend/schemas/availability.py` — DateRange, AvailabilityCreate, OverlapDay, OverlapOut
-- `backend/services/availability.py` — compute_overlap(trip_id, db) function
-- `backend/tests/test_availability.py` — 4 tests
-- Modify `backend/api/trips.py` — add POST /{trip_id}/availability and GET /{trip_id}/availability/overlap
-
-Full code in plan doc — search for "## Task 6"
-
-### Task 7 — Frontend Scaffold
-- Vite + React app in `frontend/`
-- Dark theme CSS (navy/slate dark, green accents)
-- Zustand auth store, Axios client with JWT interceptor
-- React Router setup
-
-Full code in plan doc — search for "## Task 7"
-
-### Task 8 — Auth UI (Login & Register pages)
-### Task 9 — Trip Dashboard (list + create trip)
-### Task 10 — Availability Step UI (calendar heatmap + member sidebar + invite flow)
-### Task 11 — Push everything to GitHub
-
-Full code for Tasks 8–11 in the plan doc.
-
----
-
-## Environment Notes (Important)
-
-- **Python version:** 3.14.3 — some packages had to be bumped from the plan's pinned versions:
-  - `psycopg2-binary` → 2.9.11 (no 3.14 wheel for 2.9.9)
-  - `fastapi` → 0.135.3 (0.110.0 requires pydantic < 2.7)
-  - `pydantic[email]` → 2.12.5
-  - `sqlalchemy` → 2.0.49
-  - `bcrypt` → 4.0.1 (passlib 1.7.4 incompatible with bcrypt 5.x)
-  - All other packages at spec versions
-
-- **Docker:** Not available on Dan's machine — PostgreSQL running locally on port 5432. Both dev and test DB are on the same server, different database names (`golf_trip_planner` and `golf_trip_planner_test`). The `db_test` docker-compose service (port 5433) was NOT used — both URLs point to localhost:5432.
-
-- **backend/.env:** Created locally (gitignored). You need to create your own:
-  ```
-  DATABASE_URL=postgresql://postgres:postgres@localhost:5432/golf_trip_planner
-  TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/golf_trip_planner_test
-  SECRET_KEY=any-random-string
-  GOOGLE_PLACES_API_KEY=not-needed-until-plan-2
-  ```
-
-- **python-jose CVE:** The `python-jose` package used for JWT has known CVEs. Acceptable for dev, but consider switching to `PyJWT` before any production deployment.
-
----
-
-## How to Run Tests
+### Backend
 
 ```bash
 cd backend
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pytest -v
+python -m venv .venv
+.venv/Scripts/activate          # Windows
+pip install -r requirements.txt
+cp .env.example .env            # then fill in ANTHROPIC_API_KEY etc.
+uvicorn main:app --reload
 ```
 
-Expected output: 6 tests passing (all in test_auth.py)
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev                     # proxies /auth /trips /share to localhost:8000
+```
+
+### Database
+
+```bash
+docker compose up -d db db_test
+```
+
+Or run PostgreSQL locally — the connection strings are in `.env`.
+
+### Tests
+
+```bash
+cd backend
+.venv/Scripts/python.exe -m pytest -v
+# Expected: 55 passed
+```
+
+---
+
+## Environment Variables (see `backend/.env.example`)
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `APP_BASE_URL` | Base URL for invite links + email trip URLs | `http://localhost:5173` |
+| `DATABASE_URL` | Main database | postgres://... |
+| `TEST_DATABASE_URL` | Test database (port 5433) | postgres://... |
+| `SECRET_KEY` | JWT signing key | *change before deploying* |
+| `ANTHROPIC_API_KEY` | Claude API — required for AI features | — |
+| `SMTP_HOST/PORT/USER/PASSWORD` | Email sending — leave blank to skip | — |
+| `EMAIL_FROM` | Sender address | `noreply@golftrip.app` |
+
+---
+
+## Project Structure
+
+```
+backend/
+  api/           # FastAPI routers (one file per feature domain)
+    auth.py        register, login, /me
+    trips.py       CRUD + invite + join + cost estimate
+    phases.py      get/lock/reopen phases + POST /trips/{id}/lock (finalize)
+    availability.py  submit, get, overlap heatmap, nudge
+    destinations.py  generate (Claude), get, vote, lock
+    rounds.py      setup, get, generate-more, nominate, vote, lock
+    lodging.py     setup, get, generate-more, nominate, vote, lock
+    share.py       public GET /share/{id} — no auth required
+  models/        # SQLAlchemy ORM models
+  schemas/       # Pydantic request/response models
+  services/
+    phases.py      phase state machine (lock, reopen, initialize)
+    claude.py      all Anthropic API calls (with retry/backoff)
+    email.py       queue + worker + reminder logic
+    cost.py        per-person cost estimate (rounds + lodging)
+  tests/         # 55 tests across all features
+
+frontend/
+  src/
+    api/           # axios wrappers per domain
+    store/         # Zustand stores (auth, trip)
+    pages/         # TripRoom, Dashboard, Login, Register, JoinPage, SharePage
+    phases/        # Phase components (availability/, destination/, planning/, lockin/)
+    components/    # MemberPanel (w/ invite), CostEstimate
+```
+
+---
+
+## Key Architecture Decisions
+
+### Phase State Machine
+- 4 phases per trip: `availability → destination → planning → locked_in`
+- Each phase: `pending → open → locked`
+- Locking a phase opens the next one
+- Reopen supported for availability, destination, planning (not after finalization)
+- `POST /trips/{id}/lock` finalizes the trip, locks locked_in, sets `trip.status = finalized`
+
+### AI Generation
+- Destinations: synchronous (users wait ~20-30s; generation_status handles failure)
+- Courses + Lodging: background tasks (FastAPI `BackgroundTasks` + own DB session)
+- All Claude calls use exponential backoff (2s → 4s → 8s → fail) on rate limits/timeouts/500s
+- Stuck pending rows auto-reset after 3 minutes (detected via `_started_at` in prompt_inputs JSONB)
+
+### Email Queue
+- `email_queue` table with status (`pending/sent/failed`), attempts, send_after
+- `email_worker()` asyncio task runs every 60s, processes up to 10 rows
+- Uses `SELECT FOR UPDATE SKIP LOCKED` — safe for multiple worker processes
+- Templates: `availability_reminder`, `trip_summary`
+- Display names derived from email local part ("john.doe@" → "John Doe")
+
+### Public Share Page
+- `GET /share/{trip_id}` — no auth, 404 unless `trip.status == finalized`
+- Returns display names (not raw emails), formatted dates, courses, lodging
+- OG meta tags set dynamically for link previews in iMessage/Slack/Discord
+
+### Polling
+- TripRoom polls phases every 15s (all members see phase transitions)
+- PlanningPhase polls rounds every 10s while any generation is pending
+- LockInPhase polls every 10s for non-organizer (detects finalization via `GET /trips/{id}`)
+- DestinationPhase polls every 15s while generation is pending
+
+---
+
+## Known Gaps / Future Work
+
+| Item | Priority | Notes |
+|---|---|---|
+| Email dedup UNIQUE constraint | Medium | Can't use simple `UNIQUE(trip_id, user_id, template)` — breaks availability reminders that recur. Idempotency guard on lock endpoint already prevents double trip_summary. |
+| `python-jose` CVE | Medium | Known CVEs; consider switching to `PyJWT` before prod |
+| Display names are email-derived | Low | No name field on User model; display names come from email local part |
+| Share page privacy | Low | Display names shown (not emails), but names are still guessable from email |
+| Real SMTP setup | Low | Email sends fail in dev (no SMTP configured); emails still queue in DB |
+| `locked_in` phase cannot be reopened | By design | Finalizing sends emails — no un-finalize |
+| No CORS restriction | Low | `allow_origins=["*"]` in main.py — tighten for production |
 
 ---
 
 ## How to Resume with Claude
 
-Tell Claude: *"I'm Michael, picking up the golf trip planner from Dan. Read HANDOFF.md and the plan at docs/superpowers/plans/2026-04-07-foundation-availability.md. We're on branch feature/plan1-foundation. Resume from Task 5 using subagent-driven-development."*
-
----
-
-## Plan Overview (All 3 Plans)
-
-- **Plan 1** (this branch): Foundation + Group Availability — full working Step 1 of the wizard
-- **Plan 2** (future): Course Discovery & Map — Overpass API, Google Places, Leaflet map, filters, voting
-- **Plan 3** (future): Recommendation Engine — Open-Meteo weather, scoring algorithm, top-3 date recommendations
-
-The app has a 4-step wizard:
-1. **Availability** — group submits available dates → heatmap shows overlap
-2. **Location** — pick state/city + radius → map loads with regional weather badge
-3. **Courses** — filter/browse/vote on courses on interactive map
-4. **Recommend** — top 3 trip dates scored by availability + weather + course votes
+Tell Claude: *"Read HANDOFF.md and pick up the golf trip planner. Current state: 55/55 tests, full 4-phase Trip Room working on main branch. Look at the Known Gaps section for next priorities."*
