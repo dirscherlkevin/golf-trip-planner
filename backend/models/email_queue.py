@@ -1,8 +1,12 @@
 import enum
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from database import Base
+
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 class EmailStatus(str, enum.Enum):
     pending = "pending"
@@ -20,4 +24,4 @@ class EmailQueue(Base):
     status = Column(Enum(EmailStatus), nullable=False, default=EmailStatus.pending)
     send_after = Column(DateTime(timezone=True), server_default=func.now())
     attempts = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=_utcnow)

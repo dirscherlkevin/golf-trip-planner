@@ -66,6 +66,8 @@ def lock_trip(
         raise HTTPException(404, "Trip not found")
     if trip.organizer_id != user.id:
         raise HTTPException(403, "Only the organizer can lock the trip")
+    if trip.status == TripStatus.finalized:
+        return {"status": "finalized", "trip_id": trip_id}
 
     # Validate all rounds locked (if any exist)
     from models.round import TripRound

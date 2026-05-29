@@ -72,7 +72,8 @@ def send_email(to_address: str, subject: str, body: str):
     msg["To"] = to_address
     with smtplib.SMTP(host, port) as smtp:
         smtp.starttls()
-        smtp.login(user, password)
+        if user:
+            smtp.login(user, password)
         smtp.send_message(msg)
 
 
@@ -150,9 +151,10 @@ def check_and_enqueue_reminders(db: Session):
             from models.trip import Trip
             trip = db.query(Trip).filter(Trip.id == trip_id).first()
             organizer = db.query(User).filter(User.id == trip.organizer_id).first() if trip else None
+            member_user = db.query(User).filter(User.id == member.user_id).first()
             enqueue_email(db, trip_id, member.user_id, "availability_reminder", {
                 "trip_name": trip.name if trip else "Golf Trip",
-                "name": member.user_id,  # caller should use real name; user model has .name or .email
+                "name": member_user.email if member_user else "there",
                 "organizer_name": organizer.email if organizer else "The organizer",
                 "url": f"https://golftrip.app/trips/{trip_id}",
             })
@@ -169,6 +171,8 @@ async def email_worker():
                 check_and_enqueue_reminders(db)
             finally:
                 db.close()
+        except asyncio.CancelledError:
+            raise  # let cancellation propagate — stops the worker on shutdown
         except Exception as e:
             logger.exception("Email worker error: %s", e)
         await asyncio.sleep(60)
