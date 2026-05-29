@@ -7,11 +7,7 @@ import CostEstimate from '../components/CostEstimate'
 import AvailabilityPhase from '../phases/availability/AvailabilityPhase'
 import DestinationPhase from '../phases/destination/DestinationPhase'
 import PlanningPhase from '../phases/planning/PlanningPhase'
-
-// Placeholder phase components — replaced in Tasks 13, 16
-function LockInPhase() {
-  return <div style={{ padding: 24 }}><h2>Phase 4: Lock It In</h2><p>Unlock by completing Phase 3.</p></div>
-}
+import LockInPhase from '../phases/lockin/LockInPhase'
 
 const PHASE_COMPONENTS = {
   availability: AvailabilityPhase,

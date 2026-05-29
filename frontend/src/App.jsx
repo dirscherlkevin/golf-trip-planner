@@ -6,14 +6,11 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import TripRoom from './pages/TripRoom'
 import JoinPage from './pages/JoinPage'
+import SharePage from './pages/SharePage'
 
 function PrivateRoute({ children }) {
   const token = useAuthStore((s) => s.token)
   return token ? children : <Navigate to="/login" replace />
-}
-
-function SharePlaceholder() {
-  return <div style={{ padding: 40, textAlign: 'center' }}>Share page coming soon...</div>
 }
 
 export default function App() {
@@ -29,7 +26,7 @@ export default function App() {
       <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/trips/:id" element={<PrivateRoute><TripRoom /></PrivateRoute>} />
       <Route path="/join/:token" element={<PrivateRoute><JoinPage /></PrivateRoute>} />
-      <Route path="/share/:id" element={<SharePlaceholder />} />
+      <Route path="/share/:id" element={<SharePage />} />
     </Routes>
   )
 }
