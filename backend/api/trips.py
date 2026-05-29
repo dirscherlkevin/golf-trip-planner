@@ -32,9 +32,11 @@ def create_trip(data: TripCreate, db: Session = Depends(get_db), user: User = De
 
 @router.get("", response_model=list[TripOut])
 def list_trips(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    member_trip_ids = db.query(TripMember.trip_id).filter(
-        TripMember.user_id == user.id, TripMember.joined == "joined"
-    ).subquery()
+    member_trip_ids = (
+        db.query(TripMember.trip_id)
+        .filter(TripMember.user_id == user.id, TripMember.joined == "joined")
+        .scalar_subquery()
+    )
     return db.query(Trip).filter(Trip.id.in_(member_trip_ids)).all()
 
 @router.get("/{trip_id}", response_model=TripOut)

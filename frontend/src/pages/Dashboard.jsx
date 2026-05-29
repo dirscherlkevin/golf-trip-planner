@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import client from '../api/client'
 
+function fmtDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso + 'T00:00:00')
+  return `${d.toLocaleString('en-US', { month: 'short' })} ${d.getDate()}, ${d.getFullYear()}`
+}
+
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
@@ -63,9 +69,20 @@ export default function Dashboard() {
               onClick={() => navigate(`/trips/${trip.id}`)}
             >
               <div>
-                <div style={{ fontWeight: 600 }}>{trip.name}</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-                  {trip.members.length} member{trip.members.length !== 1 ? 's' : ''} · {trip.status}
+                <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {trip.name}
+                  {trip.status === 'finalized' && (
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px',
+                      background: 'var(--accent-green)', color: '#000', borderRadius: 10,
+                    }}>Finalized</span>
+                  )}
+                </div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>
+                  {trip.members.length} member{trip.members.length !== 1 ? 's' : ''}
+                  {trip.trip_start && trip.trip_end && (
+                    <span> · {fmtDate(trip.trip_start)} – {fmtDate(trip.trip_end)}</span>
+                  )}
                 </div>
               </div>
               <span style={{ color: 'var(--text-muted)' }}>→</span>

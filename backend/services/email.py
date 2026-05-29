@@ -83,7 +83,7 @@ def send_email(to_address: str, subject: str, body: str):
 
 
 def process_email_queue(db: Session):
-    """Process up to 10 pending emails."""
+    """Process up to 10 pending emails. Uses SKIP LOCKED to avoid double-processing under multiple workers."""
     now = datetime.now(timezone.utc)
     rows = (
         db.query(EmailQueue)
@@ -91,6 +91,7 @@ def process_email_queue(db: Session):
         .filter(EmailQueue.send_after <= now)
         .filter(EmailQueue.attempts < 3)
         .limit(10)
+        .with_for_update(skip_locked=True)
         .all()
     )
     for row in rows:

@@ -16,6 +16,7 @@ export default function AvailabilityPhase() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [locking, setLocking] = useState(false)
+  const [lockError, setLockError] = useState(null)
   const [lockStart, setLockStart] = useState('')
   const [lockEnd, setLockEnd] = useState('')
   const [budgetData, setBudgetData] = useState(null)
@@ -56,9 +57,11 @@ export default function AvailabilityPhase() {
   const handleLock = async () => {
     if (!lockStart || !lockEnd) return
     setLocking(true)
+    setLockError(null)
     try {
       await lockPhase('availability', { trip_start: lockStart, trip_end: lockEnd })
-    } finally {
+    } catch (e) {
+      setLockError(e.response?.data?.detail || 'Failed to lock dates. Try again.')
       setLocking(false)
     }
   }
@@ -123,6 +126,9 @@ export default function AvailabilityPhase() {
                 >
                   {locking ? 'Locking...' : 'Lock These Dates → Phase 2'}
                 </button>
+                {lockError && (
+                  <div style={{ color: '#f87171', fontSize: 13, marginTop: 8 }}>{lockError}</div>
+                )}
                 <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 8 }}>
                   You don't need 100% response — use your judgment.
                 </div>
