@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTripStore } from '../../store/trip'
 import { useAuthStore } from '../../store/auth'
 import client from '../../api/client'
+import { getDestinations } from '../../api/destinations'
 import HypeMoment from './HypeMoment'
 
 function formatDate(iso) {
@@ -21,6 +22,7 @@ export default function LockInPhase() {
 
   const [rounds, setRounds] = useState([])
   const [lodging, setLodging] = useState(null)
+  const [destinationName, setDestinationName] = useState(null)
   const [loadingData, setLoadingData] = useState(true)
 
   useEffect(() => {
@@ -53,6 +55,10 @@ export default function LockInPhase() {
 
     poll(true)
     const interval = setInterval(() => { if (!cancelled) poll(false) }, 10000)
+
+    getDestinations(trip.id)
+      .then(d => { if (!cancelled) setDestinationName(d.locked_destination?.name || null) })
+      .catch(() => {})
 
     return () => {
       cancelled = true
@@ -111,7 +117,7 @@ export default function LockInPhase() {
           {/* Destination — always checked in Phase 4 */}
           <ChecklistItem
             label="Destination selected"
-            detail={trip.destination || 'Destination set'}
+            detail={destinationName || 'Destination confirmed'}
             done={true}
           />
 
