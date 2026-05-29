@@ -62,7 +62,7 @@ export default function LockInPhase() {
 
   // Determine checklist status
   const allRoundsLocked = rounds.length > 0 && rounds.every(r => r.locked_course_id != null)
-  const lodgingLocked = lodging != null ? lodging.locked_lodging_option_id != null : true // no lodging = not blocking
+  const lodgingLocked = lodging != null ? lodging.locked_option_id != null : true // no lodging = not blocking
   const allReady = allRoundsLocked && lodgingLocked
 
   const handleLock = async () => {
@@ -119,26 +119,30 @@ export default function LockInPhase() {
           {rounds.length === 0 ? (
             <ChecklistItem label="Rounds" detail="No rounds configured" done={false} />
           ) : (
-            rounds.map((r, i) => (
-              <ChecklistItem
-                key={r.id ?? i}
-                label={`Round ${r.round_number}`}
-                detail={r.locked_course_id != null
-                  ? (r.course_name || 'Course locked')
-                  : 'Pending — course not yet selected'}
-                done={r.locked_course_id != null}
-              />
-            ))
+            rounds.map((r, i) => {
+              const lockedNom = r.locked_course_id != null
+                ? r.nominations?.find(n => n.id === r.locked_course_id)
+                : null
+              const courseName = lockedNom?.course_data?.name || 'Course locked'
+              return (
+                <ChecklistItem
+                  key={r.id ?? i}
+                  label={`Round ${r.round_number}`}
+                  detail={r.locked_course_id != null ? courseName : 'Pending — course not yet selected'}
+                  done={r.locked_course_id != null}
+                />
+              )
+            })
           )}
 
           {/* Lodging */}
           {lodging != null ? (
             <ChecklistItem
               label="Lodging"
-              detail={lodging.locked_lodging_option_id != null
-                ? (lodging.name || 'Lodging locked')
+              detail={lodging.locked_option_id != null
+                ? (lodging.options?.find(o => o.id === lodging.locked_option_id)?.option_data?.name || 'Lodging locked')
                 : 'Pending — lodging not yet selected'}
-              done={lodging.locked_lodging_option_id != null}
+              done={lodging.locked_option_id != null}
             />
           ) : (
             <ChecklistItem
