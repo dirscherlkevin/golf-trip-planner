@@ -1,9 +1,27 @@
 import { useState, useEffect } from 'react'
 
+function useCopyToClipboard(text) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // fallback: open share URL in new tab
+      window.open(text, '_blank')
+    }
+  }
+  return [copied, copy]
+}
+
 export default function HypeMoment({ trip }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const shareUrl = `${window.location.origin}/share/${trip.id}`
+  const [copied, copyToClipboard] = useCopyToClipboard(shareUrl)
 
   useEffect(() => {
     fetch('/share/' + trip.id)
@@ -137,6 +155,13 @@ export default function HypeMoment({ trip }) {
               onClick={() => window.open('/share/' + trip.id, '_blank')}
             >
               Share the Trip
+            </button>
+            <button
+              className="btn-ghost"
+              onClick={copyToClipboard}
+              style={{ minWidth: 160 }}
+            >
+              {copied ? '✓ Link Copied!' : 'Copy Link'}
             </button>
           </div>
 

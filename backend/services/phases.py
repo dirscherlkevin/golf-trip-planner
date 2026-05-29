@@ -115,6 +115,11 @@ def reopen_phase(trip_id: int, phase_name: PhaseName, user_id: int, db: Session)
         planning_phase = get_phase(trip_id, PhaseName.planning, db)
         if planning_phase.status == PhaseStatus.locked:
             raise HTTPException(status_code=400, detail="Cannot reopen destination after planning is locked")
+    elif phase_name == PhaseName.planning:
+        # Can reopen if the trip has not been finalized.
+        lockin_phase = get_phase(trip_id, PhaseName.locked_in, db)
+        if lockin_phase.status == PhaseStatus.locked:
+            raise HTTPException(status_code=400, detail="Cannot reopen planning after trip is finalized")
     else:
         raise HTTPException(status_code=400, detail=f"Phase {phase_name} cannot be reopened")
 

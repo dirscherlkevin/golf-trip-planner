@@ -23,8 +23,13 @@ const PHASE_LABELS = {
   locked_in: 'Lock It In',
 }
 
-function PhaseGate({ phases }) {
+const REOPENABLE = new Set(['availability', 'destination', 'planning'])
+
+function PhaseGate({ phases, isOrganizer, onReopen }) {
   const openPhase = phases.find(p => p.status === 'open')
+  const openIdx = phases.findIndex(p => p.status === 'open')
+  // The locked phase immediately before the open phase is the one that can be reopened.
+  const prevLockedPhase = openIdx > 0 ? phases[openIdx - 1] : null
 
   return (
     <div>
@@ -34,6 +39,7 @@ function PhaseGate({ phases }) {
           const isOpen = p.status === 'open'
           const isLocked = p.status === 'locked'
           const isPending = p.status === 'pending'
+          const canReopen = isOrganizer && prevLockedPhase?.phase === p.phase && REOPENABLE.has(p.phase)
           return (
             <div key={p.phase} style={{
               flex: 1, padding: '8px 12px', borderRadius: 8, textAlign: 'center', fontSize: 12, fontWeight: 600,
@@ -42,6 +48,20 @@ function PhaseGate({ phases }) {
               border: isOpen ? 'none' : '1px solid #333',
             }}>
               {isLocked ? '✓ ' : isPending ? '🔒 ' : ''}{PHASE_LABELS[p.phase]}
+              {canReopen && (
+                <div style={{ marginTop: 4 }}>
+                  <button
+                    onClick={() => onReopen(p.phase)}
+                    style={{
+                      fontSize: 10, padding: '2px 6px',
+                      background: 'transparent', border: '1px solid #555',
+                      borderRadius: 4, color: '#aaa', cursor: 'pointer',
+                    }}
+                  >
+                    Reopen
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
@@ -59,8 +79,9 @@ function PhaseGate({ phases }) {
 export default function TripRoom() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { trip, phases, loading, error, loadTrip } = useTripStore()
+  const { trip, phases, loading, error, loadTrip, reopenPhase } = useTripStore()
   const user = useAuthStore(s => s.user)
+  const isOrganizer = user?.id === trip?.organizer_id
 
   useEffect(() => {
     loadTrip(id)
@@ -88,7 +109,13 @@ export default function TripRoom() {
 
       {/* Phase content */}
       {phases.length > 0 ? (
-        <PhaseGate phases={phases} />
+        <PhaseGate
+          phases={phases}
+          isOrganizer={isOrganizer}
+          onReopen={async (phase) => {
+            try { await reopenPhase(phase) } catch {}
+          }}
+        />
       ) : (
         <p style={{ color: 'var(--text-secondary)' }}>Loading phases...</p>
       )}

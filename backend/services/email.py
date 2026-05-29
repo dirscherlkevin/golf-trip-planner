@@ -9,6 +9,11 @@ from models.email_queue import EmailQueue, EmailStatus
 logger = logging.getLogger(__name__)
 
 
+def _email_to_display_name(email: str) -> str:
+    local = email.split('@')[0]
+    return local.replace('.', ' ').replace('_', ' ').replace('-', ' ').title()
+
+
 def _render_email(template: str, payload: dict) -> tuple[str, str]:
     """Returns (subject, body) for the given template + payload dict."""
     if template == "availability_reminder":
@@ -154,8 +159,8 @@ def check_and_enqueue_reminders(db: Session):
             member_user = db.query(User).filter(User.id == member.user_id).first()
             enqueue_email(db, trip_id, member.user_id, "availability_reminder", {
                 "trip_name": trip.name if trip else "Golf Trip",
-                "name": member_user.email if member_user else "there",
-                "organizer_name": organizer.email if organizer else "The organizer",
+                "name": _email_to_display_name(member_user.email) if member_user else "there",
+                "organizer_name": _email_to_display_name(organizer.email) if organizer else "The organizer",
                 "url": f"https://golftrip.app/trips/{trip_id}",
             })
 

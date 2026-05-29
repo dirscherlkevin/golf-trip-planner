@@ -1,12 +1,35 @@
 import os
 import json
-from anthropic import Anthropic
+import time
+import random
+import logging
+from anthropic import Anthropic, RateLimitError, APITimeoutError, APIConnectionError, InternalServerError
+
+logger = logging.getLogger(__name__)
 
 def _client() -> Anthropic:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key or api_key.startswith("sk-ant-REPLACE"):
         raise RuntimeError("ANTHROPIC_API_KEY is not configured")
     return Anthropic(api_key=api_key, timeout=50.0)  # 50s timeout, below proxy limits
+
+
+def _call_with_retry(fn, max_retries=3):
+    """Call fn() with exponential backoff on transient API errors."""
+    delay = 2.0
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except (RateLimitError, APITimeoutError, APIConnectionError, InternalServerError) as e:
+            if attempt == max_retries:
+                raise
+            wait = delay * (1 + 0.1 * random.random())
+            logger.warning(
+                "Claude API transient error (attempt %d/%d): %s — retrying in %.1fs",
+                attempt + 1, max_retries, type(e).__name__, wait,
+            )
+            time.sleep(wait)
+            delay = min(delay * 2, 30.0)
 
 def _parse_json_response(text: str) -> any:
     """Extract and parse JSON from Claude's response. Raises ValueError if invalid."""
@@ -74,11 +97,11 @@ The 3 destinations must be geographically diverse. Include 3-5 courses per desti
 Return only the JSON array, no other text."""
 
     client = _client()
-    message = client.messages.create(
+    message = _call_with_retry(lambda: client.messages.create(
         model="claude-opus-4-7",
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
-    )
+    ))
     raw = message.content[0].text
     data = _parse_json_response(raw)
 
@@ -135,11 +158,11 @@ Return ONLY a JSON array. Each object must have:
 Return only the JSON array, no other text."""
 
     client = _client()
-    message = client.messages.create(
+    message = _call_with_retry(lambda: client.messages.create(
         model="claude-opus-4-7",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
-    )
+    ))
     raw = message.content[0].text
     data = _parse_json_response(raw)
 
@@ -202,11 +225,11 @@ This will be divided by group size to show per-person cost.
 Return only the JSON array, no other text."""
 
     client = _client()
-    message = client.messages.create(
+    message = _call_with_retry(lambda: client.messages.create(
         model="claude-opus-4-7",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
-    )
+    ))
     raw = message.content[0].text
     data = _parse_json_response(raw)
 

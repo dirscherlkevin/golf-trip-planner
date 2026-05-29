@@ -106,6 +106,41 @@ def test_reopen_availability_when_destination_not_locked(db, trip_with_organizer
     assert dest.status == PhaseStatus.pending
 
 
+def test_reopen_planning_when_lockin_not_locked(db, trip_with_organizer):
+    """Organizer can reopen planning phase as long as locked_in is not locked."""
+    trip, user = trip_with_organizer
+    initialize_phases(trip.id, db)
+    lock_phase(trip.id, PhaseName.availability, user.id, db)
+    lock_phase(trip.id, PhaseName.destination, user.id, db)
+    lock_phase(trip.id, PhaseName.planning, user.id, db)
+    db.commit()
+
+    reopen_phase(trip.id, PhaseName.planning, user.id, db)
+    db.commit()
+
+    planning = get_phase(trip.id, PhaseName.planning, db)
+    lockin = get_phase(trip.id, PhaseName.locked_in, db)
+    assert planning.status == PhaseStatus.open
+    assert lockin.status == PhaseStatus.pending
+
+
+def test_reopen_planning_blocked_when_finalized(db, trip_with_organizer):
+    """Organizer cannot reopen planning once the trip is finalized."""
+    from fastapi import HTTPException
+    trip, user = trip_with_organizer
+    initialize_phases(trip.id, db)
+    lock_phase(trip.id, PhaseName.availability, user.id, db)
+    lock_phase(trip.id, PhaseName.destination, user.id, db)
+    lock_phase(trip.id, PhaseName.planning, user.id, db)
+    lock_phase(trip.id, PhaseName.locked_in, user.id, db)
+    db.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        reopen_phase(trip.id, PhaseName.planning, user.id, db)
+    assert exc.value.status_code == 400
+    assert "finalized" in exc.value.detail.lower()
+
+
 def test_lock_trip_finalizes_trip():
     """POST /trips/{id}/lock finalizes the trip and enqueues trip_summary emails.
 

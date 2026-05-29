@@ -125,11 +125,12 @@ def lock_trip(
     ).all()
 
     from models.user import User as UserModel
+    from services.email import _email_to_display_name
     for member in members:
         member_user = db.query(UserModel).filter(UserModel.id == member.user_id).first()
         enqueue_email(db, trip_id, member.user_id, "trip_summary", {
             "trip_name": trip.name,
-            "name": member_user.email if member_user else str(member.user_id),
+            "name": _email_to_display_name(member_user.email) if member_user else "Golfer",
             "dates": dates,
             "destination": destination_name,
             "courses": ", ".join(course_names) if course_names else "TBD",
