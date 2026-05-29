@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models.trip import Trip, TripMember
+from models.round import TripRound
 from models.user import User
 from schemas.trip import TripCreate, TripOut, InviteCreate, InviteOut
 from api.auth import get_current_user
@@ -71,6 +72,44 @@ def join_trip(invite_token: str, db: Session = Depends(get_db), user: User = Dep
     db.commit()
     db.refresh(member)
     return member.trip
+
+@router.delete("/{trip_id}")
+def delete_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can delete this trip")
+    # Null circular FK references before cascade-delete
+    trip.locked_lodging_option_id = None
+    db.query(TripRound).filter(TripRound.trip_id == trip_id).update({"locked_course_id": None})
+    db.flush()
+    db.delete(trip)
+    db.commit()
+    return {"ok": True}
+
+@router.get("/{trip_id}/past-golfers")
+def get_past_golfers(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Return distinct emails of people from the user's other trips, excluding already-invited emails."""
+    _get_trip_for_member(trip_id, user.id, db)
+    other_trip_ids = db.query(TripMember.trip_id).filter(
+        TripMember.user_id == user.id,
+        TripMember.joined == "joined",
+        TripMember.trip_id != trip_id,
+    )
+    existing_emails = db.query(TripMember.invite_email).filter(TripMember.trip_id == trip_id)
+    rows = (
+        db.query(TripMember.invite_email)
+        .filter(
+            TripMember.trip_id.in_(other_trip_ids),
+            TripMember.invite_email.isnot(None),
+            TripMember.invite_email != user.email,
+            TripMember.invite_email.notin_(existing_emails),
+        )
+        .distinct()
+        .all()
+    )
+    return [r[0] for r in rows]
 
 @router.get("/{trip_id}/cost")
 def get_cost_estimate(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

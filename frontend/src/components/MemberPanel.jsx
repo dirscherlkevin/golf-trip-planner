@@ -14,6 +14,7 @@ export default function MemberPanel({ trip }) {
   const [inviteUrl, setInviteUrl] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [pastGolfers, setPastGolfers] = useState([])
 
   useEffect(() => {
     if (!trip) return
@@ -93,7 +94,13 @@ export default function MemberPanel({ trip }) {
 
         {isOrganizer && (
           <button
-            onClick={() => { setShowInvite(!showInvite); setInviteUrl('') }}
+            onClick={() => {
+              if (!showInvite) {
+                client.get(`/trips/${trip.id}/past-golfers`).then(r => setPastGolfers(r.data)).catch(() => {})
+              }
+              setShowInvite(!showInvite)
+              setInviteUrl('')
+            }}
             style={{ fontSize: 12, padding: '4px 10px' }}
             className="btn-ghost"
           >
@@ -104,6 +111,24 @@ export default function MemberPanel({ trip }) {
 
       {showInvite && (
         <div style={{ marginTop: 10, padding: '10px 12px', background: '#1a1a1a', borderRadius: 8, border: '1px solid #2a2a2a' }}>
+          {pastGolfers.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Recent golfers:</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {pastGolfers.map(email => (
+                  <button
+                    key={email}
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => setInviteEmail(email)}
+                    style={{ fontSize: 11, padding: '2px 7px' }}
+                  >
+                    {email}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <form onSubmit={sendInvite} style={{ display: 'flex', gap: 6 }}>
             <input
               type="email"

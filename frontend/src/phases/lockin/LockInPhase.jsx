@@ -57,7 +57,7 @@ export default function LockInPhase() {
     const interval = setInterval(() => { if (!cancelled) poll(false) }, 10000)
 
     getDestinations(trip.id)
-      .then(d => { if (!cancelled) setDestinationName(d.locked_destination?.name || null) })
+      .then(d => { if (!cancelled) setDestinationName(d.suggestion?.locked_destination?.name || null) })
       .catch(() => {})
 
     return () => {

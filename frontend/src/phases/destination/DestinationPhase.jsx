@@ -106,10 +106,14 @@ export default function DestinationPhase() {
     const d = new Date(iso + 'T00:00:00')
     return `${d.toLocaleString('en-US', { month: 'short' })} ${d.getDate()}, ${d.getFullYear()}`
   }
+  const tripNights = (trip?.trip_start && trip?.trip_end)
+    ? Math.round((new Date(trip.trip_end + 'T00:00:00') - new Date(trip.trip_start + 'T00:00:00')) / 86400000)
+    : null
+  const lodgingEst = tripNights ? ` · ~$${(tripNights * 100).toLocaleString()} lodging est.` : ''
   const budgetHint = budgetData
-    ? `Group median: $${budgetData.median_happy?.toLocaleString() ?? '?'}/person happy · $${budgetData.median_hard?.toLocaleString() ?? '?'} max`
+    ? `Group median: $${budgetData.median_happy?.toLocaleString() ?? '?'}/person happy · $${budgetData.median_hard?.toLocaleString() ?? '?'} max${lodgingEst}`
     : trip?.trip_start
-      ? `Trip dates: ${fmtDate(trip.trip_start)} – ${fmtDate(trip.trip_end)}`
+      ? `Trip dates: ${fmtDate(trip.trip_start)} – ${fmtDate(trip.trip_end)}${lodgingEst}`
       : null
 
   return (

@@ -66,6 +66,18 @@ export default function AvailabilityPhase() {
     }
   }
 
+  const handleHeatmapDateClick = (date) => {
+    if (!lockStart || (lockStart && lockEnd)) {
+      setLockStart(date)
+      setLockEnd('')
+    } else if (date >= lockStart) {
+      setLockEnd(date)
+    } else {
+      setLockStart(date)
+      setLockEnd('')
+    }
+  }
+
   return (
     <div>
       <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Phase 1: Availability</h2>
@@ -108,7 +120,7 @@ export default function AvailabilityPhase() {
         {isOrganizer && (
           <div style={{ flex: '1 1 320px' }}>
             <div className="card">
-              <OverlapHeatmap trip={trip} budget={budgetData} />
+              <OverlapHeatmap trip={trip} budget={budgetData} onDateClick={handleHeatmapDateClick} />
               <div style={{ marginTop: 20, borderTop: '1px solid #333', paddingTop: 16 }}>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Choose the trip dates:</div>

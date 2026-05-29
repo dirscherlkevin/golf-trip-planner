@@ -75,6 +75,7 @@ Trip details:
 - Country: {country}{region_note}
 - Budget tier filter: {tier_filter}
 - Planned rounds: {planned_rounds} rounds of golf
+- Lodging assumption: ~$100/person/night (factor this into overall cost; only the green fees portion should be counted in est_cost_per_person_rounds)
 {budget_note}
 
 Return ONLY a JSON array with exactly 3 objects. Each object must have:

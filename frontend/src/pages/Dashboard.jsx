@@ -16,6 +16,8 @@ export default function Dashboard() {
   const [trips, setTrips] = useState([])
   const [newName, setNewName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     client.get('/trips').then((r) => { setTrips(r.data); setLoading(false) })
@@ -28,6 +30,18 @@ export default function Dashboard() {
     setTrips([...trips, data])
     setNewName('')
     navigate(`/trips/${data.id}`)
+  }
+
+  const deleteTrip = async (e, tripId) => {
+    e.stopPropagation()
+    setDeleting(true)
+    try {
+      await client.delete(`/trips/${tripId}`)
+      setTrips(trips.filter(t => t.id !== tripId))
+      setConfirmDelete(null)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -66,9 +80,9 @@ export default function Dashboard() {
               key={trip.id}
               className="card"
               style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onClick={() => navigate(`/trips/${trip.id}`)}
+              onClick={() => confirmDelete === trip.id ? null : navigate(`/trips/${trip.id}`)}
             >
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                   {trip.name}
                   {trip.status === 'finalized' && (
@@ -85,7 +99,27 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
-              <span style={{ color: 'var(--text-muted)' }}>→</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
+                {trip.organizer_id === user?.id && (
+                  confirmDelete === trip.id ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: '#e55' }}>Delete this trip?</span>
+                      <button className="btn-ghost" onClick={(e) => deleteTrip(e, trip.id)} disabled={deleting}
+                        style={{ fontSize: 12, padding: '3px 8px', color: '#e55', borderColor: '#e55' }}>
+                        {deleting ? '...' : 'Yes'}
+                      </button>
+                      <button className="btn-ghost" onClick={() => setConfirmDelete(null)}
+                        style={{ fontSize: 12, padding: '3px 8px' }}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button className="btn-ghost" onClick={() => setConfirmDelete(trip.id)}
+                      style={{ fontSize: 12, padding: '3px 8px', color: '#888', borderColor: '#444' }}>
+                      Delete
+                    </button>
+                  )
+                )}
+                {confirmDelete !== trip.id && <span style={{ color: 'var(--text-muted)' }}>→</span>}
+              </div>
             </div>
           ))}
         </div>

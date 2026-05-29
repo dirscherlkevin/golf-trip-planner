@@ -233,6 +233,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
   const [addingManual, setAddingManual] = useState(false)
   const [manualError, setManualError] = useState(null)
   const [unlocking, setUnlocking] = useState(false)
+  const [skipped, setSkipped] = useState(false)
 
   const loadLodging = () => {
     if (!trip) return
@@ -262,8 +263,8 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
   useEffect(() => {
     if (!trip) return
     if (lodging?.generation_status === 'pending') {
-      const timer = setTimeout(loadLodging, 5000)
-      return () => clearTimeout(timer)
+      const timer = setInterval(loadLodging, 5000)
+      return () => clearInterval(timer)
     }
   }, [trip?.id, lodging?.generation_status])
 
@@ -345,6 +346,20 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
 
   // Not set up yet
   if (notSetUp) {
+    if (skipped) {
+      return (
+        <div className="card" style={{ borderColor: '#333' }}>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Lodging: handling separately</div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 12 }}>
+            You've chosen to find lodging outside this app. All courses being locked is enough to advance.
+          </div>
+          <button className="btn-ghost" onClick={() => { setSkipped(false); onLodgingUpdated?.() }} style={{ fontSize: 12 }}>
+            Actually, set up lodging
+          </button>
+        </div>
+      )
+    }
+
     if (!isOrganizer) {
       return (
         <div className="card">
@@ -378,9 +393,14 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
           </div>
         </div>
         {setupError && <div style={{ color: '#e55', fontSize: 13, marginBottom: 12 }}>{setupError}</div>}
-        <button className="btn-primary" onClick={handleSetup} disabled={settingUp}>
-          {settingUp ? 'Setting up...' : 'Find Lodging Options'}
-        </button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button className="btn-primary" onClick={handleSetup} disabled={settingUp}>
+            {settingUp ? 'Setting up...' : 'Find Lodging Options'}
+          </button>
+          <button className="btn-ghost" onClick={() => { setSkipped(true); onLodgingUpdated?.() }} style={{ fontSize: 13 }}>
+            Skip / Find My Own
+          </button>
+        </div>
       </div>
     )
   }

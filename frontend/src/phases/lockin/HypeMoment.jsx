@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import client from '../../api/client'
 
 function useCopyToClipboard(text) {
   const [copied, setCopied] = useState(false)
@@ -24,9 +25,8 @@ export default function HypeMoment({ trip }) {
   const [copied, copyToClipboard] = useCopyToClipboard(shareUrl)
 
   useEffect(() => {
-    fetch('/share/' + trip.id)
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(d => { setData(d); setLoading(false) })
+    client.get('/share/' + trip.id)
+      .then(r => { setData(r.data); setLoading(false) })
       .catch(() => { setError('Failed to load trip summary.'); setLoading(false) })
   }, [trip.id])
 

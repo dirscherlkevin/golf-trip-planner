@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getOverlap } from '../../api/availability'
 
-export default function OverlapHeatmap({ trip, budget }) {
+export default function OverlapHeatmap({ trip, budget, onDateClick }) {
   const [overlap, setOverlap] = useState(null)
 
   useEffect(() => {
@@ -58,14 +58,18 @@ export default function OverlapHeatmap({ trip, budget }) {
                 {days.map(d => (
                   <div
                     key={d.date}
-                    title={`${d.date}: ${d.count}/${overlap.total_members} available`}
+                    title={`${d.date}: ${d.count}/${overlap.total_members} available${onDateClick ? ' — click to select' : ''}`}
+                    onClick={() => onDateClick?.(d.date)}
                     style={{
                       width: 26, height: 26, borderRadius: 4,
                       background: getColor(d.count),
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 9, color: d.count > 0 ? '#fff' : 'var(--text-muted)',
-                      cursor: 'default',
+                      cursor: onDateClick ? 'pointer' : 'default',
+                      outline: onDateClick ? '1px solid transparent' : undefined,
                     }}
+                    onMouseEnter={e => { if (onDateClick) e.currentTarget.style.outline = '1px solid var(--accent-green)' }}
+                    onMouseLeave={e => { if (onDateClick) e.currentTarget.style.outline = '1px solid transparent' }}
                   >
                     {new Date(d.date + 'T00:00:00').getDate()}
                   </div>
@@ -73,6 +77,11 @@ export default function OverlapHeatmap({ trip, budget }) {
               </div>
             </div>
           ))}
+          {onDateClick && (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, marginBottom: 2 }}>
+              Click a day to pre-fill start/end dates below
+            </div>
+          )}
           {/* Legend */}
           <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>

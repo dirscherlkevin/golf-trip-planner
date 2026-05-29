@@ -34,7 +34,9 @@ export default function PlanningPhase() {
     if (!trip) return
     getLodging(trip.id)
       .then(data => setLodgingLocked(!!data.locked_option_id))
-      .catch(() => {})
+      .catch(err => {
+        if (err.response?.status === 404) setLodgingLocked(true)  // no lodging = organizer is skipping
+      })
   }
 
   useEffect(() => {
