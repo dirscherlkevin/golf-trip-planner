@@ -89,8 +89,18 @@ export default function Dashboard() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const loadTrips = () => client.get('/trips').then((r) => { setTrips(r.data); setLoading(false) })
+  const loadTrips = async () => {
+    const r = await client.get('/trips')
+    setTrips(r.data)
+    setLoading(false)
+  }
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try { await loadTrips() } finally { setRefreshing(false) }
+  }
 
   useEffect(() => { loadTrips() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -126,7 +136,9 @@ export default function Dashboard() {
         <h1 style={{ color: 'var(--accent-green)', fontSize: 22 }}>⛳ Golf Trip Planner</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ color: 'var(--text-secondary)' }}>{user?.name}</span>
-          <button className="btn-ghost" onClick={loadTrips} style={{ fontSize: 13 }} title="Refresh">↺</button>
+          <button className="btn-ghost" onClick={handleRefresh} disabled={refreshing} style={{ fontSize: 13 }} title="Refresh">
+            {refreshing ? '↻' : '↺'}
+          </button>
           <button className="btn-ghost" onClick={() => { logout(); navigate('/login') }}>Sign Out</button>
         </div>
       </div>

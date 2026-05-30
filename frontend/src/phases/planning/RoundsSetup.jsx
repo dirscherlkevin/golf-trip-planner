@@ -15,13 +15,14 @@ function buildDefaultRounds(count) {
 }
 
 export default function RoundsSetup({ trip, onSetup }) {
-  const [numRounds, setNumRounds] = useState(3)
+  const [numRoundsStr, setNumRoundsStr] = useState('3')
+  const numRounds = Math.max(1, Math.min(5, parseInt(numRoundsStr, 10) || 1))
   const [rounds, setRounds] = useState(buildDefaultRounds(3))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    const n = Math.max(1, Math.min(5, numRounds))
+    const n = numRounds
     setRounds(prev => {
       if (prev.length === n) return prev
       if (n > prev.length) {
@@ -65,8 +66,8 @@ export default function RoundsSetup({ trip, onSetup }) {
           type="number"
           min={1}
           max={5}
-          value={numRounds}
-          onChange={e => setNumRounds(parseInt(e.target.value, 10) || 1)}
+          value={numRoundsStr}
+          onChange={e => setNumRoundsStr(e.target.value)}
           style={{
             width: 80,
             padding: '6px 10px',

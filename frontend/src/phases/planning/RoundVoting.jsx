@@ -219,6 +219,11 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
   const [generateError, setGenerateError] = useState(null)
   const [manualName, setManualName] = useState('')
   const [manualLocation, setManualLocation] = useState('')
+  const [manualGreenFee, setManualGreenFee] = useState('')
+  const [manualCartFee, setManualCartFee] = useState('')
+  const [manualRating, setManualRating] = useState('')
+  const [manualSlope, setManualSlope] = useState('')
+  const [manualWebsite, setManualWebsite] = useState('')
   const [addingManual, setAddingManual] = useState(false)
   const [manualError, setManualError] = useState(null)
   const [unlocking, setUnlocking] = useState(false)
@@ -262,9 +267,14 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
       await nominateCourse(tripId, round.id, {
         name: manualName.trim(),
         location: manualLocation.trim(),
+        green_fee: manualGreenFee ? parseFloat(manualGreenFee) : undefined,
+        cart_fee: manualCartFee ? parseFloat(manualCartFee) : undefined,
+        rating: manualRating || undefined,
+        slope: manualSlope || undefined,
+        website: manualWebsite.trim() || undefined,
       })
-      setManualName('')
-      setManualLocation('')
+      setManualName(''); setManualLocation(''); setManualGreenFee('')
+      setManualCartFee(''); setManualRating(''); setManualSlope(''); setManualWebsite('')
       onUpdated()
     } catch {
       setManualError('Failed to add course. Try again.')
@@ -378,53 +388,27 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
         {!isLocked && (
           <div style={{ marginTop: 16, padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a' }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Add a Course Manually</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Course name</label>
-                <input
-                  type="text"
-                  value={manualName}
-                  onChange={e => setManualName(e.target.value)}
-                  placeholder="e.g. Pebble Beach"
-                  style={{
-                    padding: '6px 10px',
-                    background: '#1a1a1a',
-                    border: '1px solid #444',
-                    borderRadius: 6,
-                    color: '#fff',
-                    fontSize: 13,
-                    width: 200,
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Location</label>
-                <input
-                  type="text"
-                  value={manualLocation}
-                  onChange={e => setManualLocation(e.target.value)}
-                  placeholder="e.g. Pebble Beach, CA"
-                  style={{
-                    padding: '6px 10px',
-                    background: '#1a1a1a',
-                    border: '1px solid #444',
-                    borderRadius: 6,
-                    color: '#fff',
-                    fontSize: 13,
-                    width: 200,
-                  }}
-                />
-              </div>
-              <button
-                className="btn-primary"
-                onClick={handleAddManual}
-                disabled={addingManual || !manualName.trim()}
-                style={{ fontSize: 13 }}
-              >
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
+              {[
+                { label: 'Course name *', val: manualName, set: setManualName, ph: 'e.g. Pebble Beach', w: 200 },
+                { label: 'Location', val: manualLocation, set: setManualLocation, ph: 'e.g. Pebble Beach, CA', w: 180 },
+                { label: 'Green fee ($)', val: manualGreenFee, set: setManualGreenFee, ph: '250', w: 100, type: 'number' },
+                { label: 'Cart fee ($)', val: manualCartFee, set: setManualCartFee, ph: '25', w: 90, type: 'number' },
+                { label: 'Rating', val: manualRating, set: setManualRating, ph: '74.2', w: 80 },
+                { label: 'Slope', val: manualSlope, set: setManualSlope, ph: '142', w: 80 },
+                { label: 'Website', val: manualWebsite, set: setManualWebsite, ph: 'https://...', w: 180 },
+              ].map(({ label, val, set, ph, w, type }) => (
+                <div key={label}>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</label>
+                  <input type={type || 'text'} value={val} onChange={e => set(e.target.value)} placeholder={ph}
+                    style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: w }} />
+                </div>
+              ))}
+              <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
                 {addingManual ? 'Adding...' : 'Add'}
               </button>
             </div>
-            {manualError && <div style={{ fontSize: 12, color: '#e55', marginTop: 8 }}>{manualError}</div>}
+            {manualError && <div style={{ fontSize: 12, color: '#e55', marginTop: 4 }}>{manualError}</div>}
           </div>
         )}
       </div>

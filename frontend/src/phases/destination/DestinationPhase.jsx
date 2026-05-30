@@ -18,6 +18,7 @@ export default function DestinationPhase() {
   const [showManualForm, setShowManualForm] = useState(false)
   const [manualName, setManualName] = useState('')
   const [manualRegion, setManualRegion] = useState('')
+  const [manualCost, setManualCost] = useState('')
   const [addingManual, setAddingManual] = useState(false)
   const [manualError, setManualError] = useState('')
   const [unlocking, setUnlocking] = useState(false)
@@ -70,9 +71,12 @@ export default function DestinationPhase() {
     setAddingManual(true)
     setManualError('')
     try {
-      await nominateDestination(trip.id, { name: manualName.trim(), region: manualRegion.trim() })
-      setManualName('')
-      setManualRegion('')
+      await nominateDestination(trip.id, {
+        name: manualName.trim(),
+        region: manualRegion.trim(),
+        est_cost_per_person_rounds: manualCost ? parseFloat(manualCost) : undefined,
+      })
+      setManualName(''); setManualRegion(''); setManualCost('')
       setShowManualForm(false)
       load()
     } catch {
@@ -150,6 +154,11 @@ export default function DestinationPhase() {
                         <input type="text" value={manualRegion} onChange={e => setManualRegion(e.target.value)} placeholder="e.g. North Carolina, USA"
                           style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: 200 }} />
                       </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Est. cost/person (rounds)</label>
+                        <input type="number" value={manualCost} onChange={e => setManualCost(e.target.value)} placeholder="e.g. 600"
+                          style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: 140 }} />
+                      </div>
                       <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
                         {addingManual ? 'Adding...' : 'Add'}
                       </button>
@@ -200,6 +209,13 @@ export default function DestinationPhase() {
       {/* Destination cards */}
       {status === 'complete' && suggestion?.suggestions && (
         <>
+          {/* If only manual destinations added (no AI run yet), show generate form prominently */}
+          {isOrganizer && !suggestion.generated_at && !suggestion.locked_destination && (
+            <div style={{ marginBottom: 20, padding: '14px 16px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a' }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Want AI suggestions instead?</div>
+              <GenerateForm trip={trip} budgetHint={budgetHint} onGenerated={handleGenerated} />
+            </div>
+          )}
           {suggestion.locked_destination && (
             <div style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <span>✅ <strong>Destination locked:</strong> {suggestion.locked_destination.name} — {suggestion.locked_destination.region}. Phase 3 is now open!</span>

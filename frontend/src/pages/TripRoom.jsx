@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTripStore } from '../store/trip'
 import { useAuthStore } from '../store/auth'
@@ -29,53 +29,85 @@ const REOPENABLE = new Set(['availability', 'destination', 'planning'])
 function PhaseGate({ phases, isOrganizer, onReopen, trip }) {
   const openPhase = phases.find(p => p.status === 'open')
   const openIdx = phases.findIndex(p => p.status === 'open')
-  // The locked phase immediately before the open phase is the one that can be reopened.
   const prevLockedPhase = openIdx > 0 ? phases[openIdx - 1] : null
+
+  const [activeTab, setActiveTab] = useState(null)
+
+  // Default active tab to open phase whenever open phase changes
+  useEffect(() => {
+    if (openPhase) setActiveTab(openPhase.phase)
+  }, [openPhase?.phase])
+
+  const viewPhase = activeTab ?? openPhase?.phase
 
   return (
     <div>
-      {/* Phase progress bar */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+      {/* Phase tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 24, flexWrap: 'wrap' }}>
         {phases.map(p => {
           const isOpen = p.status === 'open'
           const isLocked = p.status === 'locked'
           const isPending = p.status === 'pending'
+          const isActive = viewPhase === p.phase
           const canReopen = isOrganizer && prevLockedPhase?.phase === p.phase && REOPENABLE.has(p.phase)
+          const clickable = !isPending
+
           return (
-            <div key={p.phase} style={{
-              flex: 1, padding: '8px 12px', borderRadius: 8, textAlign: 'center', fontSize: 12, fontWeight: 600,
-              background: isOpen ? 'var(--accent-green)' : isLocked ? '#2d4a2d' : '#1a1a1a',
-              color: isOpen ? '#000' : isPending ? 'var(--text-muted)' : 'var(--text-secondary)',
-              border: isOpen ? 'none' : '1px solid #333',
-            }}>
-              {isLocked ? '✓ ' : isPending ? '🔒 ' : ''}{PHASE_LABELS[p.phase]}
+            <div key={p.phase} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flex: 1 }}>
+              <button
+                onClick={() => clickable && setActiveTab(p.phase)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  textAlign: 'center',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: clickable ? 'pointer' : 'default',
+                  background: isActive ? (isOpen ? 'var(--accent-green)' : '#2d4a2d') : isLocked ? '#1a2a1a' : '#1a1a1a',
+                  color: isActive ? (isOpen ? '#000' : 'var(--accent-green)') : isPending ? 'var(--text-muted)' : 'var(--text-secondary)',
+                  border: isActive ? `2px solid ${isOpen ? 'var(--accent-green)' : 'var(--accent-green)'}` : `1px solid ${isLocked ? '#2d4a2d' : '#333'}`,
+                }}
+              >
+                {isLocked ? '✓ ' : isPending ? '🔒 ' : ''}{PHASE_LABELS[p.phase]}
+              </button>
               {canReopen && (
-                <div style={{ marginTop: 4 }}>
-                  <button
-                    onClick={() => onReopen(p.phase)}
-                    style={{
-                      fontSize: 10, padding: '2px 6px',
-                      background: 'transparent', border: '1px solid #555',
-                      borderRadius: 4, color: '#aaa', cursor: 'pointer',
-                    }}
-                  >
-                    Reopen
-                  </button>
-                </div>
+                <button
+                  onClick={() => onReopen(p.phase)}
+                  style={{
+                    fontSize: 10, padding: '2px 6px',
+                    background: 'transparent', border: '1px solid #555',
+                    borderRadius: 4, color: '#aaa', cursor: 'pointer',
+                  }}
+                >
+                  Reopen
+                </button>
               )}
             </div>
           )
         })}
       </div>
 
+      {/* Locked-phase read-only banner */}
+      {viewPhase && phases.find(p => p.phase === viewPhase)?.status === 'locked' && (
+        <div style={{
+          fontSize: 12, color: 'var(--text-muted)', background: '#1a1a1a',
+          border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 12px',
+          marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          🔒 This phase is locked — you're viewing it in read-only mode.
+        </div>
+      )}
+
       {/* Active phase content */}
-      {openPhase ? (
+      {viewPhase ? (
         (() => {
-          const Component = PHASE_COMPONENTS[openPhase.phase]
+          if (trip?.status === 'finalized') return <HypeMoment trip={trip} isOrganizer={isOrganizer} />
+          const Component = PHASE_COMPONENTS[viewPhase]
           return Component ? <Component /> : null
         })()
       ) : trip?.status === 'finalized' ? (
-        <HypeMoment trip={trip} />
+        <HypeMoment trip={trip} isOrganizer={isOrganizer} />
       ) : null}
     </div>
   )
@@ -84,7 +116,7 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip }) {
 export default function TripRoom() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { trip, phases, loading, error, loadTrip, refreshPhases, reopenPhase } = useTripStore()
+  const { trip, phases, loading, refreshing, error, loadTrip, refreshPhases, reopenPhase } = useTripStore()
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
@@ -92,17 +124,15 @@ export default function TripRoom() {
     loadTrip(id)
   }, [id])
 
-  // Poll phases every 15s so members see phase transitions without manual refresh
   useEffect(() => {
     if (!trip?.id) return
-    const interval = setInterval(async () => {
-      await refreshPhases()
-    }, 15000)
+    const interval = setInterval(() => refreshPhases(), 15000)
     return () => clearInterval(interval)
   }, [trip?.id])
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
-  if (error) return <div style={{ padding: 40, color: 'red' }}>Error: {error}</div>
+  // Only show full loading on initial load (no trip yet)
+  if (loading && !trip) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
+  if (error && !trip) return <div style={{ padding: 40, color: 'red' }}>Error: {error}</div>
   if (!trip) return null
 
   return (
@@ -114,8 +144,13 @@ export default function TripRoom() {
             <button className="btn-ghost" onClick={() => navigate('/')} style={{ fontSize: 12 }}>
               ← Back
             </button>
-            <button className="btn-ghost" onClick={() => loadTrip(id)} style={{ fontSize: 12 }} title="Refresh">
-              ↺ Refresh
+            <button
+              className="btn-ghost"
+              onClick={() => loadTrip(id)}
+              disabled={refreshing}
+              style={{ fontSize: 12, opacity: refreshing ? 0.6 : 1 }}
+            >
+              {refreshing ? '↻ Refreshing...' : '↺ Refresh'}
             </button>
           </div>
           <h1 style={{ color: 'var(--accent-green)', fontSize: 24, margin: 0 }}>{trip.name}</h1>

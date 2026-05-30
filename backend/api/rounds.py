@@ -378,8 +378,10 @@ class TeeTimeIn:
         self.tee_time = tee_time
 
 from pydantic import BaseModel as _BM
+from typing import Optional as _Opt
 class _TeeTimeBody(_BM):
     tee_time: str = ""
+    round_date: _Opt[str] = None  # ISO date "YYYY-MM-DD", or empty string to clear
 
 @router.patch("/{trip_id}/rounds/{round_id}/tee-time")
 def set_tee_time(
@@ -398,5 +400,8 @@ def set_tee_time(
     if not trip_round:
         raise HTTPException(status_code=404, detail="Round not found")
     trip_round.tee_time = body.tee_time.strip() or None
+    if body.round_date is not None:
+        from datetime import date as _date
+        trip_round.round_date = _date.fromisoformat(body.round_date) if body.round_date else None
     db.commit()
-    return {"ok": True, "tee_time": trip_round.tee_time}
+    return {"ok": True, "tee_time": trip_round.tee_time, "round_date": str(trip_round.round_date) if trip_round.round_date else None}

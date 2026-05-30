@@ -29,4 +29,4 @@ class DestinationVote(Base):
     destination_index = Column(Integer, nullable=False)    # 0, 1, or 2
     vote = Column(String, nullable=False)                   # "up" or "down"
 
-    __table_args__ = (UniqueConstraint("trip_id", "user_id", name="uq_dest_vote_trip_user"),)
+    __table_args__ = (UniqueConstraint("trip_id", "user_id", "destination_index", name="uq_dest_vote_trip_user_dest"),)

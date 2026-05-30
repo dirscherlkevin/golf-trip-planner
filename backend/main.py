@@ -46,6 +46,15 @@ Base.metadata.create_all(bind=engine)
 # Additive column migrations (safe to re-run with IF NOT EXISTS)
 with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS tee_time VARCHAR(255)"))
+    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS round_date DATE"))
+    _conn.execute(text("ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user"))
+    _conn.execute(text("""
+        DO $$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_dest_vote_trip_user_dest') THEN
+            ALTER TABLE destination_votes ADD CONSTRAINT uq_dest_vote_trip_user_dest UNIQUE (trip_id, user_id, destination_index);
+          END IF;
+        END $$
+    """))
     _conn.commit()
 
 from api.auth import router as auth_router

@@ -230,6 +230,10 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
   const [manualName, setManualName] = useState('')
   const [manualPrice, setManualPrice] = useState('')
   const [manualType, setManualType] = useState('')
+  const [manualAddress, setManualAddress] = useState('')
+  const [manualBeds, setManualBeds] = useState('')
+  const [manualCapacity, setManualCapacity] = useState('')
+  const [manualLink, setManualLink] = useState('')
   const [addingManual, setAddingManual] = useState(false)
   const [manualError, setManualError] = useState(null)
   const [unlocking, setUnlocking] = useState(false)
@@ -314,13 +318,18 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
     setManualError(null)
     try {
       await nominateLodging(trip.id, {
-        name: manualName.trim(),
-        price_per_night: manualPrice ? parseFloat(manualPrice) : undefined,
-        type: manualType.trim() || undefined,
+        option_data: {
+          name: manualName.trim(),
+          price_per_night: manualPrice ? parseFloat(manualPrice) : undefined,
+          type: manualType.trim() || undefined,
+          address: manualAddress.trim() || undefined,
+          beds: manualBeds ? parseInt(manualBeds, 10) : undefined,
+          capacity: manualCapacity ? parseInt(manualCapacity, 10) : undefined,
+          booking_link: manualLink.trim() || undefined,
+        },
       })
-      setManualName('')
-      setManualPrice('')
-      setManualType('')
+      setManualName(''); setManualPrice(''); setManualType('')
+      setManualAddress(''); setManualBeds(''); setManualCapacity(''); setManualLink('')
       loadLodging()
     } catch {
       setManualError('Failed to add lodging. Try again.')
@@ -484,71 +493,27 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
       {!isLocked && (
         <div style={{ padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a', marginTop: 8 }}>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Add a Lodging Option Manually</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Name</label>
-              <input
-                type="text"
-                value={manualName}
-                onChange={e => setManualName(e.target.value)}
-                placeholder="e.g. Sycamore House"
-                style={{
-                  padding: '6px 10px',
-                  background: '#1a1a1a',
-                  border: '1px solid #444',
-                  borderRadius: 6,
-                  color: '#fff',
-                  fontSize: 13,
-                  width: 180,
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Price/night ($)</label>
-              <input
-                type="number"
-                value={manualPrice}
-                onChange={e => setManualPrice(e.target.value)}
-                placeholder="e.g. 850"
-                style={{
-                  padding: '6px 10px',
-                  background: '#1a1a1a',
-                  border: '1px solid #444',
-                  borderRadius: 6,
-                  color: '#fff',
-                  fontSize: 13,
-                  width: 110,
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Type</label>
-              <input
-                type="text"
-                value={manualType}
-                onChange={e => setManualType(e.target.value)}
-                placeholder="e.g. vacation rental"
-                style={{
-                  padding: '6px 10px',
-                  background: '#1a1a1a',
-                  border: '1px solid #444',
-                  borderRadius: 6,
-                  color: '#fff',
-                  fontSize: 13,
-                  width: 160,
-                }}
-              />
-            </div>
-            <button
-              className="btn-primary"
-              onClick={handleAddManual}
-              disabled={addingManual || !manualName.trim()}
-              style={{ fontSize: 13 }}
-            >
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
+            {[
+              { label: 'Name *', val: manualName, set: setManualName, ph: 'e.g. Sycamore House', w: 180 },
+              { label: 'Type', val: manualType, set: setManualType, ph: 'vacation rental, hotel…', w: 150 },
+              { label: 'Price/night ($)', val: manualPrice, set: setManualPrice, ph: '850', w: 110, type: 'number' },
+              { label: 'Beds', val: manualBeds, set: setManualBeds, ph: '4', w: 70, type: 'number' },
+              { label: 'Sleeps', val: manualCapacity, set: setManualCapacity, ph: '8', w: 70, type: 'number' },
+              { label: 'Address', val: manualAddress, set: setManualAddress, ph: '123 Golf Rd…', w: 200 },
+              { label: 'Booking link', val: manualLink, set: setManualLink, ph: 'https://…', w: 200 },
+            ].map(({ label, val, set, ph, w, type }) => (
+              <div key={label}>
+                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</label>
+                <input type={type || 'text'} value={val} onChange={e => set(e.target.value)} placeholder={ph}
+                  style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: w }} />
+              </div>
+            ))}
+            <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
               {addingManual ? 'Adding...' : 'Add'}
             </button>
           </div>
-          {manualError && <div style={{ fontSize: 12, color: '#e55', marginTop: 8 }}>{manualError}</div>}
+          {manualError && <div style={{ fontSize: 12, color: '#e55', marginTop: 4 }}>{manualError}</div>}
         </div>
       )}
     </div>

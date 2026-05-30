@@ -198,6 +198,7 @@ def vote_on_destination(
     existing = db.query(DestinationVote).filter(
         DestinationVote.trip_id == trip_id,
         DestinationVote.user_id == user.id,
+        DestinationVote.destination_index == body.destination_index,
     ).first()
     if existing:
         existing.destination_index = body.destination_index
@@ -278,7 +279,7 @@ def nominate_destination(
         "region": body.region.strip(),
         "why_it_fits": body.why_it_fits.strip() or "Manually added by organizer.",
         "top_courses": [],
-        "est_cost_per_person_rounds": None,
+        "est_cost_per_person_rounds": body.est_cost_per_person_rounds,
         "booking_warning": None,
     }
     current = list(suggestion.suggestions or [])

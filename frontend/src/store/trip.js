@@ -4,20 +4,27 @@ import { getPhases, lockPhase, reopenPhase } from '../api/phases'
 
 export const useTripStore = create((set, get) => ({
   trip: null,
-  phases: [],   // [{phase, status, locked_at, locked_by}]
+  phases: [],
   loading: false,
+  refreshing: false,
   error: null,
 
   loadTrip: async (id) => {
-    set({ loading: true, error: null })
+    const currentTrip = get().trip
+    const isFirstLoad = !currentTrip || currentTrip.id !== parseInt(id)
+    if (isFirstLoad) {
+      set({ loading: true, error: null })
+    } else {
+      set({ refreshing: true })
+    }
     try {
       const [tripRes, phasesRes] = await Promise.all([
         client.get(`/trips/${id}`),
         getPhases(id),
       ])
-      set({ trip: tripRes.data, phases: phasesRes, loading: false })
+      set({ trip: tripRes.data, phases: phasesRes, loading: false, refreshing: false })
     } catch (e) {
-      set({ error: e.message, loading: false })
+      set({ error: e.message, loading: false, refreshing: false })
     }
   },
 
@@ -31,7 +38,6 @@ export const useTripStore = create((set, get) => ({
   lockPhase: async (phase, body = {}) => {
     const { trip } = get()
     await lockPhase(trip.id, phase, body)
-    // Refresh both — locking availability sets trip_start/trip_end on the trip row
     const [tripRes, phases] = await Promise.all([
       client.get(`/trips/${trip.id}`),
       getPhases(trip.id),
@@ -46,7 +52,6 @@ export const useTripStore = create((set, get) => ({
   },
 
   currentPhase: () => {
-    // Returns the phase name that is currently "open"
     const { phases } = get()
     return phases.find(p => p.status === 'open')?.phase ?? null
   },

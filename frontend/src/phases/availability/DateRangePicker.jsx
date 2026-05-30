@@ -66,10 +66,15 @@ export default function DateRangePicker({ value, onChange }) {
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
   const [selectedMap, setSelectedMap] = useState(() => rangesToMap(value))
+  const [synced, setSynced] = useState(() => value.length > 0)
 
+  // Sync once from parent when data first arrives (e.g. API loads after mount)
   useEffect(() => {
-    if (value.length > 0) setSelectedMap(rangesToMap(value))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!synced && value.length > 0) {
+      setSelectedMap(rangesToMap(value))
+      setSynced(true)
+    }
+  }, [value, synced])
 
   const toggleDay = (date) => {
     const next = new Map(selectedMap)

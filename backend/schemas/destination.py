@@ -14,6 +14,7 @@ class NominateDestinationIn(BaseModel):
     name: str
     region: str = ""
     why_it_fits: str = ""
+    est_cost_per_person_rounds: Optional[float] = None
 
 class PreviewCoursesIn(BaseModel):
     destination_name: str
