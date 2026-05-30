@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
 
   useEffect(() => {
     client.get('/trips').then((r) => { setTrips(r.data); setLoading(false) })
@@ -35,10 +36,13 @@ export default function Dashboard() {
   const deleteTrip = async (e, tripId) => {
     e.stopPropagation()
     setDeleting(true)
+    setDeleteError(null)
     try {
       await client.delete(`/trips/${tripId}`)
       setTrips(trips.filter(t => t.id !== tripId))
       setConfirmDelete(null)
+    } catch (err) {
+      setDeleteError(err.response?.data?.detail || 'Delete failed. Try again.')
     } finally {
       setDeleting(false)
     }
@@ -102,14 +106,19 @@ export default function Dashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
                 {trip.organizer_id === user?.id && (
                   confirmDelete === trip.id ? (
-                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, color: '#e55' }}>Delete this trip?</span>
-                      <button className="btn-ghost" onClick={(e) => deleteTrip(e, trip.id)} disabled={deleting}
-                        style={{ fontSize: 12, padding: '3px 8px', color: '#e55', borderColor: '#e55' }}>
-                        {deleting ? '...' : 'Yes'}
-                      </button>
-                      <button className="btn-ghost" onClick={() => setConfirmDelete(null)}
-                        style={{ fontSize: 12, padding: '3px 8px' }}>Cancel</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: '#e55' }}>Delete this trip?</span>
+                        <button className="btn-ghost" onClick={(e) => deleteTrip(e, trip.id)} disabled={deleting}
+                          style={{ fontSize: 12, padding: '3px 8px', color: '#e55', borderColor: '#e55' }}>
+                          {deleting ? 'Deleting...' : 'Yes, Delete'}
+                        </button>
+                        <button className="btn-ghost" onClick={() => { setConfirmDelete(null); setDeleteError(null) }}
+                          style={{ fontSize: 12, padding: '3px 8px' }}>Cancel</button>
+                      </div>
+                      {deleteError && confirmDelete === trip.id && (
+                        <div style={{ fontSize: 11, color: '#e55' }}>{deleteError}</div>
+                      )}
                     </div>
                   ) : (
                     <button className="btn-ghost" onClick={() => setConfirmDelete(trip.id)}
