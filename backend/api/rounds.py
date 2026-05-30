@@ -12,7 +12,7 @@ from schemas.round import (
     TripRoundOut, CourseNominationOut, CourseVoteTally
 )
 from services.phases import get_phase, lock_phase
-from services.claude import generate_courses_for_round
+from services.claude import generate_courses_for_round, enrich_course
 from datetime import datetime, timezone
 
 router = APIRouter()
@@ -216,10 +216,23 @@ def nominate_course(
     if trip_round.locked_course_id is not None:
         raise HTTPException(status_code=409, detail="Round is already locked")
 
+    # Enrich with AI — fills in rating, slope, fees, website, etc.
+    course_data = dict(body.course_data)
+    try:
+        enriched = enrich_course(
+            course_data.get("name", ""),
+            course_data.get("location", ""),
+        )
+        # User-supplied non-null values take priority
+        user_values = {k: v for k, v in course_data.items() if v is not None and v != ""}
+        course_data = {**enriched, **user_values}
+    except Exception:
+        pass  # Keep as-is if enrichment fails
+
     nom = CourseNomination(
         round_id=round_id,
         trip_id=trip_id,
-        course_data=body.course_data,
+        course_data=course_data,
         nominated_by=user.id,
         source=NominationSource.manual,
     )

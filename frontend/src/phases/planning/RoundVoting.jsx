@@ -405,7 +405,7 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
                 </div>
               ))}
               <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
-                {addingManual ? 'Adding...' : 'Add'}
+                {addingManual ? 'Enriching with AI...' : 'Add'}
               </button>
             </div>
             {manualError && <div style={{ fontSize: 12, color: '#e55', marginTop: 4 }}>{manualError}</div>}

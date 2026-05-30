@@ -12,7 +12,7 @@ from schemas.destination import (
     DestinationSuggestionOut, DestinationVoteTally, DestinationSuggestionWithVotesOut
 )
 from services.phases import get_phase, lock_phase, reopen_phase
-from services.claude import generate_destinations, preview_destination_courses
+from services.claude import generate_destinations, preview_destination_courses, enrich_destination
 from datetime import datetime, timezone, timedelta
 import statistics
 
@@ -274,14 +274,24 @@ def nominate_destination(
         db.add(suggestion)
         db.flush()
 
-    new_dest = {
+    base_dest = {
         "name": body.name.strip(),
         "region": body.region.strip(),
-        "why_it_fits": body.why_it_fits.strip() or "Manually added by organizer.",
+        "why_it_fits": body.why_it_fits.strip() or None,
         "top_courses": [],
         "est_cost_per_person_rounds": body.est_cost_per_person_rounds,
         "booking_warning": None,
     }
+
+    # Enrich with AI — fills in why_it_fits, top_courses, est_cost, booking_warning
+    try:
+        enriched = enrich_destination(body.name.strip(), body.region.strip(), trip.planned_rounds or 3)
+        # User-supplied values take priority (don't overwrite if they provided something)
+        merged = {**enriched, **{k: v for k, v in base_dest.items() if v is not None}}
+        new_dest = merged
+    except Exception:
+        new_dest = {**base_dest, "why_it_fits": base_dest["why_it_fits"] or "Manually added by organizer."}
+
     current = list(suggestion.suggestions or [])
     current.append(new_dest)
     suggestion.suggestions = current

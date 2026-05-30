@@ -229,6 +229,99 @@ Return only the JSON array, no other text."""
     return data
 
 
+def enrich_destination(name: str, region: str, planned_rounds: int = 3) -> dict:
+    """Ask Claude to fill in full details for a manually-added destination."""
+    location = f"{name}, {region}" if region.strip() else name
+    prompt = f"""You are a golf travel expert. Provide detailed info for this golf destination.
+
+Destination: {location}
+Planned rounds: {planned_rounds}
+
+Return ONLY a JSON object with these exact fields:
+{{
+  "why_it_fits": "2-3 sentences on why this is a great golf trip destination",
+  "est_cost_per_person_rounds": <number, total estimated green fees per person for {planned_rounds} rounds>,
+  "top_courses": [
+    {{"name": "Course Name", "rating": 74.2, "slope": 135, "est_green_fee": 250, "rating_source": "USGA 2024"}},
+    ...3-5 courses
+  ],
+  "booking_warning": "Any lead-time or access notes, or null"
+}}
+
+Return only valid JSON, no other text."""
+
+    client = _client()
+    message = _call_with_retry(lambda: client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    ))
+    return _parse_json_response(message.content[0].text)
+
+
+def enrich_course(name: str, location: str) -> dict:
+    """Ask Claude to fill in full details for a manually-added course."""
+    prompt = f"""You are a golf course expert. Provide accurate details for this course.
+
+Course: {name}
+Location: {location}
+
+Return ONLY a JSON object (use null for unknown fields):
+{{
+  "rating": "74.2",
+  "slope": 135,
+  "par": 72,
+  "green_fee": 250,
+  "cart_fee": 25,
+  "walking_policy": "Walking allowed",
+  "architect": "Designer Name",
+  "pace_of_play": "4 hours 15 minutes",
+  "tee_time_window": "Book 30 days in advance",
+  "website": "https://..."
+}}
+
+Return only valid JSON, no other text."""
+
+    client = _client()
+    message = _call_with_retry(lambda: client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    ))
+    return _parse_json_response(message.content[0].text)
+
+
+def enrich_lodging(name: str, address: str = "", lodging_type: str = "") -> dict:
+    """Ask Claude to fill in details for a manually-added lodging option."""
+    context = f"{name}"
+    if address:
+        context += f" at {address}"
+    if lodging_type:
+        context += f" ({lodging_type})"
+    prompt = f"""You are a lodging expert for golf trips. Provide details for this property.
+
+Property: {context}
+
+Return ONLY a JSON object (use null for unknown fields):
+{{
+  "price_per_night": 450,
+  "beds": 4,
+  "capacity": 8,
+  "distance_to_courses": "5 min drive to nearest courses",
+  "amenities": "Pool, hot tub, full kitchen, golf cart storage"
+}}
+
+Return only valid JSON, no other text."""
+
+    client = _client()
+    message = _call_with_retry(lambda: client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=256,
+        messages=[{"role": "user", "content": prompt}],
+    ))
+    return _parse_json_response(message.content[0].text)
+
+
 def generate_lodging(
     destination: str,
     lodging_type: str,

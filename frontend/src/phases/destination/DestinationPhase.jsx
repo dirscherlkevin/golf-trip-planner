@@ -160,7 +160,7 @@ export default function DestinationPhase() {
                           style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: 140 }} />
                       </div>
                       <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
-                        {addingManual ? 'Adding...' : 'Add'}
+                        {addingManual ? 'Enriching with AI...' : 'Add'}
                       </button>
                       <button className="btn-ghost" onClick={() => { setShowManualForm(false); setManualError('') }} style={{ fontSize: 13 }}>Cancel</button>
                     </div>

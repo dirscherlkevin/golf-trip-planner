@@ -16,7 +16,7 @@ from schemas.lodging import (
     LodgingSetupOut, LodgingOptionOut, LodgingVoteTally,
 )
 from services.phases import get_phase
-from services.claude import generate_lodging
+from services.claude import generate_lodging, enrich_lodging
 from datetime import datetime, timezone, timedelta
 
 load_dotenv()
@@ -316,10 +316,24 @@ def nominate_lodging(
     if trip.locked_lodging_option_id is not None:
         raise HTTPException(status_code=409, detail="Lodging is already locked")
 
+    # Enrich with AI — fills in price, beds, capacity, amenities, etc.
+    option_data = dict(body.option_data)
+    try:
+        enriched = enrich_lodging(
+            option_data.get("name", ""),
+            option_data.get("address", ""),
+            option_data.get("type", ""),
+        )
+        # User-supplied non-null values take priority
+        user_values = {k: v for k, v in option_data.items() if v is not None and v != ""}
+        option_data = {**enriched, **user_values}
+    except Exception:
+        pass  # Keep as-is if enrichment fails
+
     opt = LodgingOption(
         trip_id=trip_id,
         lodging_type=setup.lodging_type,
-        option_data=body.option_data,
+        option_data=option_data,
         added_by=user.id,
         source="manual",
         generation_status=LodgingGenerationStatus.complete,
