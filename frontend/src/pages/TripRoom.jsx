@@ -110,9 +110,14 @@ export default function TripRoom() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
-          <button className="btn-ghost" onClick={() => navigate('/')} style={{ marginBottom: 8, fontSize: 12 }}>
-            ← Back
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <button className="btn-ghost" onClick={() => navigate('/')} style={{ fontSize: 12 }}>
+              ← Back
+            </button>
+            <button className="btn-ghost" onClick={() => loadTrip(id)} style={{ fontSize: 12 }} title="Refresh">
+              ↺ Refresh
+            </button>
+          </div>
           <h1 style={{ color: 'var(--accent-green)', fontSize: 24, margin: 0 }}>{trip.name}</h1>
           <div style={{ marginTop: 6 }}>
             <CostEstimate tripId={trip.id} />

@@ -90,9 +90,9 @@ export default function Dashboard() {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(null)
 
-  useEffect(() => {
-    client.get('/trips').then((r) => { setTrips(r.data); setLoading(false) })
-  }, [])
+  const loadTrips = () => client.get('/trips').then((r) => { setTrips(r.data); setLoading(false) })
+
+  useEffect(() => { loadTrips() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const createTrip = async (e) => {
     e.preventDefault()
@@ -118,17 +118,15 @@ export default function Dashboard() {
     }
   }
 
-  const handleJoined = (tripId) => {
-    // Reload trips list after joining
-    client.get('/trips').then(r => setTrips(r.data)).catch(() => {})
-  }
+  const handleJoined = () => loadTrips()
 
   return (
     <div style={{ maxWidth: 680, margin: '40px auto', padding: '0 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <h1 style={{ color: 'var(--accent-green)', fontSize: 22 }}>⛳ Golf Trip Planner</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ color: 'var(--text-secondary)' }}>{user?.name}</span>
+          <button className="btn-ghost" onClick={loadTrips} style={{ fontSize: 13 }} title="Refresh">↺</button>
           <button className="btn-ghost" onClick={() => { logout(); navigate('/login') }}>Sign Out</button>
         </div>
       </div>
