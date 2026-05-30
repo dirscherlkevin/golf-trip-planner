@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 
 const MONTHS = ['January','February','March','April','May','June',
                 'July','August','September','October','November','December']
@@ -8,62 +8,78 @@ function toISO(year, month, day) {
   return `${year}-${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`
 }
 
-function isInRanges(date, ranges) {
-  return ranges.some(r => date >= r.start && date <= r.end)
+// Expand [{start,end}] ranges into a Set of ISO date strings
+function rangesToDays(ranges) {
+  const days = new Set()
+  for (const r of ranges) {
+    let cur = new Date(r.start + 'T00:00:00')
+    const end = new Date(r.end + 'T00:00:00')
+    while (cur <= end) {
+      days.add(cur.toISOString().slice(0, 10))
+      cur = new Date(cur.getTime() + 86400000)
+    }
+  }
+  return days
 }
 
-function isInPreview(date, anchor, hover) {
-  if (!anchor || !hover) return false
-  const [s, e] = anchor <= hover ? [anchor, hover] : [hover, anchor]
-  return date >= s && date <= e
+// Collapse a Set of ISO date strings into consecutive [{start,end}] ranges
+function daysToRanges(days) {
+  const sorted = [...days].sort()
+  if (!sorted.length) return []
+  const ranges = []
+  let start = sorted[0], end = sorted[0]
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = new Date(sorted[i - 1] + 'T00:00:00')
+    const curr = new Date(sorted[i] + 'T00:00:00')
+    if (Math.round((curr - prev) / 86400000) === 1) {
+      end = sorted[i]
+    } else {
+      ranges.push({ start, end })
+      start = sorted[i]; end = sorted[i]
+    }
+  }
+  ranges.push({ start, end })
+  return ranges
 }
 
-function isStartOf(date, ranges) {
-  return ranges.some(r => r.start === date)
-}
-
-function isEndOf(date, ranges) {
-  return ranges.some(r => r.end === date)
-}
-
-function formatRange(r) {
-  const s = new Date(r.start + 'T00:00:00')
-  const e = new Date(r.end + 'T00:00:00')
-  const nights = Math.round((e - s) / 86400000)
-  const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  if (nights === 0) return fmt(s)
-  return `${fmt(s)} – ${fmt(e)} (${nights} night${nights !== 1 ? 's' : ''})`
+function formatRangeSummary(ranges) {
+  const total = ranges.reduce((n, r) => {
+    return n + Math.round((new Date(r.end + 'T00:00:00') - new Date(r.start + 'T00:00:00')) / 86400000) + 1
+  }, 0)
+  const fmt = (iso) => {
+    const d = new Date(iso + 'T00:00:00')
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+  const parts = ranges.map(r =>
+    r.start === r.end ? fmt(r.start) : `${fmt(r.start)} – ${fmt(r.end)}`
+  )
+  return { parts, total }
 }
 
 export default function DateRangePicker({ value, onChange }) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
+  // Internal state: Set of selected ISO date strings
+  const [selectedDays, setSelectedDays] = useState(() => rangesToDays(value))
 
-  // Drag state kept in both ref (for stable closure) and state (for rendering)
-  const dragRef = useRef({ active: false, anchor: null, hover: null })
-  const valueRef = useRef(value)
-  const onChangeRef = useRef(onChange)
-  valueRef.current = value
-  onChangeRef.current = onChange
-
-  const [dragAnchor, setDragAnchor] = useState(null)
-  const [dragHover, setDragHover] = useState(null)
-
+  // If parent loads saved data (e.g. from API), sync into selectedDays once
   useEffect(() => {
-    const onMouseUp = () => {
-      const { active, anchor, hover } = dragRef.current
-      if (active && anchor && hover) {
-        const [s, e] = anchor <= hover ? [anchor, hover] : [hover, anchor]
-        onChangeRef.current([...valueRef.current, { start: s, end: e }])
-      }
-      dragRef.current = { active: false, anchor: null, hover: null }
-      setDragAnchor(null)
-      setDragHover(null)
-    }
-    document.addEventListener('mouseup', onMouseUp)
-    return () => document.removeEventListener('mouseup', onMouseUp)
-  }, [])
+    if (value.length > 0) setSelectedDays(rangesToDays(value))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleDay = (date) => {
+    const next = new Set(selectedDays)
+    if (next.has(date)) next.delete(date)
+    else next.add(date)
+    setSelectedDays(next)
+    onChange(daysToRanges(next))
+  }
+
+  const clearAll = () => {
+    setSelectedDays(new Set())
+    onChange([])
+  }
 
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const startDow = new Date(year, month, 1).getDay()
@@ -77,28 +93,27 @@ export default function DateRangePicker({ value, onChange }) {
     else setMonth(m => m + 1)
   }
 
-  const removeRange = (i) => onChange(value.filter((_, j) => j !== i))
-
-  // Grid: leading empty cells + days
+  // Build grid
   const cells = []
   for (let i = 0; i < startDow; i++) cells.push(null)
   for (let d = 1; d <= daysInMonth; d++) cells.push(d)
   while (cells.length % 7 !== 0) cells.push(null)
 
+  const ranges = daysToRanges(selectedDays)
+  const { parts, total } = selectedDays.size > 0 ? formatRangeSummary(ranges) : { parts: [], total: 0 }
+
   return (
     <div>
       <div style={{ fontWeight: 600, marginBottom: 6 }}>Your Available Dates</div>
       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-        Click and drag across days to mark when you can go. Add multiple windows if needed.
+        Click any day to mark it available. Click again to remove it. Navigate months with the arrows.
       </div>
 
       {/* Month navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <button type="button" onClick={prevMonth} className="btn-ghost"
-          style={{ padding: '3px 10px', fontSize: 15 }}>‹</button>
+        <button type="button" onClick={prevMonth} className="btn-ghost" style={{ padding: '3px 12px', fontSize: 16 }}>‹</button>
         <span style={{ fontWeight: 600, fontSize: 14 }}>{MONTHS[month]} {year}</span>
-        <button type="button" onClick={nextMonth} className="btn-ghost"
-          style={{ padding: '3px 10px', fontSize: 15 }}>›</button>
+        <button type="button" onClick={nextMonth} className="btn-ghost" style={{ padding: '3px 12px', fontSize: 16 }}>›</button>
       </div>
 
       {/* Calendar grid */}
@@ -111,45 +126,22 @@ export default function DateRangePicker({ value, onChange }) {
         {cells.map((day, i) => {
           if (!day) return <div key={`e${i}`} />
           const date = toISO(year, month, day)
-          const inRange = isInRanges(date, value)
-          const inPrev = isInPreview(date, dragAnchor, dragHover)
-          const isStart = isStartOf(date, value)
-          const isEnd = isEndOf(date, value)
-
-          const bg = inPrev
-            ? 'rgba(74,222,128,0.3)'
-            : inRange ? 'var(--accent-green)' : '#1e1e1e'
-          const color = (inRange && !inPrev) ? '#000' : '#fff'
-          const borderColor = inPrev ? 'var(--accent-green)' : inRange ? 'transparent' : '#2a2a2a'
-          const borderRadius = inRange
-            ? `${isStart ? 6 : 0}px ${isEnd ? 6 : 0}px ${isEnd ? 6 : 0}px ${isStart ? 6 : 0}px`
-            : '4px'
-
+          const selected = selectedDays.has(date)
           return (
             <div
               key={date}
-              onMouseDown={(e) => {
-                e.preventDefault()
-                dragRef.current = { active: true, anchor: date, hover: date }
-                setDragAnchor(date)
-                setDragHover(date)
-              }}
-              onMouseEnter={() => {
-                if (dragRef.current.active) {
-                  dragRef.current.hover = date
-                  setDragHover(date)
-                }
-              }}
+              onClick={() => toggleDay(date)}
               style={{
                 textAlign: 'center',
-                padding: '7px 0',
+                padding: '8px 0',
                 fontSize: 13,
                 cursor: 'pointer',
-                background: bg,
-                color,
-                border: `1px solid ${borderColor}`,
-                borderRadius,
-                transition: 'background 0.08s',
+                borderRadius: 5,
+                background: selected ? 'var(--accent-green)' : '#1e1e1e',
+                color: selected ? '#000' : '#fff',
+                border: `1px solid ${selected ? 'var(--accent-green)' : '#2a2a2a'}`,
+                fontWeight: selected ? 700 : 400,
+                transition: 'background 0.1s',
               }}
             >
               {day}
@@ -158,31 +150,31 @@ export default function DateRangePicker({ value, onChange }) {
         })}
       </div>
 
-      {/* Selected ranges */}
-      {value.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Selected
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {value.map((r, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{
+      {/* Summary */}
+      <div style={{ marginTop: 14, minHeight: 40 }}>
+        {selectedDays.size === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No days selected yet.</div>
+        ) : (
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Selected ({total} day{total !== 1 ? 's' : ''})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {parts.map((p, i) => (
+                <span key={i} style={{
                   background: '#1a2a1a', border: '1px solid #2d4a2d',
                   padding: '3px 10px', borderRadius: 4,
                   fontSize: 12, color: 'var(--accent-green)',
-                }}>
-                  {formatRange(r)}
-                </span>
-                <button type="button" onClick={() => removeRange(i)} className="btn-ghost"
-                  style={{ padding: '2px 6px', fontSize: 11, color: '#888', lineHeight: 1 }}>
-                  ✕
-                </button>
-              </div>
-            ))}
+                }}>{p}</span>
+              ))}
+            </div>
+            <button type="button" onClick={clearAll} className="btn-ghost"
+              style={{ fontSize: 11, padding: '2px 8px', color: '#888' }}>
+              Clear all
+            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
