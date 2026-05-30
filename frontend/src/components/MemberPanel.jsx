@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuthStore } from '../store/auth'
 import { useTripStore } from '../store/trip'
 import client from '../api/client'
@@ -14,7 +14,11 @@ export default function MemberPanel({ trip }) {
   const [inviteUrl, setInviteUrl] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteCopied, setInviteCopied] = useState(false)
+  const [inviteError, setInviteError] = useState(null)
   const [pastGolfers, setPastGolfers] = useState([])
+  const [searchResults, setSearchResults] = useState([])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchTimer = useRef(null)
 
   useEffect(() => {
     if (!trip) return
@@ -30,16 +34,39 @@ export default function MemberPanel({ trip }) {
     try { await client.post(`/trips/${trip.id}/nudge`) } finally { setNudging(false) }
   }
 
+  const onEmailChange = (val) => {
+    setInviteEmail(val)
+    setInviteError(null)
+    clearTimeout(searchTimer.current)
+    if (val.length < 2) { setSearchResults([]); setSearchOpen(false); return }
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const { data } = await client.get(`/users/search?q=${encodeURIComponent(val)}`)
+        setSearchResults(data)
+        setSearchOpen(data.length > 0)
+      } catch { setSearchResults([]) }
+    }, 300)
+  }
+
+  const selectUser = (email) => {
+    setInviteEmail(email)
+    setSearchResults([])
+    setSearchOpen(false)
+  }
+
   const sendInvite = async (e) => {
     e.preventDefault()
     if (!inviteEmail.trim()) return
     setInviting(true)
+    setInviteError(null)
     try {
       const { data } = await client.post(`/trips/${trip.id}/invite`, { email: inviteEmail.trim() })
       setInviteUrl(data.invite_url)
       setInviteEmail('')
-    } catch {
-      // silent — user would see no URL appear
+      setSearchResults([])
+      setSearchOpen(false)
+    } catch (err) {
+      setInviteError(err.response?.data?.detail || 'Invite failed')
     } finally {
       setInviting(false)
     }
@@ -100,6 +127,7 @@ export default function MemberPanel({ trip }) {
               }
               setShowInvite(!showInvite)
               setInviteUrl('')
+              setInviteError(null)
             }}
             style={{ fontSize: 12, padding: '4px 10px' }}
             className="btn-ghost"
@@ -120,7 +148,7 @@ export default function MemberPanel({ trip }) {
                     key={email}
                     type="button"
                     className="btn-ghost"
-                    onClick={() => setInviteEmail(email)}
+                    onClick={() => selectUser(email)}
                     style={{ fontSize: 11, padding: '2px 7px' }}
                   >
                     {email}
@@ -129,22 +157,57 @@ export default function MemberPanel({ trip }) {
               </div>
             </div>
           )}
-          <form onSubmit={sendInvite} style={{ display: 'flex', gap: 6 }}>
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={e => setInviteEmail(e.target.value)}
-              placeholder="friend@email.com"
-              required
-              style={{ flex: 1, fontSize: 12, padding: '5px 8px' }}
-            />
-            <button type="submit" className="btn-primary" disabled={inviting} style={{ fontSize: 12, padding: '5px 10px' }}>
-              {inviting ? '...' : 'Send'}
-            </button>
+          <form onSubmit={sendInvite}>
+            <div style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={e => onEmailChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                  onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+                  placeholder="email or search name..."
+                  required
+                  style={{ flex: 1, fontSize: 12, padding: '5px 8px' }}
+                />
+                <button type="submit" className="btn-primary" disabled={inviting} style={{ fontSize: 12, padding: '5px 10px' }}>
+                  {inviting ? '...' : 'Invite'}
+                </button>
+              </div>
+              {/* Live user search dropdown */}
+              {searchOpen && (
+                <div style={{
+                  position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                  background: '#242424', border: '1px solid #3a3a3a', borderRadius: 6,
+                  marginTop: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                }}>
+                  {searchResults.map(u => (
+                    <div
+                      key={u.id}
+                      onMouseDown={() => selectUser(u.email)}
+                      style={{
+                        padding: '7px 10px', cursor: 'pointer', fontSize: 12,
+                        borderBottom: '1px solid #2a2a2a',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#2a2a2a'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      <span style={{ color: '#fff' }}>{u.name}</span>
+                      <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>{u.email}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            {inviteError && (
+              <div style={{ fontSize: 11, color: '#f87171', marginTop: 5 }}>{inviteError}</div>
+            )}
           </form>
           {inviteUrl && (
             <div style={{ marginTop: 8 }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Invite link:</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
+                Invite link (share if they haven't signed up yet):
+              </div>
               <button
                 onClick={copyInvite}
                 className="btn-ghost"

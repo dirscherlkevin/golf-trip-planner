@@ -9,6 +9,73 @@ function fmtDate(iso) {
   return `${d.toLocaleString('en-US', { month: 'short' })} ${d.getDate()}, ${d.getFullYear()}`
 }
 
+function PendingInvites({ onJoined }) {
+  const [invites, setInvites] = useState([])
+  const [working, setWorking] = useState({})
+
+  useEffect(() => {
+    client.get('/trips/invites').then(r => setInvites(r.data)).catch(() => {})
+  }, [])
+
+  if (invites.length === 0) return null
+
+  const respond = async (tripId, action) => {
+    setWorking(w => ({ ...w, [tripId]: action }))
+    try {
+      if (action === 'join') {
+        await client.post(`/trips/${tripId}/join`)
+        onJoined(tripId)
+      } else {
+        await client.delete(`/trips/${tripId}/invite`)
+      }
+      setInvites(inv => inv.filter(i => i.trip_id !== tripId))
+    } catch {
+      // silent
+    } finally {
+      setWorking(w => { const n = { ...w }; delete n[tripId]; return n })
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div className="label" style={{ marginBottom: 10 }}>Trip Invites</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {invites.map(inv => (
+          <div key={inv.trip_id} className="card" style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            border: '1px solid #2d4a2d', background: 'rgba(74,222,128,0.04)',
+          }}>
+            <div>
+              <div style={{ fontWeight: 600 }}>{inv.trip_name}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                Invited by {inv.organizer_name}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="btn-primary"
+                onClick={() => respond(inv.trip_id, 'join')}
+                disabled={!!working[inv.trip_id]}
+                style={{ fontSize: 13, padding: '5px 16px' }}
+              >
+                {working[inv.trip_id] === 'join' ? 'Joining...' : 'Join Trip'}
+              </button>
+              <button
+                className="btn-ghost"
+                onClick={() => respond(inv.trip_id, 'decline')}
+                disabled={!!working[inv.trip_id]}
+                style={{ fontSize: 12, padding: '5px 10px', color: '#888' }}
+              >
+                Ignore
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
@@ -48,6 +115,11 @@ export default function Dashboard() {
     }
   }
 
+  const handleJoined = (tripId) => {
+    // Reload trips list after joining
+    client.get('/trips').then(r => setTrips(r.data)).catch(() => {})
+  }
+
   return (
     <div style={{ maxWidth: 680, margin: '40px auto', padding: '0 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
@@ -57,6 +129,8 @@ export default function Dashboard() {
           <button className="btn-ghost" onClick={() => { logout(); navigate('/login') }}>Sign Out</button>
         </div>
       </div>
+
+      <PendingInvites onJoined={handleJoined} />
 
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="label">Start a New Trip</div>
