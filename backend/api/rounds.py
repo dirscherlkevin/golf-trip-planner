@@ -371,3 +371,32 @@ def unlock_round(
     trip_round.locked_course_id = None
     db.commit()
     return _build_round_with_nominations(trip_round, user.id, db)
+
+
+class TeeTimeIn:
+    def __init__(self, tee_time: str = ""):
+        self.tee_time = tee_time
+
+from pydantic import BaseModel as _BM
+class _TeeTimeBody(_BM):
+    tee_time: str = ""
+
+@router.patch("/{trip_id}/rounds/{round_id}/tee-time")
+def set_tee_time(
+    trip_id: int,
+    round_id: int,
+    body: _TeeTimeBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can set tee times")
+    trip_round = db.query(TripRound).filter(
+        TripRound.id == round_id, TripRound.trip_id == trip_id
+    ).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    trip_round.tee_time = body.tee_time.strip() or None
+    db.commit()
+    return {"ok": True, "tee_time": trip_round.tee_time}

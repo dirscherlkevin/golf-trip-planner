@@ -89,7 +89,7 @@ export default function LockInPhase() {
   if (locked) {
     return (
       <div style={{ padding: '0 0 40px 0' }}>
-        <HypeMoment trip={trip} />
+        <HypeMoment trip={trip} isOrganizer={isOrganizer} />
       </div>
     )
   }

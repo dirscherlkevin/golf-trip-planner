@@ -72,29 +72,45 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
     )
     rounds = []
     for r in rounds_db:
-        course_name = "TBD"
-        course_location = ""
-        green_fee = None
-        website = None
+        course = {
+            "round_id": r.id,
+            "round_number": r.round_number,
+            "tier": r.tier,
+            "tee_time": r.tee_time,
+            "course_name": "TBD",
+            "course_location": "",
+            "green_fee": None,
+            "cart_fee": None,
+            "rating": None,
+            "slope": None,
+            "par": None,
+            "walking_policy": None,
+            "architect": None,
+            "pace_of_play": None,
+            "tee_time_window": None,
+            "website": None,
+        }
         if r.locked_course_id:
             nomination = db.query(CourseNomination).filter(
                 CourseNomination.id == r.locked_course_id
             ).first()
             if nomination and nomination.course_data:
                 cd = nomination.course_data
-                course_name = cd.get("name", "TBD")
-                course_location = cd.get("location", "")
+                course["course_name"] = cd.get("name", "TBD")
+                course["course_location"] = cd.get("location", "")
                 gf = cd.get("green_fee")
-                green_fee = float(gf) if gf is not None else None
-                website = cd.get("website") or None
-        rounds.append({
-            "round_number": r.round_number,
-            "tier": r.tier,
-            "course_name": course_name,
-            "course_location": course_location,
-            "green_fee": green_fee,
-            "website": website,
-        })
+                course["green_fee"] = float(gf) if gf is not None else None
+                cf = cd.get("cart_fee")
+                course["cart_fee"] = float(cf) if cf is not None else None
+                course["rating"] = cd.get("rating")
+                course["slope"] = cd.get("slope")
+                course["par"] = cd.get("par")
+                course["walking_policy"] = cd.get("walking_policy")
+                course["architect"] = cd.get("architect")
+                course["pace_of_play"] = cd.get("pace_of_play")
+                course["tee_time_window"] = cd.get("tee_time_window")
+                course["website"] = cd.get("website") or None
+        rounds.append(course)
 
     # Lodging
     lodging = None
@@ -109,7 +125,13 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
                 "name": od.get("name", "TBD"),
                 "type": od.get("type", ""),
                 "price_per_night": float(ppn) if ppn is not None else None,
+                "address": od.get("address") or od.get("location") or None,
+                "beds": od.get("beds"),
+                "capacity": od.get("capacity"),
+                "distance_to_courses": od.get("distance_to_courses"),
+                "amenities": od.get("amenities"),
                 "booking_link": od.get("booking_link") or None,
+                "website": od.get("website") or od.get("booking_link") or None,
             }
 
     return {

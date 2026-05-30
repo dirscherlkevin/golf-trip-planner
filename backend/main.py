@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
+from sqlalchemy import text
 
 import models.user  # noqa
 import models.trip  # noqa
@@ -41,6 +42,11 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+
+# Additive column migrations (safe to re-run with IF NOT EXISTS)
+with engine.connect() as _conn:
+    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS tee_time VARCHAR(255)"))
+    _conn.commit()
 
 from api.auth import router as auth_router
 app.include_router(auth_router, prefix="/auth", tags=["auth"])

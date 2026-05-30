@@ -27,6 +27,7 @@ class TripRound(Base):
     tier = Column(Enum(RoundTier), nullable=False)
     locked_course_id = Column(Integer, ForeignKey("course_nominations.id", use_alter=True, name="fk_trip_rounds_locked_course"), nullable=True)
     generation_status = Column(Enum(RoundGenerationStatus), nullable=False, default=RoundGenerationStatus.pending)
+    tee_time = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class CourseNomination(Base):
