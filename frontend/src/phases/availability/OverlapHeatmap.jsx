@@ -11,10 +11,10 @@ export default function OverlapHeatmap({ trip, budget, onDateClick }) {
 
   if (!overlap) return <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Loading heatmap...</div>
 
-  const max = Math.max(...overlap.days.map(d => d.count), 1)
-  const getColor = (count) => {
-    if (count === 0) return '#1a1a1a'
-    const ratio = count / max
+  const max = Math.max(...overlap.days.map(d => d.pref_count ?? d.count), 1)
+  const getGreenBg = (prefCount) => {
+    if (prefCount === 0) return '#1a1a1a'
+    const ratio = prefCount / max
     const g = Math.round(74 + ratio * (180 - 74))
     return `rgb(30, ${g}, 30)`
   }
@@ -55,25 +55,43 @@ export default function OverlapHeatmap({ trip, budget, onDateClick }) {
                 {formatMonth(month)}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                {days.map(d => (
-                  <div
-                    key={d.date}
-                    title={`${d.date}: ${d.count}/${overlap.total_members} available${onDateClick ? ' — click to select' : ''}`}
-                    onClick={() => onDateClick?.(d.date)}
-                    style={{
-                      width: 26, height: 26, borderRadius: 4,
-                      background: getColor(d.count),
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9, color: d.count > 0 ? '#fff' : 'var(--text-muted)',
-                      cursor: onDateClick ? 'pointer' : 'default',
-                      outline: onDateClick ? '1px solid transparent' : undefined,
-                    }}
-                    onMouseEnter={e => { if (onDateClick) e.currentTarget.style.outline = '1px solid var(--accent-green)' }}
-                    onMouseLeave={e => { if (onDateClick) e.currentTarget.style.outline = '1px solid transparent' }}
-                  >
-                    {new Date(d.date + 'T00:00:00').getDate()}
-                  </div>
-                ))}
+                {days.map(d => {
+                  const prefCount = d.pref_count ?? d.count
+                  const ifCount = d.count - prefCount
+                  const tooltipParts = []
+                  if (prefCount > 0) tooltipParts.push(`${prefCount} available`)
+                  if (ifCount > 0) tooltipParts.push(`${ifCount} if needed`)
+                  tooltipParts.push(`${overlap.total_members} total`)
+                  const tooltip = `${d.date}: ${tooltipParts.join(', ')}${onDateClick ? ' — click to select' : ''}`
+                  return (
+                    <div
+                      key={d.date}
+                      title={tooltip}
+                      onClick={() => onDateClick?.(d.date)}
+                      style={{
+                        width: 26, height: 26, borderRadius: 4,
+                        background: getGreenBg(prefCount),
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 9, color: prefCount > 0 ? '#fff' : 'var(--text-muted)',
+                        cursor: onDateClick ? 'pointer' : 'default',
+                        outline: onDateClick ? '1px solid transparent' : undefined,
+                        position: 'relative',
+                      }}
+                      onMouseEnter={e => { if (onDateClick) e.currentTarget.style.outline = '1px solid var(--accent-green)' }}
+                      onMouseLeave={e => { if (onDateClick) e.currentTarget.style.outline = '1px solid transparent' }}
+                    >
+                      {new Date(d.date + 'T00:00:00').getDate()}
+                      {/* Yellow dot for if_needed responses */}
+                      {ifCount > 0 && (
+                        <span style={{
+                          position: 'absolute', top: 1, right: 1,
+                          width: 5, height: 5, borderRadius: '50%',
+                          background: '#cc9900',
+                        }} />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ))}
@@ -83,18 +101,18 @@ export default function OverlapHeatmap({ trip, budget, onDateClick }) {
             </div>
           )}
           {/* Legend */}
-          <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)' }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 11, color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 2, background: getColor(1) }}/>
-              <span>1 person</span>
+              <div style={{ width: 12, height: 12, borderRadius: 2, background: getGreenBg(1) }}/>
+              <span>1 available</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 2, background: getColor(Math.ceil(max / 2)) }}/>
-              <span>half</span>
+              <div style={{ width: 12, height: 12, borderRadius: 2, background: getGreenBg(max) }}/>
+              <span>all available</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 2, background: getColor(max) }}/>
-              <span>everyone</span>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#cc9900', display: 'inline-block' }} />
+              <span style={{ color: '#cc9900' }}>if needed</span>
             </div>
           </div>
         </>

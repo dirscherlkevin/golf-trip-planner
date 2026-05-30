@@ -5,6 +5,7 @@ from typing import Optional
 class DateRange(BaseModel):
     start: str  # ISO date string "YYYY-MM-DD"
     end: str    # ISO date string "YYYY-MM-DD"
+    type: Optional[str] = "available"  # "available" or "if_needed"
 
     @model_validator(mode="after")
     def validate_range(self):
@@ -39,7 +40,8 @@ class AvailabilityOut(BaseModel):
 
 class OverlapDay(BaseModel):
     date: str  # ISO date string
-    count: int
+    count: int        # available + if_needed
+    pref_count: int = 0  # available only
 
 class OverlapOut(BaseModel):
     days: list[OverlapDay]

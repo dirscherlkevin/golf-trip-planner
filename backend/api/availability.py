@@ -44,7 +44,7 @@ def submit_availability(
         AvailabilityResponse.trip_id == trip_id,
         AvailabilityResponse.user_id == user.id
     ).first()
-    date_ranges_json = [{"start": r.start, "end": r.end} for r in data.date_ranges]
+    date_ranges_json = [{"start": r.start, "end": r.end, "type": r.type or "available"} for r in data.date_ranges]
     if existing:
         existing.date_ranges = date_ranges_json
         existing.happy_spend = data.happy_spend
@@ -74,7 +74,7 @@ def get_availability(
     member_outs = [
         MemberAvailabilityOut(
             user_id=r.user_id,
-            date_ranges=[{"start": d["start"], "end": d["end"]} for d in r.date_ranges],
+            date_ranges=[{"start": d["start"], "end": d["end"], "type": d.get("type", "available")} for d in r.date_ranges],
             submitted_at=r.submitted_at.isoformat() if r.submitted_at else None,
         )
         for r in responses
@@ -118,16 +118,20 @@ def get_overlap(
     from datetime import date
     from collections import defaultdict
     counts: dict = defaultdict(int)
+    pref_counts: dict = defaultdict(int)
     for r in responses:
         for dr in r.date_ranges:
+            dr_type = dr.get("type", "available")
             start = date.fromisoformat(dr["start"])
             end = date.fromisoformat(dr["end"])
             current = start
             while current <= end:
                 counts[current] += 1
+                if dr_type == "available":
+                    pref_counts[current] += 1
                 current += timedelta(days=1)
 
-    days = [OverlapDay(date=str(d), count=c) for d, c in sorted(counts.items())]
+    days = [OverlapDay(date=str(d), count=c, pref_count=pref_counts[d]) for d, c in sorted(counts.items())]
     return OverlapOut(days=days, total_members=total_members)
 
 @router.post("/{trip_id}/nudge", status_code=204)
