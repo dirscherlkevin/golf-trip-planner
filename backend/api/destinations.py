@@ -13,6 +13,7 @@ from schemas.destination import (
 )
 from services.phases import get_phase, lock_phase, reopen_phase
 from services.claude import generate_destinations, preview_destination_courses, enrich_destination
+from models.round import DestinationCourseCache
 from datetime import datetime, timezone, timedelta
 import statistics
 
@@ -77,10 +78,11 @@ def generate_destination_suggestions(
 
     budget_median, budget_max = _get_budget_from_availability(trip_id, db)
 
-    # Save planned_rounds to trip for future reference
+    # Save settings to trip for Phase 3 reference
     if body.planned_rounds and body.planned_rounds > 0:
         trip.planned_rounds = body.planned_rounds
-        db.flush()
+    trip.public_courses_only = body.public_courses_only
+    db.flush()
 
     # Create or update the suggestion row
     suggestion = db.query(DestinationSuggestion).filter(
@@ -127,6 +129,7 @@ def generate_destination_suggestions(
             tier_filter=body.tier_filter,
             planned_rounds=body.planned_rounds,
             region=body.region,
+            public_courses_only=body.public_courses_only,
         )
         suggestion.suggestions = results
         suggestion.generation_status = GenerationStatus.complete
@@ -348,6 +351,19 @@ def preview_courses(
             region=body.region,
             planned_rounds=body.planned_rounds,
         )
+        # Cache courses so Phase 3 can reuse them without regenerating
+        cache_row = db.query(DestinationCourseCache).filter(
+            DestinationCourseCache.trip_id == trip_id,
+            DestinationCourseCache.destination_name == body.destination_name,
+        ).first()
+        if cache_row:
+            cache_row.courses = courses
+        else:
+            db.add(DestinationCourseCache(trip_id=trip_id, destination_name=body.destination_name, courses=courses))
+        from sqlalchemy.orm.attributes import flag_modified
+        if cache_row:
+            flag_modified(cache_row, "courses")
+        db.commit()
         return {"courses": courses}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate course preview: {str(e)}")

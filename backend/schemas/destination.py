@@ -5,10 +5,11 @@ from models.destination import GenerationStatus
 
 class GenerateDestinationsIn(BaseModel):
     skill_mix: str
-    tier_filter: str = "show_all"  # "show_all", "budget", "midrange", "luxury"
+    tier_filter: str = "show_all"
     country: str = "United States"
     region: str = ""
     planned_rounds: int = 3
+    public_courses_only: bool = True
 
 class NominateDestinationIn(BaseModel):
     name: str

@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 from api.auth import get_current_user
 from models.user import User
-from models.trip import Trip, TripMember
-from models.round import TripRound, CourseNomination, CourseVote, RoundTier, RoundGenerationStatus, NominationSource
+from models.trip import Trip, TripMember  # noqa: F401 — used in bg task
+from models.round import TripRound, CourseNomination, CourseVote, DestinationCourseCache, RoundTier, RoundGenerationStatus, NominationSource
 from models.destination import DestinationSuggestion
 from models.phase import PhaseName, PhaseStatus
 from schemas.round import (
@@ -91,7 +91,27 @@ def _generate_courses_for_round_bg(trip_round_id: int, destination: str, tier: s
             ).all()
         ]
         try:
-            courses = generate_courses_for_round(destination, tier, trip_round.round_number, existing_names)
+            # Check destination course cache first
+            cached = db.query(DestinationCourseCache).filter(
+                DestinationCourseCache.trip_id == trip_round.trip_id,
+                DestinationCourseCache.destination_name == destination,
+            ).first()
+            if cached and cached.courses:
+                # Filter cached courses by tier, exclude already nominated
+                existing_lower = {n.lower() for n in existing_names}
+                tier_map = {"premium": "premium", "midrange": "midrange", "value": "value"}
+                courses = [
+                    c for c in cached.courses
+                    if c.get("tier") == tier_map.get(tier, tier)
+                    and c.get("name", "").lower() not in existing_lower
+                ][:4]
+                if not courses:
+                    # If no tier match, use all cached (tier filter was too narrow)
+                    courses = [c for c in cached.courses if c.get("name", "").lower() not in existing_lower][:4]
+            else:
+                trip = db.query(Trip).filter(Trip.id == trip_round.trip_id).first()
+                public_only = getattr(trip, 'public_courses_only', True) if trip else True
+                courses = generate_courses_for_round(destination, tier, trip_round.round_number, existing_names, public_only)
             for course in courses:
                 db.add(CourseNomination(
                     round_id=trip_round_id,
@@ -442,3 +462,89 @@ def set_tee_time(
         trip_round.round_date = _date.fromisoformat(body.round_date) if body.round_date else None
     db.commit()
     return {"ok": True, "tee_time": trip_round.tee_time, "round_date": str(trip_round.round_date) if trip_round.round_date else None}
+
+
+class _AddRoundBody(_BM):
+    tier: str = "midrange"
+
+@router.post("/{trip_id}/rounds/add", response_model=list)
+def add_round(
+    trip_id: int,
+    body: _AddRoundBody,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can add rounds")
+    try:
+        tier = RoundTier(body.tier)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="tier must be premium, midrange, or value")
+
+    existing = db.query(TripRound).filter(TripRound.trip_id == trip_id).order_by(TripRound.round_number).all()
+    next_number = (max(r.round_number for r in existing) + 1) if existing else 1
+
+    destination = _get_destination_name(trip_id, db)
+    import os; from dotenv import load_dotenv; load_dotenv()
+    db_url = os.getenv("DATABASE_URL")
+
+    trip_round = TripRound(
+        trip_id=trip_id, round_number=next_number, tier=tier,
+        generation_status=RoundGenerationStatus.pending,
+    )
+    db.add(trip_round)
+    db.flush()
+    background_tasks.add_task(_generate_courses_for_round_bg, trip_round.id, destination, tier.value, db_url)
+    db.commit()
+
+    all_rounds = db.query(TripRound).filter(TripRound.trip_id == trip_id).order_by(TripRound.round_number).all()
+    return [_build_round_with_nominations(r, user.id, db) for r in all_rounds]
+
+
+@router.delete("/{trip_id}/rounds/{round_id}", response_model=list)
+def remove_round(
+    trip_id: int,
+    round_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can remove rounds")
+    trip_round = db.query(TripRound).filter(TripRound.id == round_id, TripRound.trip_id == trip_id).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    if trip_round.locked_course_id is not None:
+        raise HTTPException(status_code=409, detail="Unlock the course before removing this round")
+    db.delete(trip_round)
+    db.flush()
+    # Renumber remaining rounds
+    remaining = db.query(TripRound).filter(TripRound.trip_id == trip_id).order_by(TripRound.round_number).all()
+    for i, r in enumerate(remaining, 1):
+        r.round_number = i
+    db.commit()
+    return [_build_round_with_nominations(r, user.id, db) for r in remaining]
+
+
+class _BookedBody(_BM):
+    booked: bool
+
+@router.patch("/{trip_id}/rounds/{round_id}/booked")
+def set_round_booked(
+    trip_id: int,
+    round_id: int,
+    body: _BookedBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can mark rounds as booked")
+    trip_round = db.query(TripRound).filter(TripRound.id == round_id, TripRound.trip_id == trip_id).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    trip_round.booked = body.booked
+    db.commit()
+    return {"ok": True, "booked": trip_round.booked}

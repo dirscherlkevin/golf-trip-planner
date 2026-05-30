@@ -86,6 +86,11 @@ def lock_trip(
 
     # Finalize the trip
     trip.status = TripStatus.finalized
+
+    # Delete destination course cache (no longer needed after finalize)
+    from models.round import DestinationCourseCache
+    db.query(DestinationCourseCache).filter(DestinationCourseCache.trip_id == trip_id).delete()
+
     db.commit()
     db.refresh(trip)
 

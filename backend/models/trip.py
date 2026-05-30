@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Date
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Date, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -21,6 +21,8 @@ class Trip(Base):
     trip_end = Column(Date, nullable=True)
     planned_rounds = Column(Integer, nullable=True)
     locked_lodging_option_id = Column(Integer, ForeignKey("lodging_options.id", use_alter=True, name="fk_trips_locked_lodging_option"), nullable=True)
+    public_courses_only = Column(Boolean, nullable=False, default=True, server_default='true')
+    lodging_booked = Column(Boolean, nullable=False, default=False, server_default='false')
 
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
 

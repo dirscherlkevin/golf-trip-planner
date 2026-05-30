@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, DateTime, Date, ForeignKey, Enum, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Enum, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from database import Base
@@ -29,6 +29,7 @@ class TripRound(Base):
     generation_status = Column(Enum(RoundGenerationStatus), nullable=False, default=RoundGenerationStatus.pending)
     tee_time = Column(String, nullable=True)
     round_date = Column(Date, nullable=True)
+    booked = Column(Boolean, nullable=False, default=False, server_default='false')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class CourseNomination(Base):
@@ -52,3 +53,14 @@ class CourseVote(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (UniqueConstraint("nomination_id", "user_id", name="uq_course_vote_nom_user"),)
+
+
+class DestinationCourseCache(Base):
+    """Caches AI-generated courses per destination so Phase 3 doesn't re-generate."""
+    __tablename__ = "destination_course_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    trip_id = Column(Integer, ForeignKey("trips.id", ondelete="CASCADE"), nullable=False)
+    destination_name = Column(String, nullable=False)
+    courses = Column(JSONB, nullable=False, default=list)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

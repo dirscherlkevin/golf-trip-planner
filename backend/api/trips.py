@@ -159,6 +159,17 @@ def delete_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depend
     db.commit()
     return {"ok": True}
 
+@router.patch("/{trip_id}/lodging-booked")
+def set_lodging_booked(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can mark lodging as booked")
+    trip.lodging_booked = not trip.lodging_booked
+    db.commit()
+    return {"ok": True, "lodging_booked": trip.lodging_booked}
+
 @router.get("/{trip_id}/past-golfers")
 def get_past_golfers(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Return distinct emails of people from the user's other trips, excluding already-invited emails."""

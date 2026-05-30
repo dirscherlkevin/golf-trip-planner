@@ -56,6 +56,7 @@ def generate_destinations(
     tier_filter: str,
     planned_rounds: int = 3,
     region: str = "",
+    public_courses_only: bool = True,
 ) -> list[dict]:
     """Generate 3 destination suggestions. Returns list of destination dicts."""
     budget_note = ""
@@ -65,6 +66,7 @@ def generate_destinations(
         budget_note += f" Max budget: ${budget_max:,.0f}/person."
 
     region_note = f"\n- Preferred region/area: {region}" if region.strip() else ""
+    access_note = "\n- Courses: public access only (no private clubs or members-only courses)" if public_courses_only else ""
 
     prompt = f"""You are a golf travel expert. Suggest 3 golf destinations for a group trip.
 
@@ -75,7 +77,7 @@ Trip details:
 - Country: {country}{region_note}
 - Budget tier filter: {tier_filter}
 - Planned rounds: {planned_rounds} rounds of golf
-- Lodging assumption: ~$100/person/night (factor this into overall cost; only the green fees portion should be counted in est_cost_per_person_rounds)
+- Lodging assumption: ~$100/person/night (factor this into overall cost; only the green fees portion should be counted in est_cost_per_person_rounds){access_note}
 {budget_note}
 
 Return ONLY a JSON array with exactly 3 objects. Each object must have:
@@ -175,17 +177,20 @@ def generate_courses_for_round(
     tier: str,
     round_number: int,
     existing_course_names: list[str],
+    public_courses_only: bool = True,
 ) -> list[dict]:
     """Generate 3-4 course options for a specific round at a given tier near a destination."""
     exclude_note = ""
     if existing_course_names:
         exclude_note = f"Exclude these courses already nominated: {', '.join(existing_course_names)}."
 
+    access_note = "\n- Public access only: no private clubs or members-only courses" if public_courses_only else ""
+
     prompt = f"""You are a golf course expert. Suggest 3-4 courses for Round {round_number} of a golf trip.
 
 Round details:
 - Destination/area: {destination}
-- Tier: {tier} (premium = top-rated/expensive, midrange = great value $100-200, value = affordable under $100)
+- Tier: {tier} (premium = top-rated/expensive, midrange = great value $100-200, value = affordable under $100){access_note}
 {exclude_note}
 
 Return ONLY a JSON array. Each object must have:

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store/auth'
 import { useTripStore } from '../../store/trip'
-import { getRounds } from '../../api/rounds'
+import { getRounds, addRound, removeRound } from '../../api/rounds'
 import { getLodging } from '../../api/lodging'
 import RoundsSetup from './RoundsSetup'
 import RoundVoting from './RoundVoting'
@@ -138,6 +138,10 @@ export default function PlanningPhase() {
 }
 
 function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsSetup, onRoundUpdated }) {
+  const [addingRound, setAddingRound] = useState(false)
+  const [addTier, setAddTier] = useState('midrange')
+  const [removingId, setRemovingId] = useState(null)
+
   if (!trip) return null
 
   if (loadError) {
@@ -149,12 +153,10 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsS
     )
   }
 
-  // Still loading
   if (rounds === null) {
     return <div style={{ color: 'var(--text-secondary)', padding: 24 }}>Loading rounds...</div>
   }
 
-  // No rounds set up yet
   if (!hasRounds) {
     if (isOrganizer) {
       return <RoundsSetup trip={trip} onSetup={onRoundsSetup} />
@@ -165,25 +167,67 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsS
         <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 12 }}>
           The organizer is configuring the rounds. This page will update automatically.
         </div>
-        <button className="btn-ghost" onClick={onRoundUpdated} style={{ fontSize: 12 }}>
-          Refresh now
-        </button>
+        <button className="btn-ghost" onClick={onRoundUpdated} style={{ fontSize: 12 }}>Refresh now</button>
       </div>
     )
   }
 
-  // Rounds exist — show voting for each
+  const handleAddRound = async () => {
+    setAddingRound(true)
+    try {
+      const updated = await addRound(trip.id, addTier)
+      onRoundsSetup(updated)
+    } catch { /* ignore */ } finally {
+      setAddingRound(false)
+    }
+  }
+
+  const handleRemoveRound = async (roundId) => {
+    setRemovingId(roundId)
+    try {
+      const updated = await removeRound(trip.id, roundId)
+      onRoundsSetup(updated)
+    } catch { /* ignore */ } finally {
+      setRemovingId(null)
+    }
+  }
+
   return (
     <div>
       {rounds.map(round => (
-        <RoundVoting
-          key={round.id}
-          round={round}
-          tripId={trip.id}
-          isOrganizer={isOrganizer}
-          onUpdated={onRoundUpdated}
-        />
+        <div key={round.id} style={{ position: 'relative' }}>
+          <RoundVoting round={round} tripId={trip.id} isOrganizer={isOrganizer} onUpdated={onRoundUpdated} />
+          {isOrganizer && round.locked_course_id == null && (
+            <button
+              onClick={() => handleRemoveRound(round.id)}
+              disabled={removingId === round.id}
+              style={{
+                position: 'absolute', top: 10, right: 10,
+                background: 'none', border: '1px solid #e55', borderRadius: 4,
+                color: '#e55', fontSize: 11, padding: '2px 8px', cursor: 'pointer',
+              }}
+            >
+              {removingId === round.id ? '...' : '− Remove Round'}
+            </button>
+          )}
+        </div>
       ))}
+      {isOrganizer && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Add a round:</span>
+          {['premium', 'midrange', 'value'].map(t => (
+            <button key={t} onClick={() => setAddTier(t)}
+              className={addTier === t ? 'btn-primary' : 'btn-ghost'}
+              style={{ fontSize: 12, padding: '4px 10px', textTransform: 'capitalize' }}>
+              {t}
+            </button>
+          ))}
+          <button className="btn-ghost" onClick={handleAddRound} disabled={addingRound}
+            style={{ fontSize: 12, padding: '4px 12px' }}>
+            {addingRound ? 'Adding...' : '+ Add Round'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -47,6 +47,9 @@ Base.metadata.create_all(bind=engine)
 with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS tee_time VARCHAR(255)"))
     _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS round_date DATE"))
+    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS booked BOOLEAN NOT NULL DEFAULT FALSE"))
+    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS public_courses_only BOOLEAN NOT NULL DEFAULT TRUE"))
+    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_booked BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user"))
     _conn.execute(text("""
         DO $$ BEGIN

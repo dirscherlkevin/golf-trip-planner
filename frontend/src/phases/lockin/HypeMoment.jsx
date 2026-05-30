@@ -130,7 +130,28 @@ function RoundScheduleEditor({ tripId, roundId, initialDate, initialTee, isOrgan
   )
 }
 
+function BookedCheck({ checked, onChange, label }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginTop: 8, fontSize: 12 }}>
+      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
+        style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent-green)' }} />
+      <span style={{ color: checked ? 'var(--accent-green)' : 'var(--text-muted)' }}>
+        {checked ? '✓ Booked' : label}
+      </span>
+    </label>
+  )
+}
+
 function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
+  const [booked, setBooked] = useState(round.booked ?? false)
+
+  const toggleBooked = async (val) => {
+    setBooked(val)
+    try {
+      await client.patch(`/trips/${tripId}/rounds/${round.round_id}/booked`, { booked: val })
+    } catch { setBooked(!val) }
+  }
+
   const feeStr = round.green_fee
     ? `$${round.green_fee}${round.cart_fee ? ` + $${round.cart_fee} cart` : ''}`
     : null
@@ -176,11 +197,25 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
         isOrganizer={isOrganizer}
         dateOptions={dateOptions}
       />
+      {isOrganizer && (
+        <BookedCheck checked={booked} onChange={toggleBooked} label="Mark as booked" />
+      )}
+      {!isOrganizer && booked && (
+        <div style={{ fontSize: 12, color: 'var(--accent-green)', marginTop: 8 }}>✓ Booked</div>
+      )}
     </div>
   )
 }
 
-function LodgingCard({ lodging }) {
+function LodgingCard({ lodging, tripId, isOrganizer, initialBooked }) {
+  const [booked, setBooked] = useState(initialBooked ?? false)
+
+  const toggleBooked = async (val) => {
+    setBooked(val)
+    try {
+      await client.patch(`/trips/${tripId}/lodging-booked`)
+    } catch { setBooked(!val) }
+  }
   return (
     <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 18px' }}>
       <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 2 }}>{lodging.name}</div>
@@ -211,6 +246,12 @@ function LodgingCard({ lodging }) {
           style={{ fontSize: 13, color: 'var(--accent-green)', display: 'inline-block', marginTop: 8 }}>
           View / Book ↗
         </a>
+      )}
+      {isOrganizer && (
+        <BookedCheck checked={booked} onChange={toggleBooked} label="Mark lodging as booked" />
+      )}
+      {!isOrganizer && booked && (
+        <div style={{ fontSize: 12, color: 'var(--accent-green)', marginTop: 8 }}>✓ Booked</div>
       )}
     </div>
   )
@@ -295,7 +336,7 @@ export default function HypeMoment({ trip, isOrganizer }) {
 
           {data.lodging && (
             <Section title="Where We're Staying">
-              <LodgingCard lodging={data.lodging} />
+              <LodgingCard lodging={data.lodging} tripId={trip.id} isOrganizer={isOrganizer} initialBooked={data.lodging_booked} />
             </Section>
           )}
 

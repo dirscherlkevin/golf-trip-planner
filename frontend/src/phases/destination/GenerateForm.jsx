@@ -15,6 +15,7 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
   const [region, setRegion] = useState('')
   const [plannedRoundsStr, setPlannedRoundsStr] = useState('3')
   const plannedRounds = Math.max(1, parseInt(plannedRoundsStr, 10) || 1)
+  const [publicOnly, setPublicOnly] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -30,6 +31,7 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
         country,
         region,
         planned_rounds: plannedRounds,
+        public_courses_only: publicOnly,
       })
       onGenerated(result)
     } catch (err) {
@@ -58,6 +60,14 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
             value={skillMix}
             onChange={e => setSkillMix(e.target.value)}
           />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          <input type="checkbox" checked={publicOnly} onChange={e => setPublicOnly(e.target.checked)}
+            style={{ width: 16, height: 16, cursor: 'pointer' }} />
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>Public courses only</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Exclude private clubs and members-only courses</div>
+          </div>
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={{ fontWeight: 600, fontSize: 13 }}>Planned Rounds</span>
