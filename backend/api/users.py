@@ -19,8 +19,11 @@ def search_users(
     """Search registered users by email prefix. Excludes the caller."""
     results = (
         db.query(User)
-        .filter(User.email.ilike(f"{q}%"), User.id != user.id)
+        .filter(
+            (User.email.ilike(f"%{q}%")) | (User.name.ilike(f"%{q}%")),
+            User.id != user.id,
+        )
         .limit(8)
         .all()
     )
-    return [{"id": u.id, "email": u.email, "name": _email_to_name(u.email)} for u in results]
+    return [{"id": u.id, "email": u.email, "name": u.name} for u in results]

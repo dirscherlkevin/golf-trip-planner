@@ -85,8 +85,8 @@ def invite_member(trip_id: int, data: InviteCreate, db: Session = Depends(get_db
         raise HTTPException(status_code=409, detail="This person has already been invited")
 
     token = str(uuid.uuid4())
-    # Link to existing user account if email matches
-    invited_user = db.query(User).filter(User.email == data.email.lower()).first()
+    # Link to existing user account if email matches (case-insensitive)
+    invited_user = db.query(User).filter(User.email.ilike(data.email)).first()
     member = TripMember(
         trip_id=trip_id,
         invite_email=data.email.lower(),

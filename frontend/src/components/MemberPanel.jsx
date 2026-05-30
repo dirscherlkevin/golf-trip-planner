@@ -56,7 +56,7 @@ export default function MemberPanel({ trip }) {
 
   const sendInvite = async (e) => {
     e.preventDefault()
-    if (!inviteEmail.trim()) return
+    if (!inviteEmail.trim() || !inviteEmail.includes('@')) return
     setInviting(true)
     setInviteError(null)
     try {
@@ -161,13 +161,12 @@ export default function MemberPanel({ trip }) {
             <div style={{ position: 'relative' }}>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input
-                  type="email"
+                  type="text"
                   value={inviteEmail}
                   onChange={e => onEmailChange(e.target.value)}
                   onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
                   onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
-                  placeholder="email or search name..."
-                  required
+                  placeholder="search name or type email..."
                   style={{ flex: 1, fontSize: 12, padding: '5px 8px' }}
                 />
                 <button type="submit" className="btn-primary" disabled={inviting} style={{ fontSize: 12, padding: '5px 10px' }}>

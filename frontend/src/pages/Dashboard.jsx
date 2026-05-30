@@ -14,7 +14,10 @@ function PendingInvites({ onJoined }) {
   const [working, setWorking] = useState({})
 
   useEffect(() => {
-    client.get('/trips/invites').then(r => setInvites(r.data)).catch(() => {})
+    const load = () => client.get('/trips/invites').then(r => setInvites(r.data)).catch(() => {})
+    load()
+    const id = setInterval(load, 15000)
+    return () => clearInterval(id)
   }, [])
 
   if (invites.length === 0) return null
