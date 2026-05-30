@@ -28,15 +28,19 @@ function tripDateOptions(tripStart, tripEnd) {
 
 function RoundScheduleEditor({ tripId, roundId, initialDate, initialTee, isOrganizer, dateOptions }) {
   const [date, setDate] = useState(initialDate || '')
-  const [tee, setTee] = useState(initialTee || '')
+  // Tee times stored as comma-separated string; split into array for display
+  const [teeTimes, setTeeTimes] = useState(() =>
+    initialTee ? initialTee.split(',').map(t => t.trim()).filter(Boolean) : ['']
+  )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const save = async (newDate, newTee) => {
+  const save = async (newDate, newTimes) => {
     setSaving(true)
+    const teeStr = newTimes.filter(t => t.trim()).join(', ')
     try {
       await client.patch(`/trips/${tripId}/rounds/${roundId}/tee-time`, {
-        tee_time: newTee,
+        tee_time: teeStr,
         round_date: newDate || null,
       })
       setSaved(true)
@@ -50,27 +54,36 @@ function RoundScheduleEditor({ tripId, roundId, initialDate, initialTee, isOrgan
 
   const handleDateChange = (val) => {
     setDate(val)
-    save(val, tee)
+    save(val, teeTimes)
   }
 
-  if (!isOrganizer && !date && !tee) return null
+  const updateTeeTime = (idx, val) => {
+    const next = [...teeTimes]
+    next[idx] = val
+    setTeeTimes(next)
+  }
+
+  const addTeeTime = () => setTeeTimes(t => [...t, ''])
+
+  const removeTeeTime = (idx) => {
+    const next = teeTimes.filter((_, i) => i !== idx)
+    setTeeTimes(next.length ? next : [''])
+    save(date, next.length ? next : [])
+  }
+
+  const hasAnyTime = teeTimes.some(t => t.trim())
+  if (!isOrganizer && !date && !hasAnyTime) return null
 
   return (
     <div style={{ marginTop: 10, padding: '10px 12px', background: '#111', borderRadius: 6, border: '1px solid #2a2a2a' }}>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Round Date</div>
           {isOrganizer ? (
-            <select
-              value={date}
-              onChange={e => handleDateChange(e.target.value)}
-              disabled={saving}
-              style={{ padding: '5px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#fff', fontSize: 13 }}
-            >
+            <select value={date} onChange={e => handleDateChange(e.target.value)} disabled={saving}
+              style={{ padding: '5px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#fff', fontSize: 13 }}>
               <option value="">— not set —</option>
-              {dateOptions.map(d => (
-                <option key={d.iso} value={d.iso}>{d.label}</option>
-              ))}
+              {dateOptions.map(d => <option key={d.iso} value={d.iso}>{d.label}</option>)}
             </select>
           ) : (
             <span style={{ fontSize: 14, fontWeight: 600 }}>
@@ -79,22 +92,37 @@ function RoundScheduleEditor({ tripId, roundId, initialDate, initialTee, isOrgan
           )}
         </div>
         <div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tee Time</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Tee Time{teeTimes.filter(t => t.trim()).length > 1 ? 's' : ''}
+          </div>
           {isOrganizer ? (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input
-                type="text"
-                value={tee}
-                onChange={e => setTee(e.target.value)}
-                onBlur={() => save(date, tee)}
-                placeholder="e.g. 8:30 AM"
-                style={{ padding: '5px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#fff', fontSize: 13, width: 120 }}
-              />
-              {saved && <span style={{ fontSize: 11, color: 'var(--accent-green)' }}>✓ Saved</span>}
-              {saving && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>saving…</span>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {teeTimes.map((t, i) => (
+                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input type="text" value={t} onChange={e => updateTeeTime(i, e.target.value)}
+                    onBlur={() => save(date, teeTimes)}
+                    placeholder="e.g. 8:30 AM"
+                    style={{ padding: '5px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#fff', fontSize: 13, width: 110 }} />
+                  {teeTimes.length > 1 && (
+                    <button onClick={() => removeTeeTime(i)}
+                      style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 14, padding: '0 4px' }}>×</button>
+                  )}
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                <button className="btn-ghost" onClick={addTeeTime}
+                  style={{ fontSize: 11, padding: '2px 8px' }}>+ Add tee time</button>
+                {saved && <span style={{ fontSize: 11, color: 'var(--accent-green)' }}>✓ Saved</span>}
+                {saving && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>saving…</span>}
+              </div>
             </div>
           ) : (
-            <span style={{ fontSize: 14, fontWeight: 600, color: tee ? '#fff' : 'var(--text-muted)' }}>{tee || '—'}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {teeTimes.filter(t => t.trim()).map((t, i) => (
+                <span key={i} style={{ fontSize: 14, fontWeight: 600 }}>{t}</span>
+              ))}
+              {!hasAnyTime && <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>—</span>}
+            </div>
           )}
         </div>
       </div>

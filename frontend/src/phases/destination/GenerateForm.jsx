@@ -13,7 +13,8 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
   const [tierFilter, setTierFilter] = useState('show_all')
   const [country, setCountry] = useState('United States')
   const [region, setRegion] = useState('')
-  const [plannedRounds, setPlannedRounds] = useState(3)
+  const [plannedRoundsStr, setPlannedRoundsStr] = useState('3')
+  const plannedRounds = Math.max(1, parseInt(plannedRoundsStr, 10) || 1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -63,8 +64,8 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               type="number" min="1" max="10"
-              value={plannedRounds}
-              onChange={e => setPlannedRounds(parseInt(e.target.value) || 3)}
+              value={plannedRoundsStr}
+              onChange={e => setPlannedRoundsStr(e.target.value)}
               style={{ width: 70 }}
             />
             <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>rounds of golf</span>

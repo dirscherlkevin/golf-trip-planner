@@ -90,7 +90,7 @@ export default function AvailabilityPhase() {
         <div style={{ flex: '1 1 320px' }}>
           <div className="card">
             <form onSubmit={handleSubmit}>
-              <DateRangePicker value={dateRanges} onChange={setDateRanges} />
+              <DateRangePicker value={dateRanges} onChange={setDateRanges} readOnly={saved} />
               <div style={{ margin: '20px 0' }}>
                 <BudgetVoteForm
                   happySpend={budget.happySpend}

@@ -61,7 +61,7 @@ function buildSummary(map) {
   return { availParts, ifParts, totalAvail, totalIf }
 }
 
-export default function DateRangePicker({ value, onChange }) {
+export default function DateRangePicker({ value, onChange, readOnly = false }) {
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
@@ -77,6 +77,7 @@ export default function DateRangePicker({ value, onChange }) {
   }, [value, synced])
 
   const toggleDay = (date) => {
+    if (readOnly) return
     const next = new Map(selectedMap)
     const cur = next.get(date)
     if (!cur) next.set(date, 'available')
@@ -87,6 +88,7 @@ export default function DateRangePicker({ value, onChange }) {
   }
 
   const clearAll = () => {
+    if (readOnly) return
     setSelectedMap(new Map())
     onChange([])
   }
@@ -116,19 +118,25 @@ export default function DateRangePicker({ value, onChange }) {
       <div style={{ fontWeight: 600, marginBottom: 6 }}>Your Available Dates</div>
 
       {/* Legend / instructions */}
-      <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, flexWrap: 'wrap' }}>
-        <span>Click once:</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--accent-green)', display: 'inline-block' }} />
-          <span style={{ color: 'var(--accent-green)' }}>Available</span>
-        </span>
-        <span>· again:</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#cc9900', display: 'inline-block' }} />
-          <span style={{ color: '#cc9900' }}>If Needed</span>
-        </span>
-        <span>· again: off</span>
-      </div>
+      {readOnly ? (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, padding: '6px 10px', background: '#1a1a1a', borderRadius: 6, border: '1px solid #2a2a2a' }}>
+          🔒 Submitted — hit <strong>Edit</strong> above to make changes.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, flexWrap: 'wrap' }}>
+          <span>Click once:</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--accent-green)', display: 'inline-block' }} />
+            <span style={{ color: 'var(--accent-green)' }}>Available</span>
+          </span>
+          <span>· again:</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 2, background: '#cc9900', display: 'inline-block' }} />
+            <span style={{ color: '#cc9900' }}>If Needed</span>
+          </span>
+          <span>· again: off</span>
+        </div>
+      )}
 
       {/* Month navigation */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -159,9 +167,10 @@ export default function DateRangePicker({ value, onChange }) {
                 cursor: 'pointer',
                 borderRadius: 5,
                 background: state ? STATE_BG[state] : '#1e1e1e',
-                color: state ? '#000' : '#fff',
+                color: state ? '#000' : readOnly ? '#555' : '#fff',
                 border: `1px solid ${state ? STATE_BORDER[state] : '#2a2a2a'}`,
                 fontWeight: state ? 700 : 400,
+                opacity: readOnly && !state ? 0.4 : 1,
                 transition: 'background 0.1s',
               }}
             >
@@ -209,10 +218,12 @@ export default function DateRangePicker({ value, onChange }) {
                 </div>
               </div>
             )}
-            <button type="button" onClick={clearAll} className="btn-ghost"
-              style={{ fontSize: 11, padding: '2px 8px', color: '#888' }}>
-              Clear all
-            </button>
+            {!readOnly && (
+              <button type="button" onClick={clearAll} className="btn-ghost"
+                style={{ fontSize: 11, padding: '2px 8px', color: '#888' }}>
+                Clear all
+              </button>
+            )}
           </div>
         )}
       </div>

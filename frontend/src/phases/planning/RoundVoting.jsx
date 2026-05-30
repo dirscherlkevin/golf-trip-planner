@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { voteOnCourse, lockRound, unlockRound, generateMoreCourses, nominateCourse, removeCourseNomination } from '../../api/rounds'
+import client from '../../api/client'
 
 const TIER_LABELS = {
   premium: 'Premium',
@@ -217,6 +218,8 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
 export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
   const [generatingMore, setGeneratingMore] = useState(false)
   const [generateError, setGenerateError] = useState(null)
+  const [changingTier, setChangingTier] = useState(false)
+  const [showTierChange, setShowTierChange] = useState(false)
   const [manualName, setManualName] = useState('')
   const [manualLocation, setManualLocation] = useState('')
   const [manualGreenFee, setManualGreenFee] = useState('')
@@ -244,6 +247,19 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
   }
   const lockedNom = isLocked ? round.nominations?.find(n => n.id === lockedNomId) : null
   const tierLabel = TIER_LABELS[round.tier] ?? round.tier
+
+  const handleTierChange = async (newTier) => {
+    setChangingTier(true)
+    try {
+      await client.patch(`/trips/${tripId}/rounds/${round.id}/tier`, { tier: newTier })
+      onUpdated()
+      setShowTierChange(false)
+    } catch {
+      // ignore
+    } finally {
+      setChangingTier(false)
+    }
+  }
 
   const handleGenerateMore = async () => {
     if (generatingMore) return
@@ -302,7 +318,7 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
     <div style={cardStyle}>
       {/* Header */}
       <div style={headerStyle}>
-        <div>
+        <div style={{ flex: 1 }}>
           <span style={{ fontWeight: 700, fontSize: 15 }}>
             Round {round.round_number}: {tierLabel}
           </span>
@@ -311,25 +327,39 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
               ✅ Locked: {lockedNom.course_data?.name ?? 'Unknown'}
             </span>
           )}
+          {/* Tier change (organizer, not locked) */}
+          {isOrganizer && !isLocked && (
+            <div style={{ marginTop: 4 }}>
+              {!showTierChange ? (
+                <button className="btn-ghost" onClick={() => setShowTierChange(true)}
+                  style={{ fontSize: 10, padding: '2px 6px', color: '#888' }}>
+                  Change tier
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {['premium', 'midrange', 'value'].map(t => (
+                    <button key={t} className={round.tier === t ? 'btn-primary' : 'btn-ghost'}
+                      onClick={() => handleTierChange(t)} disabled={changingTier}
+                      style={{ fontSize: 10, padding: '2px 8px', textTransform: 'capitalize' }}>
+                      {t}
+                    </button>
+                  ))}
+                  <button className="btn-ghost" onClick={() => setShowTierChange(false)}
+                    style={{ fontSize: 10, padding: '2px 6px', color: '#888' }}>✕</button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {isOrganizer && isLocked && (
-          <button
-            className="btn-ghost"
-            onClick={handleUnlock}
-            disabled={unlocking}
-            style={{ fontSize: 12 }}
-          >
+          <button className="btn-ghost" onClick={handleUnlock} disabled={unlocking} style={{ fontSize: 12 }}>
             {unlocking ? 'Unlocking...' : 'Unlock Course'}
           </button>
         )}
         {isOrganizer && !isLocked && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <button
-              className="btn-ghost"
-              onClick={handleGenerateMore}
-              disabled={generatingMore || round.generation_status === 'pending'}
-              style={{ fontSize: 12 }}
-            >
+            <button className="btn-ghost" onClick={handleGenerateMore}
+              disabled={generatingMore || round.generation_status === 'pending'} style={{ fontSize: 12 }}>
               {generatingMore ? 'Requesting...' : 'Suggest More'}
             </button>
             {generateError && <div style={{ fontSize: 11, color: '#e55' }}>{generateError}</div>}

@@ -286,9 +286,9 @@ def nominate_destination(
     # Enrich with AI — fills in why_it_fits, top_courses, est_cost, booking_warning
     try:
         enriched = enrich_destination(body.name.strip(), body.region.strip(), trip.planned_rounds or 3)
-        # User-supplied values take priority (don't overwrite if they provided something)
-        merged = {**enriched, **{k: v for k, v in base_dest.items() if v is not None}}
-        new_dest = merged
+        # User-supplied non-empty values take priority; empty list/None don't override enriched data
+        user_overrides = {k: v for k, v in base_dest.items() if v is not None and v != [] and v != ""}
+        new_dest = {**enriched, **user_overrides}
     except Exception:
         new_dest = {**base_dest, "why_it_fits": base_dest["why_it_fits"] or "Manually added by organizer."}
 

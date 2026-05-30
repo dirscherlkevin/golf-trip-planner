@@ -213,6 +213,69 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, lockedOptId,
   )
 }
 
+function ManualLodgingForm({ tripId, onAdded }) {
+  const [name, setName] = useState('')
+  const [price, setPrice] = useState('')
+  const [type, setType] = useState('')
+  const [address, setAddress] = useState('')
+  const [beds, setBeds] = useState('')
+  const [capacity, setCapacity] = useState('')
+  const [link, setLink] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleAdd = async () => {
+    if (!name.trim()) return
+    setAdding(true)
+    setError(null)
+    try {
+      await nominateLodging(tripId, {
+        option_data: {
+          name: name.trim(),
+          price_per_night: price ? parseFloat(price) : undefined,
+          type: type.trim() || undefined,
+          address: address.trim() || undefined,
+          beds: beds ? parseInt(beds, 10) : undefined,
+          capacity: capacity ? parseInt(capacity, 10) : undefined,
+          booking_link: link.trim() || undefined,
+        },
+      })
+      setName(''); setPrice(''); setType(''); setAddress(''); setBeds(''); setCapacity(''); setLink('')
+      onAdded()
+    } catch {
+      setError('Failed to add lodging. Try again.')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
+        {[
+          { label: 'Name *', val: name, set: setName, ph: 'e.g. Sycamore House', w: 180 },
+          { label: 'Type', val: type, set: setType, ph: 'vacation rental, hotel…', w: 150 },
+          { label: 'Price/night ($)', val: price, set: setPrice, ph: '850', w: 110, type: 'number' },
+          { label: 'Beds', val: beds, set: setBeds, ph: '4', w: 70, type: 'number' },
+          { label: 'Sleeps', val: capacity, set: setCapacity, ph: '8', w: 70, type: 'number' },
+          { label: 'Address', val: address, set: setAddress, ph: '123 Golf Rd…', w: 200 },
+          { label: 'Booking link', val: link, set: setLink, ph: 'https://…', w: 200 },
+        ].map(({ label, val, set, ph, w, type: t }) => (
+          <div key={label}>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</label>
+            <input type={t || 'text'} value={val} onChange={e => set(e.target.value)} placeholder={ph}
+              style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: w }} />
+          </div>
+        ))}
+        <button className="btn-primary" onClick={handleAdd} disabled={adding || !name.trim()} style={{ fontSize: 13 }}>
+          {adding ? 'Enriching with AI...' : 'Add'}
+        </button>
+      </div>
+      {error && <div style={{ fontSize: 12, color: '#e55', marginTop: 4 }}>{error}</div>}
+    </div>
+  )
+}
+
 export default function LodgingVoting({ trip, onLodgingUpdated }) {
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
@@ -227,15 +290,6 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
   const [setupError, setSetupError] = useState(null)
 
   const [generatingMore, setGeneratingMore] = useState(false)
-  const [manualName, setManualName] = useState('')
-  const [manualPrice, setManualPrice] = useState('')
-  const [manualType, setManualType] = useState('')
-  const [manualAddress, setManualAddress] = useState('')
-  const [manualBeds, setManualBeds] = useState('')
-  const [manualCapacity, setManualCapacity] = useState('')
-  const [manualLink, setManualLink] = useState('')
-  const [addingManual, setAddingManual] = useState(false)
-  const [manualError, setManualError] = useState(null)
   const [unlocking, setUnlocking] = useState(false)
   const [skipped, setSkipped] = useState(false)
 
@@ -312,31 +366,6 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
     }
   }
 
-  const handleAddManual = async () => {
-    if (!manualName.trim()) return
-    setAddingManual(true)
-    setManualError(null)
-    try {
-      await nominateLodging(trip.id, {
-        option_data: {
-          name: manualName.trim(),
-          price_per_night: manualPrice ? parseFloat(manualPrice) : undefined,
-          type: manualType.trim() || undefined,
-          address: manualAddress.trim() || undefined,
-          beds: manualBeds ? parseInt(manualBeds, 10) : undefined,
-          capacity: manualCapacity ? parseInt(manualCapacity, 10) : undefined,
-          booking_link: manualLink.trim() || undefined,
-        },
-      })
-      setManualName(''); setManualPrice(''); setManualType('')
-      setManualAddress(''); setManualBeds(''); setManualCapacity(''); setManualLink('')
-      loadLodging()
-    } catch {
-      setManualError('Failed to add lodging. Try again.')
-    } finally {
-      setAddingManual(false)
-    }
-  }
 
   const isLocked = !!lodging?.locked_option_id
 
@@ -402,13 +431,19 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
           </div>
         </div>
         {setupError && <div style={{ color: '#e55', fontSize: 13, marginBottom: 12 }}>{setupError}</div>}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
           <button className="btn-primary" onClick={handleSetup} disabled={settingUp}>
-            {settingUp ? 'Setting up...' : 'Find Lodging Options'}
+            {settingUp ? 'Setting up...' : 'Find Lodging Options with AI'}
           </button>
           <button className="btn-ghost" onClick={() => { setSkipped(true); onLodgingUpdated?.() }} style={{ fontSize: 13 }}>
             Skip / Find My Own
           </button>
+        </div>
+
+        {/* Manual add available even before AI setup */}
+        <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: 16 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Or add a lodging option manually</div>
+          <ManualLodgingForm tripId={trip.id} onAdded={() => { setNotSetUp(false); loadLodging() }} />
         </div>
       </div>
     )
@@ -493,27 +528,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
       {!isLocked && (
         <div style={{ padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a', marginTop: 8 }}>
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Add a Lodging Option Manually</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
-            {[
-              { label: 'Name *', val: manualName, set: setManualName, ph: 'e.g. Sycamore House', w: 180 },
-              { label: 'Type', val: manualType, set: setManualType, ph: 'vacation rental, hotel…', w: 150 },
-              { label: 'Price/night ($)', val: manualPrice, set: setManualPrice, ph: '850', w: 110, type: 'number' },
-              { label: 'Beds', val: manualBeds, set: setManualBeds, ph: '4', w: 70, type: 'number' },
-              { label: 'Sleeps', val: manualCapacity, set: setManualCapacity, ph: '8', w: 70, type: 'number' },
-              { label: 'Address', val: manualAddress, set: setManualAddress, ph: '123 Golf Rd…', w: 200 },
-              { label: 'Booking link', val: manualLink, set: setManualLink, ph: 'https://…', w: 200 },
-            ].map(({ label, val, set, ph, w, type }) => (
-              <div key={label}>
-                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</label>
-                <input type={type || 'text'} value={val} onChange={e => set(e.target.value)} placeholder={ph}
-                  style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: w }} />
-              </div>
-            ))}
-            <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
-              {addingManual ? 'Enriching with AI...' : 'Add'}
-            </button>
-          </div>
-          {manualError && <div style={{ fontSize: 12, color: '#e55', marginTop: 4 }}>{manualError}</div>}
+          <ManualLodgingForm tripId={trip.id} onAdded={loadLodging} />
         </div>
       )}
     </div>

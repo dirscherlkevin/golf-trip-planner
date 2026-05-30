@@ -386,12 +386,36 @@ def unlock_round(
     return _build_round_with_nominations(trip_round, user.id, db)
 
 
-class TeeTimeIn:
-    def __init__(self, tee_time: str = ""):
-        self.tee_time = tee_time
-
 from pydantic import BaseModel as _BM
 from typing import Optional as _Opt
+
+class _TierBody(_BM):
+    tier: str  # "premium", "midrange", "value"
+
+@router.patch("/{trip_id}/rounds/{round_id}/tier")
+def set_round_tier(
+    trip_id: int,
+    round_id: int,
+    body: _TierBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can change round tier")
+    try:
+        new_tier = RoundTier(body.tier)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="tier must be premium, midrange, or value")
+    trip_round = db.query(TripRound).filter(
+        TripRound.id == round_id, TripRound.trip_id == trip_id
+    ).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    trip_round.tier = new_tier
+    db.commit()
+    return {"ok": True, "tier": new_tier.value}
+
 class _TeeTimeBody(_BM):
     tee_time: str = ""
     round_date: _Opt[str] = None  # ISO date "YYYY-MM-DD", or empty string to clear

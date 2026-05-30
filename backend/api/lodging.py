@@ -43,8 +43,12 @@ def _get_destination_name(trip_id: int, db: Session) -> str:
     suggestion = db.query(DestinationSuggestion).filter(
         DestinationSuggestion.trip_id == trip_id
     ).first()
-    if suggestion and suggestion.locked_destination:
-        return suggestion.locked_destination.get("name", "Unknown Destination")
+    if suggestion:
+        if suggestion.locked_destination:
+            return suggestion.locked_destination.get("name", "Unknown Destination")
+        # Fall back to first suggestion (e.g. manual destination not yet locked)
+        if suggestion.suggestions:
+            return suggestion.suggestions[0].get("name", "Unknown Destination")
     return "Unknown Destination"
 
 
@@ -183,10 +187,14 @@ def setup_lodging(
     except ValueError:
         raise HTTPException(status_code=400, detail="lodging_type must be 'rental', 'hotel', or 'both'")
 
-    # 409 if setup already exists
+    # If setup already exists and failed, delete it so we can retry
     existing = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
     if existing:
-        raise HTTPException(status_code=409, detail="Lodging already set up for this trip")
+        if existing.generation_status == LodgingGenerationStatus.failed:
+            db.delete(existing)
+            db.flush()
+        else:
+            raise HTTPException(status_code=409, detail="Lodging already set up for this trip")
 
     # Get destination name
     destination = _get_destination_name(trip_id, db)
@@ -312,7 +320,15 @@ def nominate_lodging(
 
     setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
     if not setup:
-        raise HTTPException(status_code=404, detail="Lodging not set up yet")
+        # Auto-create a minimal setup row so manual nominations work without AI setup
+        setup = LodgingSetup(
+            trip_id=trip_id,
+            lodging_type=LodgingType.both,
+            generation_status=LodgingGenerationStatus.complete,
+            prompt_inputs={},
+        )
+        db.add(setup)
+        db.flush()
     if trip.locked_lodging_option_id is not None:
         raise HTTPException(status_code=409, detail="Lodging is already locked")
 
