@@ -26,7 +26,7 @@ export const useTripStore = create((set, get) => ({
       const prevKey = get().refreshKey
       set({ trip: tripRes.data, phases: phasesRes, loading: false, refreshing: false, refreshKey: prevKey + 1 })
     } catch (e) {
-      set({ error: e.message, loading: false, refreshing: false })
+      set({ error: e.message || 'Failed to load trip', loading: false, refreshing: false })
     }
   },
 
