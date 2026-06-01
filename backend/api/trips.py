@@ -147,6 +147,26 @@ def decline_invite(trip_id: int, db: Session = Depends(get_db), user: User = Dep
     db.commit()
     return {"ok": True}
 
+@router.post("/{trip_id}/unlock")
+def unlock_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from models.trip import TripStatus
+    from models.phase import TripPhase, PhaseStatus, PhaseName
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can unlock this trip")
+    if trip.status != TripStatus.finalized:
+        raise HTTPException(status_code=400, detail="Trip is not finalized")
+    trip.status = TripStatus.planning
+    locked_in_phase = db.query(TripPhase).filter(
+        TripPhase.trip_id == trip_id, TripPhase.phase == PhaseName.locked_in
+    ).first()
+    if locked_in_phase:
+        locked_in_phase.status = PhaseStatus.open
+    db.commit()
+    return {"ok": True}
+
 @router.delete("/{trip_id}")
 def delete_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = db.query(Trip).filter(Trip.id == trip_id).first()

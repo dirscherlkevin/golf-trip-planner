@@ -161,15 +161,16 @@ def setup_rounds(
             trip_id=trip_id,
             round_number=r.round_number,
             tier=r.tier,
-            generation_status=RoundGenerationStatus.pending,
+            generation_status=RoundGenerationStatus.pending if body.generate_suggestions else RoundGenerationStatus.complete,
         )
         db.add(trip_round)
         db.flush()
         created_rounds.append(trip_round)
-        background_tasks.add_task(
-            _generate_courses_for_round_bg,
-            trip_round.id, destination, r.tier.value, db_url
-        )
+        if body.generate_suggestions:
+            background_tasks.add_task(
+                _generate_courses_for_round_bg,
+                trip_round.id, destination, r.tier.value, db_url
+            )
 
     db.commit()
 

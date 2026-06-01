@@ -317,6 +317,7 @@ function Section({ title, children }) {
 }
 
 export default function HypeMoment({ trip, isOrganizer }) {
+  const [unlocking, setUnlocking] = useState(false)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -347,10 +348,29 @@ export default function HypeMoment({ trip, isOrganizer }) {
             )}
           </div>
         )}
-        <button className="btn-ghost" onClick={() => window.open('/share/' + trip.id, '_blank')}
-          style={{ fontSize: 12, marginTop: 10 }}>
-          Share Trip ↗
-        </button>
+        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+          <button className="btn-ghost" onClick={() => window.open('/share/' + trip.id, '_blank')}
+            style={{ fontSize: 12 }}>
+            Share Trip ↗
+          </button>
+          {isOrganizer && (
+            <button className="btn-ghost" disabled={unlocking}
+              style={{ fontSize: 12, color: '#fbbf24', borderColor: '#fbbf24' }}
+              onClick={async () => {
+                if (!window.confirm('Unlock this trip? This will reopen it for last-minute changes.')) return
+                setUnlocking(true)
+                try {
+                  await client.post(`/trips/${trip.id}/unlock`)
+                  window.location.reload()
+                } catch (e) {
+                  alert(e.response?.data?.detail || 'Failed to unlock trip')
+                  setUnlocking(false)
+                }
+              }}>
+              {unlocking ? 'Unlocking...' : '🔓 Unlock Trip'}
+            </button>
+          )}
+        </div>
       </div>
 
       {data && (

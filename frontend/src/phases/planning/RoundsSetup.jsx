@@ -15,9 +15,10 @@ function buildDefaultRounds(count) {
 }
 
 export default function RoundsSetup({ trip, onSetup }) {
-  const [numRoundsStr, setNumRoundsStr] = useState('3')
+  const [numRoundsStr, setNumRoundsStr] = useState(String(trip?.planned_rounds ?? 3))
   const numRounds = Math.max(1, Math.min(5, parseInt(numRoundsStr, 10) || 1))
-  const [rounds, setRounds] = useState(buildDefaultRounds(3))
+  const [rounds, setRounds] = useState(buildDefaultRounds(trip?.planned_rounds ?? 3))
+  const [generateSuggestions, setGenerateSuggestions] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -46,7 +47,7 @@ export default function RoundsSetup({ trip, onSetup }) {
     setSubmitting(true)
     setError(null)
     try {
-      const result = await setupRounds(trip.id, rounds)
+      const result = await setupRounds(trip.id, rounds, generateSuggestions)
       onSetup(result)
     } catch (e) {
       setError('Failed to set up rounds. Please try again.')
@@ -101,6 +102,15 @@ export default function RoundsSetup({ trip, onSetup }) {
           </div>
         ))}
       </div>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 20 }}>
+        <input type="checkbox" checked={generateSuggestions} onChange={e => setGenerateSuggestions(e.target.checked)}
+          style={{ width: 16, height: 16, cursor: 'pointer' }} />
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 13 }}>Generate AI course suggestions</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Uncheck to create empty round slots for manual nomination only</div>
+        </div>
+      </label>
 
       {error && (
         <div style={{ color: '#e55', fontSize: 13, marginBottom: 12 }}>{error}</div>

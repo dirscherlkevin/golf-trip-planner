@@ -220,6 +220,7 @@ export default function Dashboard() {
       )}
 
       <PendingInvites onJoined={handleJoined} />
+      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, marginTop: 32 }}>v0.6.0</div>
     </div>
   )
 }

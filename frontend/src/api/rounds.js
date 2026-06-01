@@ -1,7 +1,7 @@
 import client from './client'
 
 export const getRounds = (tripId) => client.get(`/trips/${tripId}/rounds`).then(r => r.data)
-export const setupRounds = (tripId, rounds) => client.post(`/trips/${tripId}/rounds/setup`, { rounds }).then(r => r.data)
+export const setupRounds = (tripId, rounds, generateSuggestions = true) => client.post(`/trips/${tripId}/rounds/setup`, { rounds, generate_suggestions: generateSuggestions }).then(r => r.data)
 export const generateMoreCourses = (tripId, roundId) => client.post(`/trips/${tripId}/rounds/${roundId}/generate-more`)
 export const nominateCourse = (tripId, roundId, courseData) => client.post(`/trips/${tripId}/rounds/${roundId}/nominate`, { course_data: courseData }).then(r => r.data)
 export const voteOnCourse = (tripId, roundId, nomId, vote) => client.post(`/trips/${tripId}/rounds/${roundId}/nominations/${nomId}/vote`, { vote })

@@ -8,6 +8,7 @@ class RoundSetupItem(BaseModel):
 
 class RoundSetupIn(BaseModel):
     rounds: list[RoundSetupItem]
+    generate_suggestions: bool = True
 
 class CourseNominateIn(BaseModel):
     course_data: dict  # free-form course info for manual nominations
