@@ -169,10 +169,9 @@ export default function TripRoom() {
     return () => clearInterval(interval)
   }, [trip?.id])
 
-  // Only show full loading on initial load (no trip yet)
   if (loading && !trip) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
-  if (error && !trip) return <div style={{ padding: 40, color: 'red' }}>Error: {error}</div>
-  if (!trip) return null
+  if (error && !trip) return <div style={{ padding: 40, color: '#f87171' }}>Error loading trip. Please go back and try again.</div>
+  if (!trip) return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>

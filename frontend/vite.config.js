@@ -13,6 +13,7 @@ export default defineConfig({
       '/auth': 'http://localhost:8000',
       '/trips': 'http://localhost:8000',
       '/share': 'http://localhost:8000',
+      '/users': 'http://localhost:8000',
     }
   }
 })
