@@ -86,12 +86,28 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
     ? [cd.rating && `Rating ${cd.rating}`, cd.slope && `Slope ${cd.slope}`, cd.par && `Par ${cd.par}`].filter(Boolean).join(' · ')
     : null
 
+  const yardageOptions = cd.yardage_options || {}
+  const yardageStr = [
+    yardageOptions.championship && `${yardageOptions.championship} (champ)`,
+    yardageOptions.member && `${yardageOptions.member} (member)`,
+    yardageOptions.forward && `${yardageOptions.forward} (fwd)`,
+  ].filter(Boolean).join(' · ') || null
+
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
             {cd.name || 'Unnamed Course'}
+            {cd.ranking && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: '#cc9900',
+                background: 'rgba(204,153,0,0.1)', border: '1px solid rgba(204,153,0,0.3)',
+                borderRadius: 4, padding: '1px 5px', marginLeft: 6, letterSpacing: 0.5
+              }}>
+                {cd.ranking}
+              </span>
+            )}
             {isThisLocked && (
               <span style={{ color: 'var(--accent-green)', marginLeft: 8, fontSize: 12 }}>✅ Locked</span>
             )}
@@ -100,12 +116,18 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>{cd.location}</div>
           )}
           <CourseDetail label="Rating" value={ratingStr} />
+          <CourseDetail label="Yardage" value={yardageStr} />
           <CourseDetail label="Green fee" value={feeStr} />
           <CourseDetail label="Walking" value={cd.walking_policy} />
           <CourseDetail label="Architect" value={cd.architect} />
           <CourseDetail label="Pace of play" value={cd.pace_of_play} />
           <CourseDetail label="Tee times" value={cd.tee_time_window} />
           <CourseDetail label="Source" value={cd.rating_source} />
+          {nomination.source === 'ai' && (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>
+              AI-estimated · verify fees and links before booking
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
             {cd.website && (
               <a href={cd.website} target="_blank" rel="noopener noreferrer"

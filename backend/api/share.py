@@ -92,6 +92,8 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
             "pace_of_play": None,
             "tee_time_window": None,
             "website": None,
+            "rating_source": None,
+            "ranking": None,
         }
         if r.locked_course_id:
             nomination = db.query(CourseNomination).filter(
@@ -113,6 +115,8 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
                 course["pace_of_play"] = cd.get("pace_of_play")
                 course["tee_time_window"] = cd.get("tee_time_window")
                 course["website"] = cd.get("website") or None
+                course["rating_source"] = cd.get("rating_source") or None
+                course["ranking"] = cd.get("ranking") or None
         rounds.append(course)
 
     # Lodging

@@ -221,6 +221,11 @@ export default function DestinationCard({ trip, destination, index, tally, isOrg
         </div>
       )}
 
+      {/* AI disclaimer */}
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, fontStyle: 'italic' }}>
+        AI-generated · destinations and course info are suggestions only
+      </div>
+
       {/* Vote + lock */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid #333', paddingTop: 12 }}>
         {!isLocked && (

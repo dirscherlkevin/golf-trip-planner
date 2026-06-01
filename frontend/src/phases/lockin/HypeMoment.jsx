@@ -188,15 +188,30 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
               Round {round.round_number} · {round.tier}
             </span>
           </div>
-          <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 2 }}>{round.course_name}</div>
+          <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 2 }}>
+            {round.course_name}
+            {round.ranking && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, color: '#cc9900',
+                background: 'rgba(204,153,0,0.1)', border: '1px solid rgba(204,153,0,0.3)',
+                borderRadius: 4, padding: '1px 5px', marginLeft: 6, letterSpacing: 0.5
+              }}>
+                {round.ranking}
+              </span>
+            )}
+          </div>
           {round.course_location && (
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>📍 {round.course_location}</div>
           )}
           <DetailRow label="Rating" value={ratingStr} />
+          <DetailRow label="Rating source" value={round.rating_source} />
           <DetailRow label="Walking" value={round.walking_policy} />
           <DetailRow label="Architect" value={round.architect} />
           <DetailRow label="Pace of play" value={round.pace_of_play} />
           <DetailRow label="Tee time availability" value={round.tee_time_window} />
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>
+            AI-estimated · verify fees and links before booking
+          </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {feeStr && <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent-green)' }}>{feeStr}</div>}

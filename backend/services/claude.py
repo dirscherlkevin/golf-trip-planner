@@ -208,6 +208,7 @@ Return ONLY a JSON array. Each object must have:
   "pace_of_play": "4:15 average",
   "tee_time_window": "Opens 60 days in advance",
   "rating_source": "Golf Digest / GolfAdvisor / USGA (include data year if known, e.g. 'USGA 2024')",
+  "ranking": "Golf Digest or other ranking if applicable, e.g. '#12 Golf Digest Top 100 Public', or null",
   "website": "https://www.coursename.com (official course booking page)"
 }}
 
