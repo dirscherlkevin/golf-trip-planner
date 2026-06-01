@@ -38,14 +38,31 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
         raise HTTPException(status_code=400, detail="Invalid credentials")
     return Token(access_token=create_access_token(user.id), token_type="bearer")
 
+@router.get("/debug")
+def debug_info():
+    import os, httpx, time
+    result = {"cors_origins": os.getenv("CORS_ORIGINS", "*_default"), "firebase_api_key_set": bool(os.getenv("FIREBASE_API_KEY"))}
+    t0 = time.time()
+    try:
+        r = httpx.get("https://identitytoolkit.googleapis.com/", timeout=8)
+        result["google_reachable"] = True
+        result["google_status"] = r.status_code
+    except Exception as e:
+        result["google_reachable"] = False
+        result["google_error"] = str(e)
+    result["google_latency_ms"] = round((time.time() - t0) * 1000)
+    return result
+
 @router.post("/google", response_model=Token)
 def google_login(data: GoogleLoginIn, db: Session = Depends(get_db)):
     from services.firebase_verify import verify_firebase_token
-    import uuid
+    import uuid, logging
+    logger = logging.getLogger(__name__)
     try:
         firebase_user = verify_firebase_token(data.id_token)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid Google token")
+    except Exception as e:
+        logger.error("Firebase token verification failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(status_code=401, detail=f"Token verify failed: {type(e).__name__}: {e}")
     email = firebase_user.get("email")
     if not email:
         raise HTTPException(status_code=400, detail="Google account has no email")
