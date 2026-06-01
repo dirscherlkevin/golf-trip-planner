@@ -22,6 +22,11 @@ async def lifespan(app):
             "SECRET_KEY environment variable is required. "
             "Set it in your .env file before starting the server."
         )
+    if not os.getenv("DATABASE_URL"):
+        raise RuntimeError(
+            "DATABASE_URL environment variable is required. "
+            "Set it in your .env file before starting the server."
+        )
     yield  # email worker disabled — no SMTP configured
 
 
@@ -47,6 +52,7 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS public_courses_only BOOLEAN NOT NULL DEFAULT TRUE"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_booked BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_confirmation VARCHAR(255)"))
+    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_skipped BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS handicap FLOAT"))
     _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS last_nudged_at TIMESTAMP WITH TIME ZONE"))
     _conn.execute(text("ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user"))

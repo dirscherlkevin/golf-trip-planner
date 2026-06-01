@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 os.environ.setdefault("SECRET_KEY", "test-secret-key-do-not-deploy")
+os.environ.setdefault("DATABASE_URL", os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql://postgres:postgres@localhost:5433/golf_trip_planner_test"
+))
 
 from main import app
 from database import Base, get_db

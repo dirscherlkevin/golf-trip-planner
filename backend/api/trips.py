@@ -159,11 +159,16 @@ def unlock_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depend
     if trip.status != TripStatus.finalized:
         raise HTTPException(status_code=400, detail="Trip is not finalized")
     trip.status = TripStatus.planning
+    planning_phase = db.query(TripPhase).filter(
+        TripPhase.trip_id == trip_id, TripPhase.phase == PhaseName.planning
+    ).first()
+    if planning_phase:
+        planning_phase.status = PhaseStatus.open
     locked_in_phase = db.query(TripPhase).filter(
         TripPhase.trip_id == trip_id, TripPhase.phase == PhaseName.locked_in
     ).first()
     if locked_in_phase:
-        locked_in_phase.status = PhaseStatus.open
+        locked_in_phase.status = PhaseStatus.pending
     db.commit()
     return {"ok": True}
 
@@ -224,6 +229,20 @@ def set_lodging_booked(trip_id: int, body: _LodgingBookedBody, db: Session = Dep
         trip.lodging_confirmation = body.confirmation_number or None
     db.commit()
     return {"ok": True, "lodging_booked": trip.lodging_booked}
+
+class _LodgingSkippedBody(BaseModel):
+    skipped: bool
+
+@router.patch("/{trip_id}/lodging-skipped")
+def set_lodging_skipped(trip_id: int, body: _LodgingSkippedBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can skip lodging")
+    trip.lodging_skipped = body.skipped
+    db.commit()
+    return {"ok": True, "lodging_skipped": trip.lodging_skipped}
 
 @router.get("/{trip_id}/past-golfers")
 def get_past_golfers(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

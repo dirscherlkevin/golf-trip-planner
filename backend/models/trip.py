@@ -24,6 +24,7 @@ class Trip(Base):
     public_courses_only = Column(Boolean, nullable=False, default=True, server_default='true')
     lodging_booked = Column(Boolean, nullable=False, default=False, server_default='false')
     lodging_confirmation = Column(String, nullable=True)
+    lodging_skipped = Column(Boolean, nullable=False, default=False, server_default='false')
 
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
 
