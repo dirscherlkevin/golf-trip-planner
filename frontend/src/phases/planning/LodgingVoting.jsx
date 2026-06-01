@@ -258,26 +258,26 @@ function ManualLodgingForm({ tripId, onAdded }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 8 }}>
         {[
-          { label: 'Name *', val: name, set: setName, ph: 'e.g. Sycamore House', w: 180 },
-          { label: 'Type', val: type, set: setType, ph: 'vacation rental, hotel…', w: 150 },
-          { label: 'Price/night ($)', val: price, set: setPrice, ph: '850', w: 110, type: 'number' },
-          { label: 'Beds', val: beds, set: setBeds, ph: '4', w: 70, type: 'number' },
-          { label: 'Sleeps', val: capacity, set: setCapacity, ph: '8', w: 70, type: 'number' },
-          { label: 'Address', val: address, set: setAddress, ph: '123 Golf Rd…', w: 200 },
-          { label: 'Booking link', val: link, set: setLink, ph: 'https://…', w: 200 },
-        ].map(({ label, val, set, ph, w, type: t }) => (
+          { label: 'Name *', val: name, set: setName, ph: 'e.g. Sycamore House' },
+          { label: 'Type', val: type, set: setType, ph: 'vacation rental, hotel…' },
+          { label: 'Price/night ($)', val: price, set: setPrice, ph: '850', type: 'number' },
+          { label: 'Beds', val: beds, set: setBeds, ph: '4', type: 'number' },
+          { label: 'Sleeps', val: capacity, set: setCapacity, ph: '8', type: 'number' },
+          { label: 'Address', val: address, set: setAddress, ph: '123 Golf Rd…' },
+          { label: 'Booking link', val: link, set: setLink, ph: 'https://…' },
+        ].map(({ label, val, set, ph, type: t }) => (
           <div key={label}>
             <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</label>
             <input type={t || 'text'} value={val} onChange={e => set(e.target.value)} placeholder={ph}
-              style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: w }} />
+              style={{ width: '100%', padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, boxSizing: 'border-box' }} />
           </div>
         ))}
-        <button className="btn-primary" onClick={handleAdd} disabled={adding || !name.trim()} style={{ fontSize: 13 }}>
-          {adding ? 'Enriching with AI...' : 'Add'}
-        </button>
       </div>
+      <button className="btn-primary" onClick={handleAdd} disabled={adding || !name.trim()} style={{ fontSize: 13 }}>
+        {adding ? 'Enriching with AI...' : 'Add'}
+      </button>
       {error && <div style={{ fontSize: 12, color: '#e55', marginTop: 4 }}>{error}</div>}
     </div>
   )

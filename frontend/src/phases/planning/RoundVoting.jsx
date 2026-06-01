@@ -454,26 +454,26 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated, onR
         {!isLocked && (
           <div style={{ marginTop: 16, padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a' }}>
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Add a Course Manually</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 8 }}>
               {[
-                { label: 'Course name *', val: manualName, set: setManualName, ph: 'e.g. Pebble Beach', w: 200 },
-                { label: 'Location', val: manualLocation, set: setManualLocation, ph: 'e.g. Pebble Beach, CA', w: 180 },
-                { label: 'Green fee ($)', val: manualGreenFee, set: setManualGreenFee, ph: '250', w: 100, type: 'number' },
-                { label: 'Cart fee ($)', val: manualCartFee, set: setManualCartFee, ph: '25', w: 90, type: 'number' },
-                { label: 'Rating', val: manualRating, set: setManualRating, ph: '74.2', w: 80 },
-                { label: 'Slope', val: manualSlope, set: setManualSlope, ph: '142', w: 80 },
-                { label: 'Website', val: manualWebsite, set: setManualWebsite, ph: 'https://...', w: 180 },
-              ].map(({ label, val, set, ph, w, type }) => (
+                { label: 'Course name *', val: manualName, set: setManualName, ph: 'e.g. Pebble Beach' },
+                { label: 'Location', val: manualLocation, set: setManualLocation, ph: 'e.g. Pebble Beach, CA' },
+                { label: 'Green fee ($)', val: manualGreenFee, set: setManualGreenFee, ph: '250', type: 'number' },
+                { label: 'Cart fee ($)', val: manualCartFee, set: setManualCartFee, ph: '25', type: 'number' },
+                { label: 'Rating', val: manualRating, set: setManualRating, ph: '74.2' },
+                { label: 'Slope', val: manualSlope, set: setManualSlope, ph: '142' },
+                { label: 'Website', val: manualWebsite, set: setManualWebsite, ph: 'https://...' },
+              ].map(({ label, val, set, ph, type }) => (
                 <div key={label}>
                   <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</label>
                   <input type={type || 'text'} value={val} onChange={e => set(e.target.value)} placeholder={ph}
-                    style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: w }} />
+                    style={{ width: '100%', padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, boxSizing: 'border-box' }} />
                 </div>
               ))}
-              <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
-                {addingManual ? 'Enriching with AI...' : 'Add'}
-              </button>
             </div>
+            <button className="btn-primary" onClick={handleAddManual} disabled={addingManual || !manualName.trim()} style={{ fontSize: 13 }}>
+              {addingManual ? 'Enriching with AI...' : 'Add'}
+            </button>
             {manualError && <div style={{ fontSize: 12, color: '#e55', marginTop: 4 }}>{manualError}</div>}
           </div>
         )}

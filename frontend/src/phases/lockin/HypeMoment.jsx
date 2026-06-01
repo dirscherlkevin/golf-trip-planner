@@ -3,6 +3,26 @@ import client from '../../api/client'
 
 const TIER_COLORS = { premium: '#cc9900', midrange: 'var(--accent-green)', value: '#6699cc' }
 
+function to24h(display) {
+  if (!display) return ''
+  if (/^\d{2}:\d{2}$/.test(display)) return display
+  const m = display.match(/(\d+):(\d+)\s*(AM|PM)?/i)
+  if (!m) return ''
+  let h = parseInt(m[1]), min = m[2]
+  const ampm = (m[3] || '').toUpperCase()
+  if (ampm === 'PM' && h < 12) h += 12
+  if (ampm === 'AM' && h === 12) h = 0
+  return `${String(h).padStart(2, '0')}:${min}`
+}
+
+function to12h(hhmm) {
+  if (!hhmm || !hhmm.includes(':')) return hhmm
+  const [h, m] = hhmm.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
 function DetailRow({ label, value }) {
   if (!value) return null
   return (
@@ -99,9 +119,8 @@ function RoundScheduleEditor({ tripId, roundId, initialDate, initialTee, isOrgan
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {teeTimes.map((t, i) => (
                 <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <input type="text" value={t} onChange={e => updateTeeTime(i, e.target.value)}
+                  <input type="time" value={to24h(t)} onChange={e => updateTeeTime(i, e.target.value)}
                     onBlur={() => save(date, teeTimes)}
-                    placeholder="e.g. 8:30 AM"
                     style={{ padding: '5px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#fff', fontSize: 13, width: 110 }} />
                   {teeTimes.length > 1 && (
                     <button onClick={() => removeTeeTime(i)}
@@ -119,7 +138,7 @@ function RoundScheduleEditor({ tripId, roundId, initialDate, initialTee, isOrgan
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {teeTimes.filter(t => t.trim()).map((t, i) => (
-                <span key={i} style={{ fontSize: 14, fontWeight: 600 }}>{t}</span>
+                <span key={i} style={{ fontSize: 14, fontWeight: 600 }}>{to12h(t) || t}</span>
               ))}
               {!hasAnyTime && <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>—</span>}
             </div>
@@ -350,7 +369,23 @@ export default function HypeMoment({ trip, isOrganizer }) {
 
   return (
     <div>
-      {/* Trip header — clean, no celebration banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0d1f0d, #1a2a1a)',
+        border: '1px solid var(--accent-green)',
+        borderRadius: 10,
+        padding: '16px 20px',
+        marginBottom: 24,
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 24, marginBottom: 4 }}>🏌️</div>
+        <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--accent-green)', marginBottom: 4 }}>
+          The trip is on!
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+          Everything is locked in. Time to pack your clubs.
+        </div>
+      </div>
+      {/* Trip header */}
       <div style={{ marginBottom: 28, borderBottom: '1px solid #2a2a2a', paddingBottom: 20 }}>
         <h2 style={{ color: 'var(--accent-green)', margin: '0 0 4px 0', fontSize: 26 }}>{trip.name}</h2>
         {data && (
@@ -423,26 +458,6 @@ export default function HypeMoment({ trip, isOrganizer }) {
             </Section>
           )}
 
-          {(data.rounds?.some(r => r.website) || data.lodging?.booking_link || data.lodging?.website) && (
-            <Section title="Booking Links">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {data.rounds?.filter(r => r.website).map((r, i) => (
-                  <a key={i} href={r.website} target="_blank" rel="noopener noreferrer"
-                    style={{ color: 'var(--accent-green)', fontSize: 14, textDecoration: 'none', display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #1f3b1f' }}>
-                    <span>Round {r.round_number}: {r.course_name}</span>
-                    <span style={{ opacity: 0.7, fontSize: 12 }}>Book →</span>
-                  </a>
-                ))}
-                {(data.lodging?.booking_link || data.lodging?.website) && (
-                  <a href={data.lodging.booking_link || data.lodging.website} target="_blank" rel="noopener noreferrer"
-                    style={{ color: 'var(--accent-green)', fontSize: 14, textDecoration: 'none', display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
-                    <span>{data.lodging.name}</span>
-                    <span style={{ opacity: 0.7, fontSize: 12 }}>Book →</span>
-                  </a>
-                )}
-              </div>
-            </Section>
-          )}
         </>
       )}
     </div>
