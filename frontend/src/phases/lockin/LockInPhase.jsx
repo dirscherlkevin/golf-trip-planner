@@ -27,11 +27,17 @@ function CostBreakdown({ rounds, lodging, trip }) {
     })
     .filter(l => l.fee > 0)
 
-  const lockedOption = lodging?.options?.find(o => o.id === lodging?.locked_option_id)
-  const pricePerNight = parseFloat(lockedOption?.option_data?.price_per_night) || 0
-  const lodgingPerPerson = nights > 0 && groupSize > 0 ? pricePerNight * nights / groupSize : 0
+  const lockedLodgingOptions = lodging?.options?.filter(o => o.is_locked) ?? []
+  const lodgingLines = lockedLodgingOptions
+    .map(o => {
+      const pn = parseFloat(o.option_data?.price_per_night) || 0
+      const pp = nights > 0 && groupSize > 0 ? pn * nights / groupSize : 0
+      return { name: o.option_data?.name || 'Lodging', pp }
+    })
+    .filter(l => l.pp > 0)
+  const totalLodgingPerPerson = lodgingLines.reduce((s, l) => s + l.pp, 0)
 
-  const grandTotal = roundLines.reduce((s, l) => s + l.fee, 0) + lodgingPerPerson
+  const grandTotal = roundLines.reduce((s, l) => s + l.fee, 0) + totalLodgingPerPerson
   if (grandTotal === 0) return null
 
   const fmt = n => `$${Math.round(n).toLocaleString()}`
@@ -51,14 +57,14 @@ function CostBreakdown({ rounds, lodging, trip }) {
             <span style={{ color: '#fff' }}>{fmt(l.fee)}</span>
           </div>
         ))}
-        {lodgingPerPerson > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        {lodgingLines.map((l, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--text-secondary)' }}>
-              Lodging ({nights}n ÷ {groupSize} people)
+              {l.name} ({nights}n ÷ {groupSize})
             </span>
-            <span style={{ color: '#fff' }}>{fmt(lodgingPerPerson)}</span>
+            <span style={{ color: '#fff' }}>{fmt(l.pp)}</span>
           </div>
-        )}
+        ))}
         <div style={{
           display: 'flex', justifyContent: 'space-between',
           borderTop: '1px solid #2d4a2d', paddingTop: 8,
@@ -130,7 +136,8 @@ export default function LockInPhase() {
   // Determine checklist status
   const allRoundsLocked = rounds.length > 0 && rounds.every(r => r.locked_course_id != null)
   const lodgingSkipped = trip?.lodging_skipped ?? false
-  const lodgingLocked = lodgingSkipped || (lodging != null ? lodging.locked_option_id != null : true)
+  const anyLodgingLocked = lodging?.options?.some(o => o.is_locked) ?? false
+  const lodgingLocked = lodgingSkipped || (lodging != null ? anyLodgingLocked : true)
   const allReady = allRoundsLocked && lodgingLocked
 
   const handleLock = async () => {
@@ -210,7 +217,11 @@ export default function LockInPhase() {
             label="Lodging"
             detail={
               lodgingSkipped ? "Skipped — finding lodging separately" :
-              lodging?.locked_option_id != null ? (lodging.options?.find(o => o.id === lodging.locked_option_id)?.option_data?.name || 'Lodging locked') :
+              anyLodgingLocked ? (() => {
+                const lockedOpts = lodging?.options?.filter(o => o.is_locked) ?? []
+                if (lockedOpts.length === 1) return lockedOpts[0].option_data?.name || 'Lodging locked'
+                return `${lockedOpts.length} lodging options locked`
+              })() :
               'Pending — lodging not yet selected'
             }
             done={lodgingLocked}

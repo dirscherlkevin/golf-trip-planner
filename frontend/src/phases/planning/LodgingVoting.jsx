@@ -10,6 +10,7 @@ import {
   voteOnLodging,
   lockLodging,
   unlockLodging,
+  unlockLodgingOption,
   removeLodgingOption,
 } from '../../api/lodging'
 
@@ -19,19 +20,20 @@ const LODGING_TYPES = [
   { value: 'both', label: 'Show Both' },
 ]
 
-function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, lockedOptId, onUpdated }) {
+function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, onUpdated }) {
   const { id, option_data, vote_tally } = option
   const od = option_data || {}
   const tally = vote_tally || {}
 
   const [confirmLock, setConfirmLock] = useState(false)
   const [locking, setLocking] = useState(false)
+  const [unlocking, setUnlocking] = useState(false)
   const [voting, setVoting] = useState(false)
   const [lockError, setLockError] = useState(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [removing, setRemoving] = useState(false)
 
-  const isThisLocked = lockedOptId === id
+  const isThisLocked = option.is_locked ?? false
 
   const handleVote = async (vote) => {
     if (voting || isLocked) return
@@ -56,6 +58,18 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, lockedOptId,
       setLockError('Failed to lock. Try again.')
       setLocking(false)
       setConfirmLock(false)
+    }
+  }
+
+  const handleUnlockThis = async () => {
+    setUnlocking(true)
+    try {
+      await unlockLodgingOption(tripId, id)
+      onUpdated()
+    } catch {
+      // ignore silently
+    } finally {
+      setUnlocking(false)
     }
   }
 
@@ -170,7 +184,17 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, lockedOptId,
             </span>
           )}
 
-          {isOrganizer && !isLocked && (
+          {isOrganizer && isThisLocked && (
+            <button
+              className="btn-ghost"
+              onClick={handleUnlockThis}
+              disabled={unlocking}
+              style={{ fontSize: 11, padding: '4px 8px' }}
+            >
+              {unlocking ? 'Unlocking...' : 'Unlock'}
+            </button>
+          )}
+          {isOrganizer && !isThisLocked && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
               {/* Remove */}
               {!confirmRemove && !confirmLock && (
@@ -297,7 +321,6 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
   const [setupError, setSetupError] = useState(null)
 
   const [generatingMore, setGeneratingMore] = useState(false)
-  const [unlocking, setUnlocking] = useState(false)
   const [skipped, setSkipped] = useState(trip?.lodging_skipped ?? false)
 
   const loadLodging = () => {
@@ -362,21 +385,8 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
     }
   }
 
-  const handleUnlock = async () => {
-    setUnlocking(true)
-    try {
-      const data = await unlockLodging(trip.id)
-      setLodging(data)
-      onLodgingUpdated?.()
-    } catch {
-      // ignore
-    } finally {
-      setUnlocking(false)
-    }
-  }
-
-
-  const isLocked = !!lodging?.locked_option_id
+  const isLocked = lodging?.options?.some(o => o.is_locked) ?? false
+  const lockedCount = lodging?.options?.filter(o => o.is_locked).length ?? 0
 
   if (loading) {
     return <div style={{ color: 'var(--text-secondary)', padding: 24 }}>Loading lodging...</div>
@@ -502,18 +512,8 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
 
       {/* Locked banner */}
       {isLocked && (
-        <div style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>✅ <strong>Lodging locked.</strong></span>
-          {isOrganizer && (
-            <button
-              className="btn-ghost"
-              onClick={handleUnlock}
-              disabled={unlocking}
-              style={{ fontSize: 11, padding: '4px 8px' }}
-            >
-              {unlocking ? 'Unlocking...' : 'Unlock'}
-            </button>
-          )}
+        <div style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 13 }}>
+          <span>✅ <strong>{lockedCount} lodging option{lockedCount !== 1 ? 's' : ''} locked.</strong></span>
         </div>
       )}
 
@@ -526,7 +526,6 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
             tripId={trip.id}
             isLocked={isLocked}
             isOrganizer={isOrganizer}
-            lockedOptId={lodging.locked_option_id}
             onUpdated={loadLodging}
           />
         ))

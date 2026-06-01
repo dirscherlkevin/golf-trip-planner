@@ -76,10 +76,15 @@ def lock_trip(
         raise HTTPException(400, "All rounds must be locked before finalizing")
 
     # Validate lodging locked (if lodging was set up)
-    from models.lodging import LodgingSetup
+    from models.lodging import LodgingSetup, LodgingOption
     lodging_setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
-    if lodging_setup and trip.locked_lodging_option_id is None:
-        raise HTTPException(400, "Lodging must be locked before finalizing")
+    if lodging_setup and not trip.lodging_skipped:
+        any_locked = db.query(LodgingOption).filter(
+            LodgingOption.trip_id == trip_id,
+            LodgingOption.is_locked == True,
+        ).first()
+        if any_locked is None:
+            raise HTTPException(400, "Lodging must be locked before finalizing")
 
     # Lock the locked_in phase (validates phase is open)
     lock_phase(trip_id, PhaseName.locked_in, user.id, db)

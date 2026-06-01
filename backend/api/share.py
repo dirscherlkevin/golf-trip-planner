@@ -119,27 +119,38 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
                 course["ranking"] = cd.get("ranking") or None
         rounds.append(course)
 
-    # Lodging
-    lodging = None
-    if trip.locked_lodging_option_id:
-        option = db.query(LodgingOption).filter(
+    # Lodging — collect all options with is_locked=True
+    def _build_lodging_data(option):
+        od = option.option_data
+        ppn = od.get("price_per_night")
+        return {
+            "name": od.get("name", "TBD"),
+            "type": od.get("type", ""),
+            "price_per_night": float(ppn) if ppn is not None else None,
+            "address": od.get("address") or od.get("location") or None,
+            "beds": od.get("beds"),
+            "capacity": od.get("capacity"),
+            "distance_to_courses": od.get("distance_to_courses"),
+            "amenities": od.get("amenities"),
+            "booking_link": od.get("booking_link") or None,
+            "website": od.get("website") or od.get("booking_link") or None,
+        }
+
+    locked_options = db.query(LodgingOption).filter(
+        LodgingOption.trip_id == trip_id,
+        LodgingOption.is_locked == True,
+    ).all()
+
+    # Backward compat: fall back to trip.locked_lodging_option_id if no is_locked options found
+    if not locked_options and trip.locked_lodging_option_id:
+        fallback = db.query(LodgingOption).filter(
             LodgingOption.id == trip.locked_lodging_option_id
         ).first()
-        if option and option.option_data:
-            od = option.option_data
-            ppn = od.get("price_per_night")
-            lodging = {
-                "name": od.get("name", "TBD"),
-                "type": od.get("type", ""),
-                "price_per_night": float(ppn) if ppn is not None else None,
-                "address": od.get("address") or od.get("location") or None,
-                "beds": od.get("beds"),
-                "capacity": od.get("capacity"),
-                "distance_to_courses": od.get("distance_to_courses"),
-                "amenities": od.get("amenities"),
-                "booking_link": od.get("booking_link") or None,
-                "website": od.get("website") or od.get("booking_link") or None,
-            }
+        if fallback:
+            locked_options = [fallback]
+
+    lodging = _build_lodging_data(locked_options[0]) if locked_options else None
+    lodging_all_locked = [_build_lodging_data(o) for o in locked_options] if locked_options else []
 
     return {
         "trip_id": trip.id,
@@ -150,6 +161,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         "members": members,
         "rounds": rounds,
         "lodging": lodging,
+        "lodging_all_locked": lodging_all_locked,
         "lodging_booked": bool(trip.lodging_booked),
         "lodging_confirmation": trip.lodging_confirmation,
     }

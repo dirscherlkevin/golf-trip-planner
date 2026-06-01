@@ -85,6 +85,7 @@ def _build_option_out(opt: LodgingOption, user_id: int, db: Session) -> LodgingO
         option_data=opt.option_data,
         added_by=opt.added_by,
         source=opt.source,
+        is_locked=opt.is_locked,
         vote_tally=tally,
     )
 
@@ -114,6 +115,7 @@ def _build_setup_out(setup: LodgingSetup, trip: Trip, user_id: int, db: Session)
             option_data=opt.option_data,
             added_by=opt.added_by,
             source=opt.source,
+            is_locked=opt.is_locked,
             vote_tally=tally,
         ))
 
@@ -329,7 +331,12 @@ def nominate_lodging(
         )
         db.add(setup)
         db.flush()
-    if trip.locked_lodging_option_id is not None:
+    # Block nominations if any option is already locked
+    locked_count = db.query(LodgingOption).filter(
+        LodgingOption.trip_id == trip_id,
+        LodgingOption.is_locked == True,
+    ).count()
+    if locked_count > 0:
         raise HTTPException(status_code=409, detail="Lodging is already locked")
 
     # Enrich with AI — fills in price, beds, capacity, amenities, etc.
@@ -372,7 +379,12 @@ def vote_on_lodging(
     if body.vote not in ("up", "down"):
         raise HTTPException(status_code=400, detail="vote must be 'up' or 'down'")
 
-    if trip.locked_lodging_option_id is not None:
+    # Block voting if any option is already locked
+    locked_count = db.query(LodgingOption).filter(
+        LodgingOption.trip_id == trip_id,
+        LodgingOption.is_locked == True,
+    ).count()
+    if locked_count > 0:
         raise HTTPException(status_code=409, detail="Lodging is already locked")
 
     opt = db.query(LodgingOption).filter(
@@ -415,7 +427,10 @@ def lock_lodging(
     if not opt:
         raise HTTPException(status_code=404, detail="Lodging option not found")
 
-    trip.locked_lodging_option_id = opt_id
+    opt.is_locked = True
+    # Keep trip.locked_lodging_option_id for backward compat — set to first locked option
+    if trip.locked_lodging_option_id is None:
+        trip.locked_lodging_option_id = opt_id
     db.flush()
 
     db.add(TripDecision(
@@ -443,8 +458,12 @@ def remove_lodging_option(
     if trip.organizer_id != user.id:
         raise HTTPException(status_code=403, detail="Only the organizer can remove lodging options")
 
-    if trip.locked_lodging_option_id == opt_id:
-        raise HTTPException(status_code=409, detail="Cannot remove the locked lodging option — unlock lodging first")
+    # Check if this specific option is locked (via is_locked flag)
+    target_opt = db.query(LodgingOption).filter(
+        LodgingOption.id == opt_id, LodgingOption.trip_id == trip_id
+    ).first()
+    if target_opt and target_opt.is_locked:
+        raise HTTPException(status_code=409, detail="Cannot remove the locked lodging option — unlock it first")
 
     setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
     if not setup:
@@ -463,22 +482,66 @@ def remove_lodging_option(
     return _build_setup_out(setup, trip, user.id, db)
 
 
-@router.delete("/{trip_id}/lodging/lock", response_model=LodgingSetupOut)
-def unlock_lodging(
+@router.delete("/{trip_id}/lodging/options/{opt_id}/lock", response_model=LodgingSetupOut)
+def unlock_lodging_option(
     trip_id: int,
+    opt_id: int,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """Unlock a specific lodging option by ID."""
     trip = _get_trip_member(trip_id, user.id, db)
     if trip.organizer_id != user.id:
         raise HTTPException(status_code=403, detail="Only the organizer can unlock lodging")
 
-    if trip.locked_lodging_option_id is None:
-        raise HTTPException(status_code=400, detail="Lodging is not locked")
+    setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
+    if not setup:
+        raise HTTPException(status_code=404, detail="Lodging not set up yet")
+
+    opt = db.query(LodgingOption).filter(
+        LodgingOption.id == opt_id,
+        LodgingOption.trip_id == trip_id,
+    ).first()
+    if not opt:
+        raise HTTPException(status_code=404, detail="Lodging option not found")
+
+    opt.is_locked = False
+
+    # Update trip.locked_lodging_option_id: point to another locked option or clear
+    if trip.locked_lodging_option_id == opt_id:
+        other_locked = db.query(LodgingOption).filter(
+            LodgingOption.trip_id == trip_id,
+            LodgingOption.is_locked == True,
+            LodgingOption.id != opt_id,
+        ).first()
+        trip.locked_lodging_option_id = other_locked.id if other_locked else None
+
+    db.commit()
+    db.refresh(trip)
+
+    return _build_setup_out(setup, trip, user.id, db)
+
+
+@router.delete("/{trip_id}/lodging/lock", response_model=LodgingSetupOut)
+def unlock_lodging_all(
+    trip_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Unlock all lodging options (backward-compat clear-all endpoint)."""
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can unlock lodging")
 
     setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
     if not setup:
         raise HTTPException(status_code=404, detail="Lodging not set up yet")
+
+    # Unlock all options
+    db.query(LodgingOption).filter(
+        LodgingOption.trip_id == trip_id,
+        LodgingOption.is_locked == True,
+    ).update({"is_locked": False})
 
     trip.locked_lodging_option_id = None
     db.commit()

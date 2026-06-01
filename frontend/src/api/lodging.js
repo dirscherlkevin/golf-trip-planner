@@ -7,4 +7,5 @@ export const nominateLodging = (tripId, optionData) => client.post(`/trips/${tri
 export const voteOnLodging = (tripId, optId, vote) => client.post(`/trips/${tripId}/lodging/options/${optId}/vote`, { vote })
 export const lockLodging = (tripId, optId) => client.post(`/trips/${tripId}/lodging/options/${optId}/lock`).then(r => r.data)
 export const unlockLodging = (tripId) => client.delete(`/trips/${tripId}/lodging/lock`).then(r => r.data)
+export const unlockLodgingOption = (tripId, optId) => client.delete(`/trips/${tripId}/lodging/options/${optId}/lock`).then(r => r.data)
 export const removeLodgingOption = (tripId, optId) => client.delete(`/trips/${tripId}/lodging/options/${optId}`).then(r => r.data)

@@ -28,6 +28,7 @@ class LodgingOptionOut(BaseModel):
     option_data: Any
     added_by: Optional[int] = None
     source: str
+    is_locked: bool = False
     vote_tally: Optional[LodgingVoteTally] = None
     model_config = {"from_attributes": True}
 

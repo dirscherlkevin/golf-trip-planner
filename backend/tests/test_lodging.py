@@ -196,3 +196,57 @@ def test_lock_lodging_sets_trip_column(auth_client):
     assert lock_r.status_code == 200
     data = lock_r.json()
     assert data["locked_option_id"] == opt_id
+
+
+def test_lock_multiple_lodging_options(auth_client):
+    client, token = auth_client
+    trip = _setup_trip_to_planning(client, token)
+
+    with patch("api.lodging._generate_lodging_bg"):
+        client.post(f"/trips/{trip['id']}/lodging/setup",
+            json={"lodging_type": "both"},
+            headers={"Authorization": f"Bearer {token}"})
+
+    # Nominate two options
+    nom1 = client.post(f"/trips/{trip['id']}/lodging/nominate",
+        json={"option_data": {"name": "Main House", "type": "rental_house", "price_per_night": 600}},
+        headers={"Authorization": f"Bearer {token}"})
+    opt1_id = nom1.json()["id"]
+
+    nom2 = client.post(f"/trips/{trip['id']}/lodging/nominate",
+        json={"option_data": {"name": "Overflow Hotel", "type": "hotel", "price_per_night": 200}},
+        headers={"Authorization": f"Bearer {token}"})
+    opt2_id = nom2.json()["id"]
+
+    # Lock first option — is_locked=True and lodging_locked check passes
+    lock1 = client.post(f"/trips/{trip['id']}/lodging/options/{opt1_id}/lock",
+        headers={"Authorization": f"Bearer {token}"})
+    assert lock1.status_code == 200
+    data1 = lock1.json()
+    opt1_out = next(o for o in data1["options"] if o["id"] == opt1_id)
+    opt2_out = next(o for o in data1["options"] if o["id"] == opt2_id)
+    assert opt1_out["is_locked"] is True
+    assert opt2_out["is_locked"] is False
+    assert data1["locked_option_id"] == opt1_id  # backward compat
+
+    # Lock second option — both should now be locked
+    lock2 = client.post(f"/trips/{trip['id']}/lodging/options/{opt2_id}/lock",
+        headers={"Authorization": f"Bearer {token}"})
+    assert lock2.status_code == 200
+    data2 = lock2.json()
+    opt1_out2 = next(o for o in data2["options"] if o["id"] == opt1_id)
+    opt2_out2 = next(o for o in data2["options"] if o["id"] == opt2_id)
+    assert opt1_out2["is_locked"] is True
+    assert opt2_out2["is_locked"] is True
+
+    # Unlock first option specifically — second should remain locked
+    unlock1 = client.delete(f"/trips/{trip['id']}/lodging/options/{opt1_id}/lock",
+        headers={"Authorization": f"Bearer {token}"})
+    assert unlock1.status_code == 200
+    data3 = unlock1.json()
+    opt1_out3 = next(o for o in data3["options"] if o["id"] == opt1_id)
+    opt2_out3 = next(o for o in data3["options"] if o["id"] == opt2_id)
+    assert opt1_out3["is_locked"] is False
+    assert opt2_out3["is_locked"] is True
+    # locked_option_id should now point to opt2
+    assert data3["locked_option_id"] == opt2_id

@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, UniqueConstraint, Boolean
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from database import Base
@@ -38,6 +38,7 @@ class LodgingOption(Base):
     added_by = Column(Integer, ForeignKey("users.id"), nullable=True)  # null = AI
     source = Column(String, nullable=False, default="ai")              # "ai" or "manual"
     generation_status = Column(Enum(LodgingGenerationStatus), nullable=False, default=LodgingGenerationStatus.complete)
+    is_locked = Column(Boolean, nullable=False, default=False, server_default='false')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

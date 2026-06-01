@@ -55,6 +55,7 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_skipped BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS handicap FLOAT"))
     _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS last_nudged_at TIMESTAMP WITH TIME ZONE"))
+    _conn.execute(text("ALTER TABLE lodging_options ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user"))
     _conn.execute(text("""
         DO $$ BEGIN

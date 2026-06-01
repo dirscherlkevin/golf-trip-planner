@@ -452,9 +452,21 @@ export default function HypeMoment({ trip, isOrganizer }) {
             </Section>
           )}
 
-          {data.lodging && (
-            <Section title="Where We're Staying">
-              <LodgingCard lodging={data.lodging} tripId={trip.id} isOrganizer={isOrganizer} initialBooked={data.lodging_booked} initialConfirmation={data.lodging_confirmation} />
+          {(data.lodging_all_locked?.length > 0 || data.lodging) && (
+            <Section title={`Where We're Staying${(data.lodging_all_locked?.length ?? 1) > 1 ? ` (${data.lodging_all_locked.length} options)` : ''}`}>
+              {data.lodging_all_locked?.length > 0
+                ? data.lodging_all_locked.map((l, i) => (
+                    <LodgingCard
+                      key={i}
+                      lodging={l}
+                      tripId={trip.id}
+                      isOrganizer={isOrganizer}
+                      initialBooked={i === 0 ? data.lodging_booked : false}
+                      initialConfirmation={i === 0 ? data.lodging_confirmation : ''}
+                    />
+                  ))
+                : <LodgingCard lodging={data.lodging} tripId={trip.id} isOrganizer={isOrganizer} initialBooked={data.lodging_booked} initialConfirmation={data.lodging_confirmation} />
+              }
             </Section>
           )}
 
