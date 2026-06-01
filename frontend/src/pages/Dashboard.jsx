@@ -9,6 +9,14 @@ function fmtDate(iso) {
   return `${d.toLocaleString('en-US', { month: 'short' })} ${d.getDate()}, ${d.getFullYear()}`
 }
 
+const PHASE_LABELS = {
+  availability: 'Phase 1: Availability',
+  destination: 'Phase 2: Destinations',
+  planning: 'Phase 3: Planning',
+  locked_in: 'Phase 4: Lock It In',
+  finalized: 'Finalized',
+}
+
 function PendingInvites({ onJoined }) {
   const [invites, setInvites] = useState([])
   const [working, setWorking] = useState({})
@@ -180,11 +188,27 @@ export default function Dashboard() {
                       background: 'var(--accent-green)', color: '#000', borderRadius: 10,
                     }}>Finalized</span>
                   )}
+                  {trip.user_action_pending && trip.status !== 'finalized' && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: '2px 8px',
+                      background: 'rgba(251,191,36,0.15)', border: '1px solid #fbbf24',
+                      color: '#fbbf24', borderRadius: 10, whiteSpace: 'nowrap',
+                    }}>⏳ Waiting on you</span>
+                  )}
                 </div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>
-                  {trip.members.length} member{trip.members.length !== 1 ? 's' : ''}
+                <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span>{trip.members.length} member{trip.members.length !== 1 ? 's' : ''}</span>
                   {trip.trip_start && trip.trip_end && (
-                    <span> · {fmtDate(trip.trip_start)} – {fmtDate(trip.trip_end)}</span>
+                    <span>· {fmtDate(trip.trip_start)} – {fmtDate(trip.trip_end)}</span>
+                  )}
+                  {trip.current_phase && trip.status !== 'finalized' && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: '1px 6px',
+                      background: '#1a1a2a', border: '1px solid #3a3a5a',
+                      borderRadius: 8, color: '#8899cc', letterSpacing: 0.3,
+                    }}>
+                      {PHASE_LABELS[trip.current_phase] || trip.current_phase}
+                    </span>
                   )}
                 </div>
               </div>
