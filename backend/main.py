@@ -27,17 +27,9 @@ async def lifespan(app):
             "DATABASE_URL environment variable is required. "
             "Set it in your .env file before starting the server."
         )
-    # Pre-warm Firebase Admin SDK — fetches Google public keys so first auth isn't slow
-    try:
-        from services.firebase_verify import _init
-        import firebase_admin.auth as _fb_auth
-        _init()
-        try:
-            _fb_auth.verify_id_token("warmup")  # will fail (invalid token) but caches public keys
-        except Exception:
-            pass  # expected — we just want the key fetch to happen
-    except Exception:
-        pass  # Non-fatal — will retry on first auth attempt
+    # Prefetch Google's Firebase public keys at startup so first sign-in is instant
+    from services.firebase_verify import prefetch_certs
+    prefetch_certs()
     yield  # email worker disabled — no SMTP configured
 
 
