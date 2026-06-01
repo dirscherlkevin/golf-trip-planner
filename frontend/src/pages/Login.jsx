@@ -1,12 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
+import client from '../api/client'
 
 export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    // Wake up the Render backend on page load so it's ready when Google auth completes
+    client.get('/auth/me').catch(() => {})
+  }, [])
 
   const handleGoogle = async () => {
     setError('')
