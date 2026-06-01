@@ -72,7 +72,6 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
 
   const [activeTab, setActiveTab] = useState(null)
 
-  // Default active tab to open phase whenever open phase changes
   useEffect(() => {
     if (openPhase) setActiveTab(openPhase.phase)
   }, [openPhase?.phase])
@@ -81,8 +80,11 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
 
   return (
     <div>
-      {/* Phase tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 24, flexWrap: 'wrap' }}>
+      {/* Phase tabs — horizontal scroll on narrow screens (M3) */}
+      <div style={{
+        display: 'flex', gap: 4, marginBottom: 24,
+        overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
+      }}>
         {phases.map(p => {
           const isOpen = p.status === 'open'
           const isLocked = p.status === 'locked'
@@ -92,9 +94,13 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
           const clickable = !isPending
 
           return (
-            <div key={p.phase} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flex: 1 }}>
+            <div key={p.phase} style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+              flex: '0 0 auto', minWidth: 110,
+            }}>
               <button
                 onClick={() => clickable && setActiveTab(p.phase)}
+                title={isPending ? 'Unlocks once the previous phase is completed' : undefined}
                 style={{
                   width: '100%',
                   padding: '8px 10px',
@@ -105,16 +111,22 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
                   cursor: clickable ? 'pointer' : 'default',
                   background: isActive ? (isOpen ? 'var(--accent-green)' : '#2d4a2d') : isLocked ? '#1a2a1a' : '#1a1a1a',
                   color: isActive ? (isOpen ? '#000' : 'var(--accent-green)') : isPending ? 'var(--text-muted)' : 'var(--text-secondary)',
-                  border: isActive ? `2px solid ${isOpen ? 'var(--accent-green)' : 'var(--accent-green)'}` : `1px solid ${isLocked ? '#2d4a2d' : '#333'}`,
+                  border: isActive ? `2px solid var(--accent-green)` : `1px solid ${isLocked ? '#2d4a2d' : '#333'}`,
                 }}
               >
                 {isLocked ? '✓ ' : isPending ? '🔒 ' : ''}{PHASE_LABELS[p.phase]}
               </button>
+              {/* F5 — pending tab hint */}
+              {isPending && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+                  Previous phase first
+                </div>
+              )}
               {canReopen && (
                 <button
                   onClick={() => onReopen(p.phase)}
                   style={{
-                    fontSize: 10, padding: '2px 6px',
+                    fontSize: 12, padding: '2px 8px',
                     background: 'transparent', border: '1px solid #555',
                     borderRadius: 4, color: '#aaa', cursor: 'pointer',
                   }}
@@ -138,7 +150,6 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
         </div>
       )}
 
-      {/* Active phase content — key={refreshKey} forces re-mount on refresh so all data re-fetches */}
       {viewPhase ? (
         (() => {
           if (trip?.status === 'finalized') return <HypeMoment key={refreshKey} trip={trip} isOrganizer={isOrganizer} />
@@ -159,6 +170,17 @@ export default function TripRoom() {
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
+  // M1 — responsive MemberPanel
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [showMembers, setShowMembers] = useState(false)
+  const memberCount = trip?.members?.filter(m => m.joined === 'joined').length ?? 0
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+
   useEffect(() => {
     loadTrip(id)
   }, [id])
@@ -176,27 +198,52 @@ export default function TripRoom() {
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <button className="btn-ghost" onClick={() => navigate('/')} style={{ fontSize: 12 }}>
-              ← Back
-            </button>
-            <button
-              className="btn-ghost"
-              onClick={() => loadTrip(id)}
-              disabled={refreshing}
-              style={{ fontSize: 12, opacity: refreshing ? 0.6 : 1 }}
-            >
-              {refreshing ? '↻ Refreshing...' : '↺ Refresh'}
-            </button>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              <button className="btn-ghost" onClick={() => navigate('/')} style={{ fontSize: 12 }}>
+                ← Back
+              </button>
+              {/* U7 — icon-only refresh */}
+              <button
+                className="btn-ghost"
+                onClick={() => loadTrip(id)}
+                disabled={refreshing}
+                title={refreshing ? 'Refreshing...' : 'Refresh'}
+                style={{ fontSize: 16, opacity: refreshing ? 0.6 : 1, padding: '3px 10px' }}
+              >
+                {refreshing ? '↻' : '↺'}
+              </button>
+              {/* M1 — members chip on mobile */}
+              {isMobile && (
+                <button
+                  className="btn-ghost"
+                  onClick={() => setShowMembers(v => !v)}
+                  style={{ fontSize: 12, marginLeft: 'auto' }}
+                >
+                  👥 {memberCount} {showMembers ? '▲' : '▼'}
+                </button>
+              )}
+            </div>
+            <h1 style={{ color: 'var(--accent-green)', fontSize: 24, margin: 0 }}>{trip.name}</h1>
+            <div style={{ marginTop: 6 }}>
+              <CostEstimate tripId={trip.id} />
+            </div>
           </div>
-          <h1 style={{ color: 'var(--accent-green)', fontSize: 24, margin: 0 }}>{trip.name}</h1>
-          <div style={{ marginTop: 6 }}>
-            <CostEstimate tripId={trip.id} />
-          </div>
+          {/* M1 — full panel only on desktop */}
+          {!isMobile && <MemberPanel trip={trip} />}
         </div>
-        <MemberPanel trip={trip} />
+
+        {/* M1 — collapsible panel on mobile */}
+        {isMobile && showMembers && (
+          <div style={{
+            marginTop: 12, padding: '12px 16px',
+            background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8,
+          }}>
+            <MemberPanel trip={trip} />
+          </div>
+        )}
       </div>
 
       {/* Personal to-do banner */}
