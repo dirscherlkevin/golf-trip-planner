@@ -41,16 +41,21 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 @router.get("/debug")
 def debug_info():
     import os, httpx, time
-    result = {"cors_origins": os.getenv("CORS_ORIGINS", "*_default"), "firebase_api_key_set": bool(os.getenv("FIREBASE_API_KEY"))}
+    from services.firebase_verify import FIREBASE_API_KEY, FIREBASE_LOOKUP_URL
+    result = {
+        "cors_origins": os.getenv("CORS_ORIGINS", "*_default"),
+        "firebase_api_key_prefix": FIREBASE_API_KEY[:12] + "...",
+        "lookup_url": FIREBASE_LOOKUP_URL[:60] + "...",
+    }
+    # Test actual POST to accounts:lookup with a fake token
     t0 = time.time()
     try:
-        r = httpx.get("https://identitytoolkit.googleapis.com/", timeout=8)
-        result["google_reachable"] = True
-        result["google_status"] = r.status_code
+        r = httpx.post(FIREBASE_LOOKUP_URL, json={"idToken": "fake-token-test"}, timeout=8)
+        result["lookup_post_status"] = r.status_code
+        result["lookup_post_body"] = r.text[:300]
     except Exception as e:
-        result["google_reachable"] = False
-        result["google_error"] = str(e)
-    result["google_latency_ms"] = round((time.time() - t0) * 1000)
+        result["lookup_post_error"] = f"{type(e).__name__}: {e}"
+    result["lookup_latency_ms"] = round((time.time() - t0) * 1000)
     return result
 
 @router.post("/google", response_model=Token)
