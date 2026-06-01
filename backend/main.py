@@ -27,9 +27,6 @@ async def lifespan(app):
             "DATABASE_URL environment variable is required. "
             "Set it in your .env file before starting the server."
         )
-    # Prefetch Google's Firebase public keys at startup so first sign-in is instant
-    from services.firebase_verify import prefetch_certs
-    prefetch_certs()
     yield  # email worker disabled — no SMTP configured
 
 
