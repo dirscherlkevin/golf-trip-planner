@@ -23,18 +23,7 @@ export const useAuthStore = create((set) => ({
 
   loginWithGoogle: async () => {
     const idToken = await getGoogleIdToken()
-    // Send as form-encoded — avoids CORS preflight on mobile (simple request)
-    const apiUrl = import.meta.env.VITE_API_URL || ''
-    const res = await fetch(`${apiUrl}/auth/google`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ id_token: idToken }).toString(),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(err.detail || `Auth failed (${res.status})`)
-    }
-    const data = await res.json()
+    const { data } = await client.post('/auth/google', { id_token: idToken })
     localStorage.setItem('token', data.access_token)
     const me = await client.get('/auth/me')
     set({ token: data.access_token, user: me.data })
