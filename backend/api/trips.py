@@ -6,6 +6,8 @@ from database import get_db
 from models.trip import Trip, TripMember
 from models.round import TripRound
 from models.user import User
+from models.phase import TripPhase, PhaseStatus, PhaseName
+from models.availability import AvailabilityResponse
 from schemas.trip import TripCreate, TripOut, InviteCreate, InviteOut
 from api.auth import get_current_user
 from services.phases import initialize_phases
@@ -41,7 +43,45 @@ def list_trips(db: Session = Depends(get_db), user: User = Depends(get_current_u
         .filter(TripMember.user_id == user.id, TripMember.joined == "joined")
         .scalar_subquery()
     )
-    return db.query(Trip).filter(Trip.id.in_(member_trip_ids)).all()
+    trips = db.query(Trip).filter(Trip.id.in_(member_trip_ids)).all()
+    if not trips:
+        return []
+
+    trip_ids = [t.id for t in trips]
+
+    # Batch: get open phases for all trips
+    open_phases = db.query(TripPhase).filter(
+        TripPhase.trip_id.in_(trip_ids),
+        TripPhase.status == PhaseStatus.open
+    ).all()
+    open_phase_map = {p.trip_id: p.phase.value for p in open_phases}
+
+    # Batch: get availability responses for user in these trips
+    avail_responses = db.query(AvailabilityResponse.trip_id).filter(
+        AvailabilityResponse.trip_id.in_(trip_ids),
+        AvailabilityResponse.user_id == user.id
+    ).all()
+    responded_trip_ids = {r.trip_id for r in avail_responses}
+
+    result = []
+    for trip in trips:
+        if trip.status == "finalized":
+            current_phase = "finalized"
+            action_pending = False
+        else:
+            current_phase = open_phase_map.get(trip.id)
+            if current_phase == "availability":
+                action_pending = trip.id not in responded_trip_ids
+            elif current_phase in ("destination", "planning"):
+                action_pending = True
+            else:
+                action_pending = False
+
+        out = TripOut.model_validate(trip)
+        out = out.model_copy(update={"current_phase": current_phase, "user_action_pending": action_pending})
+        result.append(out)
+
+    return result
 
 # Must be defined before /{trip_id} routes so "invites" isn't matched as an integer
 @router.get("/invites")
@@ -70,7 +110,30 @@ def list_pending_invites(db: Session = Depends(get_db), user: User = Depends(get
 @router.get("/{trip_id}", response_model=TripOut)
 def get_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = _get_trip_for_member(trip_id, user.id, db)
-    return trip
+
+    if trip.status == "finalized":
+        current_phase = "finalized"
+        action_pending = False
+    else:
+        open_phase = db.query(TripPhase).filter(
+            TripPhase.trip_id == trip_id,
+            TripPhase.status == PhaseStatus.open
+        ).first()
+        current_phase = open_phase.phase.value if open_phase else None
+        if current_phase == "availability":
+            has_responded = db.query(AvailabilityResponse).filter(
+                AvailabilityResponse.trip_id == trip_id,
+                AvailabilityResponse.user_id == user.id
+            ).first() is not None
+            action_pending = not has_responded
+        elif current_phase in ("destination", "planning"):
+            action_pending = True
+        else:
+            action_pending = False
+
+    out = TripOut.model_validate(trip)
+    out = out.model_copy(update={"current_phase": current_phase, "user_action_pending": action_pending})
+    return out
 
 @router.post("/{trip_id}/invite", response_model=InviteOut)
 def invite_member(trip_id: int, data: InviteCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

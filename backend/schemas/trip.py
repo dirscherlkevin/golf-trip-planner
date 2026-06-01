@@ -26,6 +26,8 @@ class TripOut(BaseModel):
     planned_rounds: Optional[int] = None
     lodging_skipped: bool = False
     members: list[TripMemberOut]
+    current_phase: Optional[str] = None
+    user_action_pending: bool = False
 
     model_config = {"from_attributes": True}
 

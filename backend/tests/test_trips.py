@@ -48,3 +48,29 @@ def test_non_member_cannot_access_trip(auth_client, client):
     other_token = other.json()["access_token"]
     r = client.get(f"/trips/{trip_id}", headers={"Authorization": f"Bearer {other_token}"})
     assert r.status_code == 403
+
+def test_trip_list_includes_current_phase(client):
+    r = client.post("/auth/register", json={"email": "phase@test.com", "name": "Phase", "password": "pw"})
+    token = r.json()["access_token"]
+    trip = client.post("/trips", json={"name": "Phase Trip"}, headers={"Authorization": f"Bearer {token}"}).json()
+
+    trips = client.get("/trips", headers={"Authorization": f"Bearer {token}"}).json()
+    t = next(x for x in trips if x["id"] == trip["id"])
+
+    assert "current_phase" in t
+    assert t["current_phase"] == "availability"  # new trips start in availability
+    assert "user_action_pending" in t
+    assert t["user_action_pending"] == True  # user hasn't submitted availability yet
+
+def test_get_trip_includes_current_phase(client):
+    r = client.post("/auth/register", json={"email": "phase2@test.com", "name": "Phase2", "password": "pw"})
+    token = r.json()["access_token"]
+    trip = client.post("/trips", json={"name": "Phase Trip 2"}, headers={"Authorization": f"Bearer {token}"}).json()
+    trip_id = trip["id"]
+
+    t = client.get(f"/trips/{trip_id}", headers={"Authorization": f"Bearer {token}"}).json()
+
+    assert "current_phase" in t
+    assert t["current_phase"] == "availability"
+    assert "user_action_pending" in t
+    assert t["user_action_pending"] == True
