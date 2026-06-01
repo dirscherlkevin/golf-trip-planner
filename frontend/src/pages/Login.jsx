@@ -1,10 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
-import { checkRedirectResult } from '../firebase'
-import client from '../api/client'
-
-const API_URL = import.meta.env.VITE_API_URL || ''
 
 export default function Login() {
   const [error, setError] = useState('')
@@ -13,28 +9,10 @@ export default function Login() {
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle)
   const navigate = useNavigate()
 
-  // Handle mobile redirect sign-in result on page load
-  useEffect(() => {
-    checkRedirectResult().then(async (idToken) => {
-      if (!idToken) return
-      setLoading(true)
-      try {
-        const { data } = await client.post('/auth/google', { id_token: idToken })
-        localStorage.setItem('token', data.access_token)
-        const me = await client.get('/auth/me')
-        useAuthStore.setState({ token: data.access_token, user: me.data })
-        navigate('/')
-      } catch (err) {
-        setError('Sign-in failed after redirect. Please try again.')
-        setLoading(false)
-      }
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   const checkServer = async () => {
     setServerStatus('checking')
     try {
-      const res = await fetch(`${API_URL}/auth/me`)
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/auth/me`)
       setServerStatus(res.status === 401 || res.ok ? 'ready' : 'error')
     } catch {
       setServerStatus('error')
@@ -48,12 +26,14 @@ export default function Login() {
       await loginWithGoogle()
       navigate('/')
     } catch (err) {
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        setLoading(false)
+        return
+      }
       const detail = err.code ? `${err.code}: ${err.message}` : (err.message || 'Sign-in failed. Try again.')
       setError(detail)
       setLoading(false)
     }
-    // Note: on mobile, loginWithGoogle() triggers a redirect and never resolves here
-    // The result is handled by the useEffect above when the page reloads
   }
 
   return (
