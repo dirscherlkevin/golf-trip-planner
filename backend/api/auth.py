@@ -39,23 +39,42 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     return Token(access_token=create_access_token(user.id), token_type="bearer")
 
 @router.get("/debug")
-def debug_info():
-    import os, httpx, time
-    from services.firebase_verify import FIREBASE_API_KEY, FIREBASE_LOOKUP_URL
-    result = {
-        "cors_origins": os.getenv("CORS_ORIGINS", "*_default"),
-        "firebase_api_key_prefix": FIREBASE_API_KEY[:12] + "...",
-        "lookup_url": FIREBASE_LOOKUP_URL[:60] + "...",
-    }
-    # Test actual POST to accounts:lookup with a fake token
+def debug_info(db: Session = Depends(get_db)):
+    import httpx, time
+    from services.firebase_verify import FIREBASE_LOOKUP_URL
+    result = {}
+
+    # 1. Test DB
     t0 = time.time()
     try:
-        r = httpx.post(FIREBASE_LOOKUP_URL, json={"idToken": "fake-token-test"}, timeout=8)
-        result["lookup_post_status"] = r.status_code
-        result["lookup_post_body"] = r.text[:300]
+        db.execute(__import__('sqlalchemy').text("SELECT 1"))
+        result["db_ok"] = True
     except Exception as e:
-        result["lookup_post_error"] = f"{type(e).__name__}: {e}"
-    result["lookup_latency_ms"] = round((time.time() - t0) * 1000)
+        result["db_ok"] = False
+        result["db_error"] = f"{type(e).__name__}: {e}"
+    result["db_ms"] = round((time.time() - t0) * 1000)
+
+    # 2. Test Firebase accounts:lookup POST
+    t0 = time.time()
+    try:
+        r = httpx.post(FIREBASE_LOOKUP_URL, json={"idToken": "fake"}, timeout=8)
+        result["firebase_status"] = r.status_code
+        result["firebase_error_code"] = r.json().get("error", {}).get("message", "none")
+    except Exception as e:
+        result["firebase_error"] = f"{type(e).__name__}: {e}"
+    result["firebase_ms"] = round((time.time() - t0) * 1000)
+
+    # 3. Test user table query
+    t0 = time.time()
+    try:
+        count = db.query(User).count()
+        result["user_count"] = count
+        result["db_query_ok"] = True
+    except Exception as e:
+        result["db_query_ok"] = False
+        result["db_query_error"] = f"{type(e).__name__}: {e}"
+    result["db_query_ms"] = round((time.time() - t0) * 1000)
+
     return result
 
 @router.post("/google", response_model=Token)
