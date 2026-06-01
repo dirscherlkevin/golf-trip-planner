@@ -108,16 +108,22 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, lockedOptId,
               <span style={{ color: 'var(--text-muted)' }}>Distance: </span>{od.distance_to_courses}
             </div>
           )}
-          {od.booking_link && (
-            <a
-              href={od.booking_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: 12, color: 'var(--accent-green)', marginTop: 4, display: 'inline-block' }}
-            >
-              Book →
-            </a>
-          )}
+          <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+            {od.booking_link && (
+              <a href={od.booking_link} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: 'var(--accent-green)' }}>
+                Book →
+              </a>
+            )}
+            {(od.name || od.address) && (
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent([od.name, od.address].filter(Boolean).join(' '))}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                📍 Map
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Vote + lock controls */}

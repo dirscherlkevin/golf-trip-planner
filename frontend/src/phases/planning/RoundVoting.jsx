@@ -106,14 +106,22 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
           <CourseDetail label="Pace of play" value={cd.pace_of_play} />
           <CourseDetail label="Tee times" value={cd.tee_time_window} />
           <CourseDetail label="Source" value={cd.rating_source} />
-          {cd.website && (
-            <div style={{ fontSize: 12, marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
+            {cd.website && (
               <a href={cd.website} target="_blank" rel="noopener noreferrer"
-                style={{ color: 'var(--accent-green)' }}>
+                style={{ fontSize: 12, color: 'var(--accent-green)' }}>
                 Book tee times ↗
               </a>
-            </div>
-          )}
+            )}
+            {(cd.name || cd.location) && (
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent([cd.name, cd.location].filter(Boolean).join(' '))}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                📍 Map
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Vote + lock controls */}
@@ -392,9 +400,9 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
           </div>
         )}
 
-        {/* Nominations */}
+        {/* Nominations — hide non-locked options once a course is locked */}
         {round.nominations && round.nominations.length > 0 ? (
-          round.nominations.map(nom => (
+          round.nominations.filter(n => !isLocked || n.id === lockedNomId).map(nom => (
             <NominationCard
               key={nom.id}
               nomination={nom}
