@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
 from database import get_db
 from models.user import User
 from schemas.user import UserCreate, UserOut, Token, GoogleLoginIn
@@ -63,3 +65,13 @@ def google_login(data: GoogleLoginIn, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+class HandicapUpdate(BaseModel):
+    handicap: Optional[float] = None
+
+@router.patch("/me/handicap")
+def update_my_handicap(body: HandicapUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    user.handicap = body.handicap
+    db.commit()
+    db.refresh(user)
+    return {"handicap": user.handicap}

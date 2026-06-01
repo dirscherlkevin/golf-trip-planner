@@ -67,6 +67,7 @@ export default function MemberPanel({ trip }) {
     const val = handicapStr.trim() === '' ? null : parseFloat(handicapStr)
     try {
       await client.patch(`/trips/${trip.id}/members/handicap`, { handicap: val })
+      await client.patch('/auth/me/handicap', { handicap: val })
       setEditingHandicap(false)
       loadTrip(trip.id)
     } catch { }
@@ -145,7 +146,7 @@ export default function MemberPanel({ trip }) {
             {isMe && (
               <div style={{ marginLeft: 20, marginTop: 2 }}>
                 {!editingHandicap ? (
-                  <button className="btn-ghost" onClick={() => { setHandicapStr(m.handicap?.toString() ?? ''); setEditingHandicap(true) }}
+                  <button className="btn-ghost" onClick={() => { setHandicapStr((m.handicap ?? user?.handicap)?.toString() ?? ''); setEditingHandicap(true) }}
                     style={{ fontSize: 12, padding: '1px 6px', color: '#888' }}>
                     {m.handicap != null ? `✏️ Edit HCP` : '+ Add HCP'}
                   </button>

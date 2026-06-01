@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -9,6 +10,7 @@ class UserOut(BaseModel):
     id: int
     email: str
     name: str
+    handicap: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
