@@ -195,22 +195,15 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsS
   return (
     <div>
       {rounds.map(round => (
-        <div key={round.id} style={{ position: 'relative' }}>
-          <RoundVoting round={round} tripId={trip.id} isOrganizer={isOrganizer} onUpdated={onRoundUpdated} />
-          {isOrganizer && round.locked_course_id == null && (
-            <button
-              onClick={() => handleRemoveRound(round.id)}
-              disabled={removingId === round.id}
-              style={{
-                position: 'absolute', top: 10, right: 10,
-                background: 'none', border: '1px solid #e55', borderRadius: 4,
-                color: '#e55', fontSize: 11, padding: '2px 8px', cursor: 'pointer',
-              }}
-            >
-              {removingId === round.id ? '...' : '− Remove Round'}
-            </button>
-          )}
-        </div>
+        <RoundVoting
+          key={round.id}
+          round={round}
+          tripId={trip.id}
+          isOrganizer={isOrganizer}
+          onUpdated={onRoundUpdated}
+          onRemove={round.locked_course_id == null ? () => handleRemoveRound(round.id) : null}
+          removing={removingId === round.id}
+        />
       ))}
       {isOrganizer && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>

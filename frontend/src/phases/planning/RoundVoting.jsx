@@ -223,7 +223,7 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
   )
 }
 
-export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
+export default function RoundVoting({ round, tripId, isOrganizer, onUpdated, onRemove, removing }) {
   const [generatingMore, setGeneratingMore] = useState(false)
   const [generateError, setGenerateError] = useState(null)
   const [changingTier, setChangingTier] = useState(false)
@@ -370,6 +370,12 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated }) {
               disabled={generatingMore || round.generation_status === 'pending'} style={{ fontSize: 12 }}>
               {generatingMore ? 'Requesting...' : 'Suggest More'}
             </button>
+            {onRemove && (
+              <button onClick={onRemove} disabled={removing}
+                style={{ background: 'none', border: '1px solid #e55', borderRadius: 4, color: '#e55', fontSize: 11, padding: '2px 8px', cursor: 'pointer' }}>
+                {removing ? '...' : '− Remove Round'}
+              </button>
+            )}
             {generateError && <div style={{ fontSize: 11, color: '#e55' }}>{generateError}</div>}
           </div>
         )}

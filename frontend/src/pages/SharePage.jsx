@@ -157,23 +157,21 @@ export default function SharePage() {
                       </div>
                     )}
                   </div>
-                  {r.website && (
-                    <div style={{ marginTop: 12 }}>
-                      <a
-                        href={r.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          color: 'var(--accent-green)',
-                          fontSize: 13,
-                          textDecoration: 'none',
-                          opacity: 0.8,
-                        }}
-                      >
+                  <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
+                    {r.website && (
+                      <a href={r.website} target="_blank" rel="noopener noreferrer"
+                        style={{ color: 'var(--accent-green)', fontSize: 13, textDecoration: 'none', opacity: 0.8 }}>
                         Book tee time →
                       </a>
-                    </div>
-                  )}
+                    )}
+                    {(r.course_name || r.course_location) && (
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([r.course_name, r.course_location].filter(Boolean).join(' '))}`}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ color: '#6699cc', fontSize: 13, textDecoration: 'underline' }}>
+                        📍 Map
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -202,21 +200,21 @@ export default function SharePage() {
                   </span>
                 )}
               </div>
-              {data.lodging.booking_link && (
-                <a
-                  href={data.lodging.booking_link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    color: 'var(--accent-green)',
-                    fontSize: 13,
-                    textDecoration: 'none',
-                    opacity: 0.8,
-                  }}
-                >
-                  Book lodging →
-                </a>
-              )}
+              <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+                {data.lodging.booking_link && (
+                  <a href={data.lodging.booking_link} target="_blank" rel="noopener noreferrer"
+                    style={{ color: 'var(--accent-green)', fontSize: 13, textDecoration: 'none', opacity: 0.8 }}>
+                    Book lodging →
+                  </a>
+                )}
+                {(data.lodging.address || data.lodging.name) && (
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([data.lodging.address, data.lodging.name].filter(Boolean).join(' '))}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#6699cc', fontSize: 13, textDecoration: 'underline' }}>
+                    📍 Map
+                  </a>
+                )}
+              </div>
             </div>
           </section>
         )}

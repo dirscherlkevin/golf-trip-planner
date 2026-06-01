@@ -527,23 +527,28 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
         )
       )}
 
-      {/* Generate more (organizer, not locked) */}
-      {isOrganizer && !isLocked && lodging.generation_status !== 'pending' && (
-        <button
-          className="btn-ghost"
-          onClick={handleGenerateMore}
-          disabled={generatingMore}
-          style={{ fontSize: 13, marginBottom: 20 }}
-        >
-          {generatingMore ? 'Requesting more...' : 'Generate More Options'}
-        </button>
-      )}
-
-      {/* Add manually (all members, not locked) */}
       {!isLocked && (
-        <div style={{ padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a', marginTop: 8 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Add a Lodging Option Manually</div>
-          <ManualLodgingForm tripId={trip.id} onAdded={loadLodging} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+          {/* AI card */}
+          {isOrganizer && lodging.generation_status !== 'pending' && (
+            <div className="card">
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Find More with AI</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                Generate additional AI suggestions to add to the list.
+              </div>
+              <button className="btn-ghost" onClick={handleGenerateMore} disabled={generatingMore} style={{ fontSize: 13 }}>
+                {generatingMore ? 'Requesting more...' : 'Generate More Options'}
+              </button>
+            </div>
+          )}
+          {/* Manual card */}
+          <div className="card">
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Add Lodging Manually</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
+              Already have a place in mind? Add it directly.
+            </div>
+            <ManualLodgingForm tripId={trip.id} onAdded={loadLodging} />
+          </div>
         </div>
       )}
     </div>

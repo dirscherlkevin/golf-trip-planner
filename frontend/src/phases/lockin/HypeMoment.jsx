@@ -200,12 +200,21 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {feeStr && <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent-green)' }}>{feeStr}</div>}
-          {round.website && (
-            <a href={round.website} target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: 12, color: 'var(--accent-green)', display: 'block', marginTop: 6 }}>
-              Book tee times ↗
-            </a>
-          )}
+          <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
+            {round.website && (
+              <a href={round.website} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: 'var(--accent-green)' }}>
+                Book tee times ↗
+              </a>
+            )}
+            {(round.course_name || round.course_location) && (
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([round.course_name, round.course_location].filter(Boolean).join(' '))}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: '#6699cc', textDecoration: 'underline' }}>
+                📍 Map
+              </a>
+            )}
+          </div>
         </div>
       </div>
       <RoundScheduleEditor
@@ -267,12 +276,21 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
         )}
       </div>
       {lodging.amenities && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>{lodging.amenities}</div>}
-      {(lodging.booking_link || lodging.website) && (
-        <a href={lodging.booking_link || lodging.website} target="_blank" rel="noopener noreferrer"
-          style={{ fontSize: 13, color: 'var(--accent-green)', display: 'inline-block', marginTop: 8 }}>
-          View / Book ↗
-        </a>
-      )}
+      <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
+        {(lodging.booking_link || lodging.website) && (
+          <a href={lodging.booking_link || lodging.website} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 13, color: 'var(--accent-green)' }}>
+            View / Book ↗
+          </a>
+        )}
+        {(lodging.address || lodging.name) && (
+          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([lodging.address, lodging.name].filter(Boolean).join(' '))}`}
+            target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 13, color: '#6699cc', textDecoration: 'underline' }}>
+            📍 Map
+          </a>
+        )}
+      </div>
       {isOrganizer && (
         <BookedCheck checked={booked} onChange={toggleBooked} label="Mark lodging as booked"
           confirmation={confirmation} onConfirmationChange={v => setConfirmation(v)}
