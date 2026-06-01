@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store/auth'
 import { useTripStore } from '../../store/trip'
+import client from '../../api/client'
 import {
   getLodging,
   setupLodging,
@@ -297,7 +298,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
 
   const [generatingMore, setGeneratingMore] = useState(false)
   const [unlocking, setUnlocking] = useState(false)
-  const [skipped, setSkipped] = useState(false)
+  const [skipped, setSkipped] = useState(trip?.lodging_skipped ?? false)
 
   const loadLodging = () => {
     if (!trip) return
@@ -351,6 +352,8 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
     setGeneratingMore(true)
     try {
       await generateMoreLodging(trip.id)
+      // Set local status to pending so the 5s polling effect kicks in
+      setLodging(prev => prev ? { ...prev, generation_status: 'pending' } : prev)
       loadLodging()
     } catch {
       // ignore
@@ -397,7 +400,11 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
           <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 12 }}>
             You've chosen to find lodging outside this app. All courses being locked is enough to advance.
           </div>
-          <button className="btn-ghost" onClick={() => { setSkipped(false); onLodgingUpdated?.() }} style={{ fontSize: 12 }}>
+          <button className="btn-ghost" onClick={async () => {
+            try { await client.patch(`/trips/${trip.id}/lodging-skipped`, { skipped: false }) } catch {}
+            setSkipped(false)
+            onLodgingUpdated?.()
+          }} style={{ fontSize: 12 }}>
             Actually, set up lodging
           </button>
         </div>
@@ -446,7 +453,11 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
             <button className="btn-primary" onClick={handleSetup} disabled={settingUp}>
               {settingUp ? 'Setting up...' : 'Find Lodging Options with AI'}
             </button>
-            <button className="btn-ghost" onClick={() => { setSkipped(true); onLodgingUpdated?.() }} style={{ fontSize: 13 }}>
+            <button className="btn-ghost" onClick={async () => {
+              try { await client.patch(`/trips/${trip.id}/lodging-skipped`, { skipped: true }) } catch {}
+              setSkipped(true)
+              onLodgingUpdated?.()
+            }} style={{ fontSize: 13 }}>
               Skip / Find My Own
             </button>
           </div>
@@ -539,6 +550,11 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
               <button className="btn-ghost" onClick={handleGenerateMore} disabled={generatingMore} style={{ fontSize: 13 }}>
                 {generatingMore ? 'Requesting more...' : 'Generate More Options'}
               </button>
+              {generatingMore && (
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Generating... updates will appear automatically.
+                </div>
+              )}
             </div>
           )}
           {/* Manual card */}

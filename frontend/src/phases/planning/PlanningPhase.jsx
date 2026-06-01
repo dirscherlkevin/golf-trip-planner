@@ -32,10 +32,11 @@ export default function PlanningPhase() {
 
   const checkLodging = () => {
     if (!trip) return
+    if (trip.lodging_skipped) { setLodgingLocked(true); return }
     getLodging(trip.id)
       .then(data => setLodgingLocked(!!data.locked_option_id))
       .catch(err => {
-        if (err.response?.status === 404) setLodgingLocked(true)  // no lodging = organizer is skipping
+        if (err.response?.status === 404) setLodgingLocked(false)  // no lodging = not done (unless skipped)
       })
   }
 
@@ -183,11 +184,12 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsS
   }
 
   const handleRemoveRound = async (roundId) => {
+    if (!window.confirm('Remove this round? All course nominations and votes will be lost.')) return
     setRemovingId(roundId)
     try {
       const updated = await removeRound(trip.id, roundId)
       onRoundsSetup(updated)
-    } catch { /* ignore */ } finally {
+    } catch { } finally {
       setRemovingId(null)
     }
   }

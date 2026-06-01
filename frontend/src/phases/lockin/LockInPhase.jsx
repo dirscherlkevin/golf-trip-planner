@@ -129,7 +129,8 @@ export default function LockInPhase() {
 
   // Determine checklist status
   const allRoundsLocked = rounds.length > 0 && rounds.every(r => r.locked_course_id != null)
-  const lodgingLocked = lodging != null ? lodging.locked_option_id != null : true // no lodging = not blocking
+  const lodgingSkipped = trip?.lodging_skipped ?? false
+  const lodgingLocked = lodgingSkipped || (lodging != null ? lodging.locked_option_id != null : true)
   const allReady = allRoundsLocked && lodgingLocked
 
   const handleLock = async () => {
@@ -205,21 +206,15 @@ export default function LockInPhase() {
           )}
 
           {/* Lodging */}
-          {lodging != null ? (
-            <ChecklistItem
-              label="Lodging"
-              detail={lodging.locked_option_id != null
-                ? (lodging.options?.find(o => o.id === lodging.locked_option_id)?.option_data?.name || 'Lodging locked')
-                : 'Pending — lodging not yet selected'}
-              done={lodging.locked_option_id != null}
-            />
-          ) : (
-            <ChecklistItem
-              label="Lodging"
-              detail="No lodging configured (optional)"
-              done={true}
-            />
-          )}
+          <ChecklistItem
+            label="Lodging"
+            detail={
+              lodgingSkipped ? "Skipped — finding lodging separately" :
+              lodging?.locked_option_id != null ? (lodging.options?.find(o => o.id === lodging.locked_option_id)?.option_data?.name || 'Lodging locked') :
+              'Pending — lodging not yet selected'
+            }
+            done={lodgingLocked}
+          />
         </div>
         </>
       )}
@@ -248,13 +243,14 @@ export default function LockInPhase() {
         <div style={{
           color: 'var(--text-secondary)',
           fontSize: 14,
-          textAlign: 'center',
-          padding: '12px 0',
+          padding: '14px 0',
           borderTop: '1px solid #2a2a2a',
         }}>
-          Waiting for the organizer to lock the trip.
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-            This page refreshes automatically.
+          <div style={{ marginBottom: 6 }}>
+            The checklist above shows current status. The organizer will lock the trip once everything is confirmed.
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            This page refreshes automatically every 10 seconds.
           </div>
         </div>
       )}
