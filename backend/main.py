@@ -17,6 +17,11 @@ import models.lodging  # noqa
 
 @asynccontextmanager
 async def lifespan(app):
+    if not os.getenv("SECRET_KEY"):
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required. "
+            "Set it in your .env file before starting the server."
+        )
     yield  # email worker disabled — no SMTP configured
 
 

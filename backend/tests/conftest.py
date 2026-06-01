@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+os.environ.setdefault("SECRET_KEY", "test-secret-key-do-not-deploy")
 
 from main import app
 from database import Base, get_db

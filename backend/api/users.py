@@ -1,14 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 from database import get_db
 from models.user import User
+from models.trip import TripMember
 from api.auth import get_current_user
 
 router = APIRouter()
-
-def _email_to_name(email: str) -> str:
-    local = email.split('@')[0]
-    return local.replace('.', ' ').replace('_', ' ').replace('-', ' ').title()
 
 @router.get("/search")
 def search_users(
@@ -16,12 +14,27 @@ def search_users(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Search registered users by email prefix. Excludes the caller."""
+    """Search users who share at least one trip with the caller."""
+    caller_trip_ids = (
+        db.query(TripMember.trip_id)
+        .filter(TripMember.user_id == user.id, TripMember.joined == "joined")
+        .subquery()
+    )
+    shared_user_ids = (
+        db.query(TripMember.user_id)
+        .filter(
+            TripMember.trip_id.in_(select(caller_trip_ids)),
+            TripMember.user_id != user.id,
+            TripMember.joined == "joined",
+        )
+        .distinct()
+        .subquery()
+    )
     results = (
         db.query(User)
         .filter(
             (User.email.ilike(f"%{q}%")) | (User.name.ilike(f"%{q}%")),
-            User.id != user.id,
+            User.id.in_(select(shared_user_ids)),
         )
         .limit(8)
         .all()
