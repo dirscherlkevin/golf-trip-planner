@@ -27,6 +27,31 @@ export default function Login() {
     }
   }
 
+  const testPost = async () => {
+    setLogs([])
+    log('Test A: GET /auth/me (no preflight)...')
+    try {
+      const r = await fetch(`${API_URL}/auth/me`)
+      log(`Test A OK: status=${r.status}`)
+    } catch(e) { log(`Test A FAILED: ${e.message}`) }
+
+    log('Test B: POST /auth/google, no Content-Type (no preflight)...')
+    try {
+      const r = await fetch(`${API_URL}/auth/google`, { method: 'POST', body: 'id_token=test' })
+      log(`Test B OK: status=${r.status}`)
+    } catch(e) { log(`Test B FAILED: ${e.message}`) }
+
+    log('Test C: POST /auth/google, Content-Type: application/json (triggers preflight)...')
+    try {
+      const r = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: 'test' }),
+      })
+      log(`Test C OK: status=${r.status}`)
+    } catch(e) { log(`Test C FAILED: ${e.message}`) }
+  }
+
   const handleGoogle = async () => {
     setError('')
     setLogs([])
@@ -118,7 +143,16 @@ export default function Login() {
           </div>
         )}
 
-        <div style={{ marginTop: 24, borderTop: '1px solid #2a2a2a', paddingTop: 16 }}>
+        <div style={{ marginTop: 12 }}>
+          <button onClick={testPost} style={{
+            background: 'none', border: '1px solid #555', borderRadius: 6,
+            color: '#aaa', fontSize: 12, padding: '6px 14px', cursor: 'pointer', width: '100%',
+          }}>
+            🔬 Run POST diagnostic (3 tests)
+          </button>
+        </div>
+
+        <div style={{ marginTop: 12, borderTop: '1px solid #2a2a2a', paddingTop: 16 }}>
           <button
             onClick={checkServer}
             disabled={serverStatus === 'checking'}
