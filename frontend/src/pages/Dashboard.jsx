@@ -69,7 +69,7 @@ function PendingInvites({ onJoined }) {
                 disabled={!!working[inv.trip_id]}
                 style={{ fontSize: 12, padding: '5px 10px', color: '#888' }}
               >
-                Ignore
+                Decline
               </button>
             </div>
           </div>

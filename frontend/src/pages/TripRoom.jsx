@@ -58,7 +58,7 @@ const PHASE_COMPONENTS = {
 
 const PHASE_LABELS = {
   availability: 'Availability',
-  destination: 'AI Destinations',
+  destination: 'Destinations',
   planning: 'Courses + Lodging',
   locked_in: 'Lock It In',
 }

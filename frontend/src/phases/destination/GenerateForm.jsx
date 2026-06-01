@@ -25,7 +25,7 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
   const [tierFilter, setTierFilter] = useState('show_all')
   const [country, setCountry] = useState('United States')
   const [region, setRegion] = useState('')
-  const [plannedRoundsStr, setPlannedRoundsStr] = useState('3')
+  const [plannedRoundsStr, setPlannedRoundsStr] = useState(String(trip?.planned_rounds ?? 3))
   const plannedRounds = Math.max(1, parseInt(plannedRoundsStr, 10) || 1)
   const [publicOnly, setPublicOnly] = useState(true)
   const [loading, setLoading] = useState(false)

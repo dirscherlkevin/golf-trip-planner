@@ -21,6 +21,7 @@ function fmtNudge(iso) {
 
 export default function MemberPanel({ trip }) {
   const user = useAuthStore(s => s.user)
+  const fetchMe = useAuthStore(s => s.fetchMe)
   const phases = useTripStore(s => s.phases)
   const refreshKey = useTripStore(s => s.refreshKey)
   const loadTrip = useTripStore(s => s.loadTrip)
@@ -70,6 +71,7 @@ export default function MemberPanel({ trip }) {
       await client.patch('/auth/me/handicap', { handicap: val })
       setEditingHandicap(false)
       loadTrip(trip.id)
+      fetchMe()
     } catch { }
   }
 
