@@ -50,6 +50,18 @@ export default function Login() {
       })
       log(`Test C OK: status=${r.status}`)
     } catch(e) { log(`Test C FAILED: ${e.message}`) }
+
+    log('Test D: axios client.post /auth/google (same as real sign-in)...')
+    try {
+      await client.post('/auth/google', { id_token: 'test' })
+      log('Test D OK: unexpected 200')
+    } catch(e) {
+      if (e.response) {
+        log(`Test D OK: got response status=${e.response.status}`)
+      } else {
+        log(`Test D FAILED: code=${e.code} msg=${e.message}`)
+      }
+    }
   }
 
   const handleGoogle = async () => {
