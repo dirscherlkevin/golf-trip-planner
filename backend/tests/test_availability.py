@@ -88,3 +88,27 @@ def test_nudge_queues_emails_for_non_responders(auth_client):
         headers={"Authorization": f"Bearer {token}"})
     # The organizer themselves hasn't responded — nudge should succeed (204)
     assert r.status_code == 204
+
+def test_overlap_includes_responded_count(client):
+    """overlap endpoint returns how many members have responded vs. total."""
+    r1 = client.post("/auth/register", json={"email": "rc1@test.com", "name": "RC1", "password": "p"})
+    r2 = client.post("/auth/register", json={"email": "rc2@test.com", "name": "RC2", "password": "p"})
+    token1, token2 = r1.json()["access_token"], r2.json()["access_token"]
+
+    trip = client.post("/trips", json={"name": "T"}, headers={"Authorization": f"Bearer {token1}"}).json()
+    client.post(f"/trips/{trip['id']}/invite", json={"email": "rc2@test.com"}, headers={"Authorization": f"Bearer {token1}"})
+    client.post(f"/trips/{trip['id']}/join", headers={"Authorization": f"Bearer {token2}"})
+
+    # Only rc1 submits availability
+    client.post(
+        f"/trips/{trip['id']}/availability",
+        json={"date_ranges": [{"start": "2025-07-01", "end": "2025-07-05", "type": "available"}]},
+        headers={"Authorization": f"Bearer {token1}"},
+    )
+
+    r = client.get(f"/trips/{trip['id']}/availability/overlap", headers={"Authorization": f"Bearer {token1}"})
+    assert r.status_code == 200
+    data = r.json()
+    assert "responded_count" in data
+    assert data["responded_count"] == 1
+    assert data["total_members"] == 2

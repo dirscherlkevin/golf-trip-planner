@@ -7,7 +7,7 @@ import BudgetVoteForm from './BudgetVoteForm'
 import OverlapHeatmap from './OverlapHeatmap'
 
 export default function AvailabilityPhase() {
-  const { trip, lockPhase } = useTripStore()
+  const { trip, lockPhase, loadTrip } = useTripStore()
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
@@ -20,26 +20,21 @@ export default function AvailabilityPhase() {
   const [lockStart, setLockStart] = useState('')
   const [lockEnd, setLockEnd] = useState('')
   const [budgetData, setBudgetData] = useState(null)
+  const [availabilityData, setAvailabilityData] = useState(null)
 
   useEffect(() => {
     if (!trip) return
     getAvailability(trip.id).then(data => {
+      setAvailabilityData(data)
       if (data.own_response) {
         setDateRanges(data.own_response.date_ranges)
-        setSaved(true)  // already submitted
+        setSaved(true)
       }
       if (isOrganizer && data.budget) {
         setBudgetData(data.budget)
       }
     }).catch(() => {})
   }, [trip?.id])
-
-  useEffect(() => {
-    if (!trip || !isOrganizer) return
-    getAvailability(trip.id).then(data => {
-      setBudgetData(data.budget)
-    }).catch(() => {})
-  }, [trip?.id, isOrganizer])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -49,6 +44,7 @@ export default function AvailabilityPhase() {
     try {
       await submitAvailability(trip.id, dateRanges, budget.happySpend || null, budget.hardLimit || null)
       setSaved(true)
+      loadTrip(trip.id)  // bumps refreshKey so MemberPanel re-fetches and shows ✅
     } finally {
       setSaving(false)
     }
@@ -124,16 +120,16 @@ export default function AvailabilityPhase() {
                 trip={trip}
                 budget={budgetData}
                 onDateClick={handleHeatmapDateClick}
-                responses={isOrganizer ? (availability?.responses ?? []) : null}
+                responses={availabilityData?.responses ?? []}
                 members={trip?.members?.filter(m => m.joined === 'joined') ?? []}
               />
               <div style={{ marginTop: 20, borderTop: '1px solid #333', paddingTop: 16 }}>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Choose the trip dates:</div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <input type="date" value={lockStart} onChange={e => setLockStart(e.target.value)} style={{ width: 150 }} />
-                    <span style={{ color: 'var(--text-secondary)' }}>to</span>
-                    <input type="date" value={lockEnd} onChange={e => setLockEnd(e.target.value)} style={{ width: 150 }} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <input type="date" value={lockStart} onChange={e => setLockStart(e.target.value)} style={{ width: '100%' }} />
+                    <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>to</span>
+                    <input type="date" value={lockEnd} onChange={e => setLockEnd(e.target.value)} style={{ width: '100%' }} />
                   </div>
                 </div>
                 <button

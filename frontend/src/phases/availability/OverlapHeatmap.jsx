@@ -116,8 +116,15 @@ export default function OverlapHeatmap({ trip, budget, onDateClick, responses, m
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
         <span style={{ fontWeight: 600 }}>Availability Overlap</span>
-        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-          {overlap.days.filter(d => d.count > 0).length > 0 ? `${total} members` : 'No responses yet'}
+        <span style={{
+          fontSize: 12,
+          color: overlap.responded_count > 0 && overlap.responded_count < total
+            ? '#fbbf24'
+            : 'var(--text-secondary)',
+        }}>
+          {overlap.responded_count > 0
+            ? `${overlap.responded_count} of ${total} responded`
+            : 'No responses yet'}
         </span>
       </div>
 

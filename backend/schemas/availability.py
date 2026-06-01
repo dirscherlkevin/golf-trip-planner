@@ -46,3 +46,4 @@ class OverlapDay(BaseModel):
 class OverlapOut(BaseModel):
     days: list[OverlapDay]
     total_members: int
+    responded_count: int = 0

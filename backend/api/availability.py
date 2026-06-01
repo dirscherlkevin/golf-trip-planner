@@ -132,7 +132,7 @@ def get_overlap(
                 current += timedelta(days=1)
 
     days = [OverlapDay(date=str(d), count=c, pref_count=pref_counts[d]) for d, c in sorted(counts.items())]
-    return OverlapOut(days=days, total_members=total_members)
+    return OverlapOut(days=days, total_members=total_members, responded_count=len(responses))
 
 @router.post("/{trip_id}/nudge", status_code=204)
 def nudge_non_responders(
