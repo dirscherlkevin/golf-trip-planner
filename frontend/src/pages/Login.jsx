@@ -58,6 +58,12 @@ export default function Login() {
     setLoading(true)
     try {
       log(`API_URL = "${API_URL}"`)
+      const storedToken = localStorage.getItem('token')
+      log(`localStorage token = ${storedToken ? `present (${storedToken.length} chars)` : 'none'}`)
+      if (storedToken) {
+        localStorage.removeItem('token')
+        log('Cleared stale token from localStorage')
+      }
       log('Step 1: Calling getGoogleIdToken()...')
       let idToken
       try {
