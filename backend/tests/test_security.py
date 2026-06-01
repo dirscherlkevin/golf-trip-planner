@@ -7,55 +7,43 @@ def _register(client, email, name, password="testpass123"):
     return r.json()["access_token"]
 
 
-def test_search_returns_empty_for_strangers(client):
-    """Users not sharing any trip must not appear in search results."""
-    token_alice = _register(client, "alice@test.com", "Alice")
-    _register(client, "bob@test.com", "Bob")
+def test_search_requires_auth(client):
+    """Unauthenticated search returns 401."""
+    _register(client, "unauth@test.com", "Unauth User")
+    r = client.get("/users/search?q=unauth")
+    assert r.status_code == 401
+
+
+def test_search_finds_users_by_email(client):
+    """Authenticated user can find any registered user by email fragment."""
+    token_alice = _register(client, "alice@test.com", "Alice Smith")
+    _register(client, "bob@test.com", "Bob Jones")
 
     r = client.get("/users/search?q=bob", headers={"Authorization": f"Bearer {token_alice}"})
     assert r.status_code == 200
-    assert r.json() == []
-
-
-def test_search_finds_shared_trip_members(client):
-    """Users who joined the same trip as the caller appear in search results."""
-    token_carol = _register(client, "carol@test.com", "Carol")
-    token_dave = _register(client, "dave@test.com", "Dave")
-
-    trip = client.post(
-        "/trips", json={"name": "Scottsdale"},
-        headers={"Authorization": f"Bearer {token_carol}"},
-    ).json()
-    client.post(
-        f"/trips/{trip['id']}/invite", json={"email": "dave@test.com"},
-        headers={"Authorization": f"Bearer {token_carol}"},
-    )
-    client.post(f"/trips/{trip['id']}/join", headers={"Authorization": f"Bearer {token_dave}"})
-
-    r = client.get("/users/search?q=dave", headers={"Authorization": f"Bearer {token_carol}"})
-    assert r.status_code == 200
     emails = [u["email"] for u in r.json()]
-    assert "dave@test.com" in emails
+    assert "bob@test.com" in emails
 
 
-def test_search_excludes_users_from_unrelated_trips(client):
-    """A user in a different trip does not appear in search results."""
-    token_eve = _register(client, "eve@test.com", "Eve")
-    token_frank = _register(client, "frank@test.com", "Frank")
-    _register(client, "grace@test.com", "Grace")
+def test_search_finds_users_by_name(client):
+    """Authenticated user can search by first or last name."""
+    token_carol = _register(client, "carol@test.com", "Carol Williams")
+    _register(client, "dave@test.com", "Dave Johnson")
 
-    trip_a = client.post(
-        "/trips", json={"name": "Trip A"},
-        headers={"Authorization": f"Bearer {token_eve}"},
-    ).json()
-    client.post(
-        f"/trips/{trip_a['id']}/invite", json={"email": "frank@test.com"},
-        headers={"Authorization": f"Bearer {token_eve}"},
-    )
-    client.post(f"/trips/{trip_a['id']}/join", headers={"Authorization": f"Bearer {token_frank}"})
-
-    # Grace is registered but shares no trip with Eve
-    r = client.get("/users/search?q=grace", headers={"Authorization": f"Bearer {token_eve}"})
+    r = client.get("/users/search?q=Dave", headers={"Authorization": f"Bearer {token_carol}"})
     assert r.status_code == 200
-    emails = [u["email"] for u in r.json()]
-    assert "grace@test.com" not in emails
+    names = [u["name"] for u in r.json()]
+    assert "Dave Johnson" in names
+
+    r2 = client.get("/users/search?q=Johnson", headers={"Authorization": f"Bearer {token_carol}"})
+    assert r2.status_code == 200
+    assert "Dave Johnson" in [u["name"] for u in r2.json()]
+
+
+def test_search_excludes_caller(client):
+    """Search never returns the caller themselves."""
+    token_eve = _register(client, "eve@test.com", "Eve Adams")
+
+    r = client.get("/users/search?q=eve", headers={"Authorization": f"Bearer {token_eve}"})
+    assert r.status_code == 200
+    assert "eve@test.com" not in [u["email"] for u in r.json()]

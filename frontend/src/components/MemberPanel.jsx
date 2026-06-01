@@ -23,6 +23,7 @@ export default function MemberPanel({ trip }) {
   const user = useAuthStore(s => s.user)
   const phases = useTripStore(s => s.phases)
   const refreshKey = useTripStore(s => s.refreshKey)
+  const loadTrip = useTripStore(s => s.loadTrip)
   const openPhase = phases.find(p => p.status === 'open')?.phase ?? null
   const [availability, setAvailability] = useState(null)
   const [nudging, setNudging] = useState({})
@@ -67,6 +68,7 @@ export default function MemberPanel({ trip }) {
     try {
       await client.patch(`/trips/${trip.id}/members/handicap`, { handicap: val })
       setEditingHandicap(false)
+      loadTrip(trip.id)
     } catch { }
   }
 
