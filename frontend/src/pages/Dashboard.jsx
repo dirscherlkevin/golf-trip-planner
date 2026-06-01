@@ -136,14 +136,12 @@ export default function Dashboard() {
         <h1 style={{ color: 'var(--accent-green)', fontSize: 22 }}>⛳ Golf Trip Planner</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ color: 'var(--text-secondary)' }}>{user?.name}</span>
-          <button className="btn-ghost" onClick={handleRefresh} disabled={refreshing} style={{ fontSize: 13 }} title="Refresh">
+          <button className="btn-ghost" onClick={handleRefresh} disabled={refreshing} style={{ fontSize: 16 }} title="Refresh">
             {refreshing ? '↻' : '↺'}
           </button>
           <button className="btn-ghost" onClick={() => { logout(); navigate('/login') }}>Sign Out</button>
         </div>
       </div>
-
-      <PendingInvites onJoined={handleJoined} />
 
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="label">Start a New Trip</div>
@@ -220,6 +218,8 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+
+      <PendingInvites onJoined={handleJoined} />
     </div>
   )
 }

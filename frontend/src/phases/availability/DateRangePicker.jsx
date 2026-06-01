@@ -148,7 +148,7 @@ export default function DateRangePicker({ value, onChange, readOnly = false }) {
       {/* Calendar grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, userSelect: 'none' }}>
         {DOW.map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, color: 'var(--text-muted)', paddingBottom: 4, fontWeight: 600 }}>
+          <div key={d} style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', paddingBottom: 4, fontWeight: 600 }}>
             {d}
           </div>
         ))}
@@ -161,8 +161,10 @@ export default function DateRangePicker({ value, onChange, readOnly = false }) {
               key={date}
               onClick={() => toggleDay(date)}
               style={{
-                textAlign: 'center',
-                padding: '8px 0',
+                minHeight: 44,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 fontSize: 13,
                 cursor: 'pointer',
                 borderRadius: 5,

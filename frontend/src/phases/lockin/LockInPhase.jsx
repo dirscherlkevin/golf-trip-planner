@@ -11,6 +11,67 @@ function formatDate(iso) {
   return `${d.toLocaleString('en-US', { month: 'short' })} ${d.getDate()}, ${d.getFullYear()}`
 }
 
+function CostBreakdown({ rounds, lodging, trip }) {
+  const nights = trip?.trip_start && trip?.trip_end
+    ? Math.round((new Date(trip.trip_end + 'T00:00:00') - new Date(trip.trip_start + 'T00:00:00')) / 86400000)
+    : 0
+  const groupSize = trip?.members?.filter(m => m.joined === 'joined').length ?? 1
+
+  const roundLines = rounds
+    .filter(r => r.locked_course_id != null)
+    .map(r => {
+      const nom = r.nominations?.find(n => n.id === r.locked_course_id)
+      const cd = nom?.course_data || {}
+      const fee = (parseFloat(cd.green_fee) || 0) + (parseFloat(cd.cart_fee) || 0)
+      return { roundNumber: r.round_number, name: cd.name || 'Course', fee }
+    })
+    .filter(l => l.fee > 0)
+
+  const lockedOption = lodging?.options?.find(o => o.id === lodging?.locked_option_id)
+  const pricePerNight = parseFloat(lockedOption?.option_data?.price_per_night) || 0
+  const lodgingPerPerson = nights > 0 && groupSize > 0 ? pricePerNight * nights / groupSize : 0
+
+  const grandTotal = roundLines.reduce((s, l) => s + l.fee, 0) + lodgingPerPerson
+  if (grandTotal === 0) return null
+
+  const fmt = n => `$${Math.round(n).toLocaleString()}`
+
+  return (
+    <div style={{
+      background: '#1a2a1a', border: '1px solid #2d4a2d', borderRadius: 8,
+      padding: '14px 16px', marginBottom: 20,
+    }}>
+      <div style={{ fontWeight: 600, color: 'var(--accent-green)', marginBottom: 10, fontSize: 15 }}>
+        Cost Per Person
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+        {roundLines.map(l => (
+          <div key={l.roundNumber} style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Round {l.roundNumber} · {l.name}</span>
+            <span style={{ color: '#fff' }}>{fmt(l.fee)}</span>
+          </div>
+        ))}
+        {lodgingPerPerson > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>
+              Lodging ({nights}n ÷ {groupSize} people)
+            </span>
+            <span style={{ color: '#fff' }}>{fmt(lodgingPerPerson)}</span>
+          </div>
+        )}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          borderTop: '1px solid #2d4a2d', paddingTop: 8,
+          fontWeight: 700, fontSize: 15,
+        }}>
+          <span>Total per person</span>
+          <span style={{ color: 'var(--accent-green)' }}>{fmt(grandTotal)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function LockInPhase() {
   const { trip } = useTripStore()
   const user = useAuthStore(s => s.user)
@@ -104,7 +165,9 @@ export default function LockInPhase() {
       {loadingData ? (
         <div style={{ color: 'var(--text-muted)' }}>Loading checklist...</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
+        <>
+          <CostBreakdown rounds={rounds} lodging={lodging} trip={trip} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
           {/* Dates — always checked in Phase 4 */}
           <ChecklistItem
             label="Dates confirmed"
@@ -158,6 +221,7 @@ export default function LockInPhase() {
             />
           )}
         </div>
+        </>
       )}
 
       {error && (
