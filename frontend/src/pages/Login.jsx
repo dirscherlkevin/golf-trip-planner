@@ -1,22 +1,26 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
+import { getGoogleIdToken } from '../firebase'
+import client from '../api/client'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
 export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [serverStatus, setServerStatus] = useState(null) // null | 'checking' | 'ready' | 'error'
+  const [serverStatus, setServerStatus] = useState(null)
+  const [logs, setLogs] = useState([])
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle)
+  const set = useAuthStore((s) => s.set)
   const navigate = useNavigate()
+
+  const log = (msg) => setLogs(prev => [...prev, `${new Date().toISOString().slice(11,23)} ${msg}`])
 
   const checkServer = async () => {
     setServerStatus('checking')
     try {
-      // Use raw fetch to bypass axios interceptor (which would redirect 401 → /login loop)
       const res = await fetch(`${API_URL}/auth/me`)
-      // Any response (including 401) means the server is up and awake
       setServerStatus(res.status === 401 || res.ok ? 'ready' : 'error')
     } catch {
       setServerStatus('error')
@@ -25,13 +29,45 @@ export default function Login() {
 
   const handleGoogle = async () => {
     setError('')
+    setLogs([])
     setLoading(true)
     try {
-      await loginWithGoogle()
-      navigate('/')
+      log(`API_URL = "${API_URL}"`)
+      log('Step 1: Calling getGoogleIdToken()...')
+      let idToken
+      try {
+        idToken = await getGoogleIdToken()
+        log(`Step 1 OK: token length = ${idToken?.length ?? 0}`)
+      } catch (e) {
+        log(`Step 1 FAILED: ${e.code || ''} ${e.message}`)
+        throw e
+      }
+
+      log('Step 2: POST /auth/google (axios)...')
+      let data
+      try {
+        const res = await client.post('/auth/google', { id_token: idToken })
+        data = res.data
+        log(`Step 2 OK: got access_token`)
+      } catch (e) {
+        log(`Step 2 FAILED: code=${e.code} msg=${e.message} status=${e.response?.status ?? 'none'}`)
+        log(`Step 2 request URL: ${e.config?.baseURL ?? ''}${e.config?.url ?? ''}`)
+        throw e
+      }
+
+      log('Step 3: GET /auth/me...')
+      try {
+        const me = await client.get('/auth/me')
+        log(`Step 3 OK: user=${me.data?.email}`)
+        localStorage.setItem('token', data.access_token)
+        useAuthStore.setState({ token: data.access_token, user: me.data })
+        navigate('/')
+      } catch (e) {
+        log(`Step 3 FAILED: ${e.code} ${e.message}`)
+        throw e
+      }
     } catch (err) {
-      // Show full error detail to help diagnose mobile issues
-      const detail = err.code ? `${err.code}: ${err.message}` : (err.message || 'Sign-in failed. Try again.')
+      const detail = err.code ? `${err.code}: ${err.message}` : (err.message || 'Sign-in failed.')
       setError(detail)
     } finally {
       setLoading(false)
@@ -39,8 +75,8 @@ export default function Login() {
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-      <div className="card" style={{ width: 360, textAlign: 'center' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 16 }}>
+      <div className="card" style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>⛳</div>
         <h2 style={{ marginBottom: 4, color: 'var(--accent-green)' }}>Golf Trip Planner</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>
@@ -51,20 +87,11 @@ export default function Login() {
           onClick={handleGoogle}
           disabled={loading}
           style={{
-            width: '100%',
-            padding: '12px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 12,
-            background: '#fff',
-            color: '#333',
-            border: '1px solid #ddd',
-            borderRadius: 8,
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.7 : 1,
+            width: '100%', padding: '12px 20px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
+            background: '#fff', color: '#333', border: '1px solid #ddd', borderRadius: 8,
+            fontSize: 15, fontWeight: 600,
+            cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1,
           }}
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
@@ -76,8 +103,19 @@ export default function Login() {
           {loading ? 'Signing in...' : 'Sign in with Google'}
         </button>
 
-        {error && (
-          <p style={{ color: '#f87171', fontSize: 13, marginTop: 16 }}>{error}</p>
+        {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 16 }}>{error}</p>}
+
+        {logs.length > 0 && (
+          <div style={{
+            marginTop: 16, padding: 10, background: '#0a0a0a',
+            border: '1px solid #333', borderRadius: 6, textAlign: 'left',
+          }}>
+            {logs.map((l, i) => (
+              <div key={i} style={{ fontSize: 11, color: l.includes('FAILED') ? '#f87171' : l.includes('OK') ? '#4ade80' : '#888', fontFamily: 'monospace', marginBottom: 2 }}>
+                {l}
+              </div>
+            ))}
+          </div>
         )}
 
         <div style={{ marginTop: 24, borderTop: '1px solid #2a2a2a', paddingTop: 16 }}>
