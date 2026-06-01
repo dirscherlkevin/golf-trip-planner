@@ -145,7 +145,7 @@ export default function DestinationPhase() {
                   <div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Destination name</label>
+                        <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Destination name <span style={{ color: '#f87171' }}>*</span></label>
                         <input type="text" value={manualName} onChange={e => setManualName(e.target.value)} placeholder="e.g. Pinehurst, NC"
                           style={{ padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13, width: 200 }} />
                       </div>

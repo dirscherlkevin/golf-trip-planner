@@ -8,7 +8,19 @@ const TIER_OPTIONS = [
   { value: 'luxury', label: 'Luxury — $200+/round' },
 ]
 
+function buildHcpString(members) {
+  const joined = (members || []).filter(m => m.joined === 'joined')
+  if (!joined.length) return ''
+  const withHcp = joined.filter(m => m.handicap != null)
+  if (withHcp.length === 0) return `${joined.length} players — no handicaps set in profiles`
+  const hcps = withHcp.map(m => m.handicap).join(', ')
+  const noHcp = joined.length - withHcp.length
+  return `${joined.length} players — handicaps: ${hcps}${noHcp > 0 ? ` (${noHcp} not set)` : ''}`
+}
+
 export default function GenerateForm({ trip, budgetHint, onGenerated }) {
+  const autoHcp = buildHcpString(trip?.members)
+  const [useProfileHcp, setUseProfileHcp] = useState(true)
   const [skillMix, setSkillMix] = useState('')
   const [tierFilter, setTierFilter] = useState('show_all')
   const [country, setCountry] = useState('United States')
@@ -19,14 +31,16 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const effectiveSkillMix = useProfileHcp ? autoHcp : skillMix
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!skillMix.trim()) { setError('Please describe your group\'s skill mix'); return }
+    if (!effectiveSkillMix.trim()) { setError('Please describe your group\'s skill mix'); return }
     setError('')
     setLoading(true)
     try {
       const result = await generateDestinations(trip.id, {
-        skill_mix: skillMix,
+        skill_mix: effectiveSkillMix,
         tier_filter: tierFilter,
         country,
         region,
@@ -52,15 +66,30 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
         </div>
       )}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span style={{ fontWeight: 600, fontSize: 13 }}>Group Skill Mix</span>
-          <input
-            type="text"
-            placeholder='e.g. "mostly 15–20 handicap, one scratch player"'
-            value={skillMix}
-            onChange={e => setSkillMix(e.target.value)}
-          />
-        </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={useProfileHcp} onChange={e => setUseProfileHcp(e.target.checked)}
+              style={{ width: 16, height: 16, cursor: 'pointer' }} />
+            <div>
+              <div style={{ fontSize: 13 }}>Use profile handicaps</div>
+              {useProfileHcp && autoHcp && (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{autoHcp}</div>
+              )}
+              {useProfileHcp && !autoHcp && (
+                <div style={{ fontSize: 12, color: '#fbbf24', marginTop: 2 }}>No members have set their HCP yet</div>
+              )}
+            </div>
+          </label>
+          {!useProfileHcp && (
+            <input
+              type="text"
+              placeholder='e.g. "mostly 15–20 handicap, one scratch player"'
+              value={skillMix}
+              onChange={e => setSkillMix(e.target.value)}
+            />
+          )}
+        </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
           <input type="checkbox" checked={publicOnly} onChange={e => setPublicOnly(e.target.checked)}
             style={{ width: 16, height: 16, cursor: 'pointer' }} />

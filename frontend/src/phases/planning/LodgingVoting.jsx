@@ -117,9 +117,9 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, lockedOptId,
             )}
             {(od.name || od.address) && (
               <a
-                href={`https://maps.google.com/?q=${encodeURIComponent([od.name, od.address].filter(Boolean).join(' '))}`}
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([od.address, od.name].filter(Boolean).join(' '))}`}
                 target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                style={{ fontSize: 12, color: '#6699cc', textDecoration: 'underline' }}>
                 📍 Map
               </a>
             )}
@@ -419,36 +419,45 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
     }
 
     return (
-      <div className="card">
-        <h3 style={{ marginBottom: 16, fontWeight: 600 }}>Set Up Lodging</h3>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 10 }}>What type of lodging?</div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {LODGING_TYPES.map(lt => (
-              <button
-                key={lt.value}
-                onClick={() => setSelectedType(lt.value)}
-                className={selectedType === lt.value ? 'btn-primary' : 'btn-ghost'}
-                style={{ fontSize: 13 }}
-              >
-                {lt.label}
-              </button>
-            ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* AI card */}
+        <div className="card">
+          <h3 style={{ marginBottom: 4, fontWeight: 600, marginTop: 0 }}>Find Lodging with AI</h3>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
+            AI will suggest options based on your destination and group size.
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>What type of lodging?</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {LODGING_TYPES.map(lt => (
+                <button
+                  key={lt.value}
+                  onClick={() => setSelectedType(lt.value)}
+                  className={selectedType === lt.value ? 'btn-primary' : 'btn-ghost'}
+                  style={{ fontSize: 13 }}
+                >
+                  {lt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {setupError && <div style={{ color: '#e55', fontSize: 13, marginBottom: 12 }}>{setupError}</div>}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button className="btn-primary" onClick={handleSetup} disabled={settingUp}>
+              {settingUp ? 'Setting up...' : 'Find Lodging Options with AI'}
+            </button>
+            <button className="btn-ghost" onClick={() => { setSkipped(true); onLodgingUpdated?.() }} style={{ fontSize: 13 }}>
+              Skip / Find My Own
+            </button>
           </div>
         </div>
-        {setupError && <div style={{ color: '#e55', fontSize: 13, marginBottom: 12 }}>{setupError}</div>}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 20 }}>
-          <button className="btn-primary" onClick={handleSetup} disabled={settingUp}>
-            {settingUp ? 'Setting up...' : 'Find Lodging Options with AI'}
-          </button>
-          <button className="btn-ghost" onClick={() => { setSkipped(true); onLodgingUpdated?.() }} style={{ fontSize: 13 }}>
-            Skip / Find My Own
-          </button>
-        </div>
 
-        {/* Manual add available even before AI setup */}
-        <div style={{ borderTop: '1px solid #2a2a2a', paddingTop: 16 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Or add a lodging option manually</div>
+        {/* Manual card */}
+        <div className="card">
+          <h3 style={{ marginBottom: 4, fontWeight: 600, marginTop: 0 }}>Add Lodging Manually</h3>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
+            Already have a place in mind? Add it directly.
+          </div>
           <ManualLodgingForm tripId={trip.id} onAdded={() => { setNotSetUp(false); loadLodging() }} />
         </div>
       </div>

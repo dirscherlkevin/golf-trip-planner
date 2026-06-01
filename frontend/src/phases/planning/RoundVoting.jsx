@@ -115,9 +115,9 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
             )}
             {(cd.name || cd.location) && (
               <a
-                href={`https://maps.google.com/?q=${encodeURIComponent([cd.name, cd.location].filter(Boolean).join(' '))}`}
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([cd.name, cd.location].filter(Boolean).join(' '))}`}
                 target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                style={{ fontSize: 12, color: '#6699cc', textDecoration: 'underline' }}>
                 📍 Map
               </a>
             )}
