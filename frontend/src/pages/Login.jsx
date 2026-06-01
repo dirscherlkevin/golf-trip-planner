@@ -30,7 +30,9 @@ export default function Login() {
       await loginWithGoogle()
       navigate('/')
     } catch (err) {
-      setError(err.message || 'Sign-in failed. Try again.')
+      // Show full error detail to help diagnose mobile issues
+      const detail = err.code ? `${err.code}: ${err.message}` : (err.message || 'Sign-in failed. Try again.')
+      setError(detail)
     } finally {
       setLoading(false)
     }

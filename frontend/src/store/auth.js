@@ -23,7 +23,18 @@ export const useAuthStore = create((set) => ({
 
   loginWithGoogle: async () => {
     const idToken = await getGoogleIdToken()
-    const { data } = await client.post('/auth/google', { id_token: idToken })
+    // Use raw fetch to avoid axios XHR issues on mobile Safari
+    const apiUrl = import.meta.env.VITE_API_URL || ''
+    const res = await fetch(`${apiUrl}/auth/google`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_token: idToken }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || `Auth failed (${res.status})`)
+    }
+    const data = await res.json()
     localStorage.setItem('token', data.access_token)
     const me = await client.get('/auth/me')
     set({ token: data.access_token, user: me.data })
