@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -39,11 +39,21 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     return Token(access_token=create_access_token(user.id), token_type="bearer")
 
 @router.post("/google", response_model=Token)
-def google_login(data: GoogleLoginIn, db: Session = Depends(get_db)):
+async def google_login(request: Request, db: Session = Depends(get_db)):
+    # Accept both JSON and form-encoded (form-encoded avoids CORS preflight on mobile)
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        body = await request.json()
+        id_token = body.get("id_token")
+    else:
+        form = await request.form()
+        id_token = form.get("id_token")
+    if not id_token:
+        raise HTTPException(status_code=400, detail="id_token is required")
     from services.firebase_verify import verify_firebase_token
     import uuid
     try:
-        firebase_user = verify_firebase_token(data.id_token)
+        firebase_user = verify_firebase_token(id_token)
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid Google token")
     email = firebase_user.get("email")
