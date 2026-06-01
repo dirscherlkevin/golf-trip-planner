@@ -1,18 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
-import client from '../api/client'
+
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 export default function Login() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [serverStatus, setServerStatus] = useState(null) // null | 'checking' | 'ready' | 'error'
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle)
   const navigate = useNavigate()
 
-  useEffect(() => {
-    // Wake up the Render backend on page load so it's ready when Google auth completes
-    client.get('/auth/me').catch(() => {})
-  }, [])
+  const checkServer = async () => {
+    setServerStatus('checking')
+    try {
+      // Use raw fetch to bypass axios interceptor (which would redirect 401 → /login loop)
+      const res = await fetch(`${API_URL}/auth/me`)
+      // Any response (including 401) means the server is up and awake
+      setServerStatus(res.status === 401 || res.ok ? 'ready' : 'error')
+    } catch {
+      setServerStatus('error')
+    }
+  }
 
   const handleGoogle = async () => {
     setError('')
@@ -68,6 +77,24 @@ export default function Login() {
         {error && (
           <p style={{ color: '#f87171', fontSize: 13, marginTop: 16 }}>{error}</p>
         )}
+
+        <div style={{ marginTop: 24, borderTop: '1px solid #2a2a2a', paddingTop: 16 }}>
+          <button
+            onClick={checkServer}
+            disabled={serverStatus === 'checking'}
+            style={{
+              background: 'none', border: '1px solid #333', borderRadius: 6,
+              color: serverStatus === 'ready' ? 'var(--accent-green)' : serverStatus === 'error' ? '#f87171' : 'var(--text-muted)',
+              fontSize: 12, padding: '6px 14px', cursor: serverStatus === 'checking' ? 'not-allowed' : 'pointer',
+              width: '100%',
+            }}
+          >
+            {serverStatus === 'checking' && '⏳ Waking up server... (may take 30s)'}
+            {serverStatus === 'ready' && '✅ Server is ready — try signing in!'}
+            {serverStatus === 'error' && '❌ Server unreachable — try again'}
+            {serverStatus === null && '🔌 Having trouble? Check / wake up server'}
+          </button>
+        </div>
       </div>
     </div>
   )
