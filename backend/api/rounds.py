@@ -530,6 +530,7 @@ def remove_round(
 
 class _BookedBody(_BM):
     booked: bool
+    confirmation_number: _Opt[str] = None
 
 @router.patch("/{trip_id}/rounds/{round_id}/booked")
 def set_round_booked(
@@ -546,5 +547,7 @@ def set_round_booked(
     if not trip_round:
         raise HTTPException(status_code=404, detail="Round not found")
     trip_round.booked = body.booked
+    if body.confirmation_number is not None:
+        trip_round.confirmation_number = body.confirmation_number or None
     db.commit()
     return {"ok": True, "booked": trip_round.booked}

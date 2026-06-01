@@ -120,7 +120,13 @@ export default function AvailabilityPhase() {
         {isOrganizer && (
           <div style={{ flex: '1 1 320px' }}>
             <div className="card">
-              <OverlapHeatmap trip={trip} budget={budgetData} onDateClick={handleHeatmapDateClick} />
+              <OverlapHeatmap
+                trip={trip}
+                budget={budgetData}
+                onDateClick={handleHeatmapDateClick}
+                responses={isOrganizer ? (availability?.responses ?? []) : null}
+                members={trip?.members?.filter(m => m.joined === 'joined') ?? []}
+              />
               <div style={{ marginTop: 20, borderTop: '1px solid #333', paddingTop: 16 }}>
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Choose the trip dates:</div>

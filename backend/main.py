@@ -1,4 +1,3 @@
-import asyncio
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -16,18 +15,9 @@ import models.destination  # noqa
 import models.round  # noqa
 import models.lodging  # noqa
 
-from services.email import email_worker
-
-
 @asynccontextmanager
 async def lifespan(app):
-    task = asyncio.create_task(email_worker())
-    yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    yield  # email worker disabled — no SMTP configured
 
 
 app = FastAPI(title="Golf Trip Planner API", lifespan=lifespan)
@@ -48,8 +38,12 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS tee_time VARCHAR(255)"))
     _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS round_date DATE"))
     _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS booked BOOLEAN NOT NULL DEFAULT FALSE"))
+    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS confirmation_number VARCHAR(255)"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS public_courses_only BOOLEAN NOT NULL DEFAULT TRUE"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_booked BOOLEAN NOT NULL DEFAULT FALSE"))
+    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_confirmation VARCHAR(255)"))
+    _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS handicap FLOAT"))
+    _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS last_nudged_at TIMESTAMP WITH TIME ZONE"))
     _conn.execute(text("ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user"))
     _conn.execute(text("""
         DO $$ BEGIN

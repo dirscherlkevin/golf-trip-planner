@@ -79,6 +79,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
             "tee_time": r.tee_time,
             "round_date": str(r.round_date) if r.round_date else None,
             "booked": bool(r.booked),
+            "confirmation_number": r.confirmation_number,
             "course_name": "TBD",
             "course_location": "",
             "green_fee": None,
@@ -146,4 +147,5 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         "rounds": rounds,
         "lodging": lodging,
         "lodging_booked": bool(trip.lodging_booked),
+        "lodging_confirmation": trip.lodging_confirmation,
     }

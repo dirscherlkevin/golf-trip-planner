@@ -257,9 +257,7 @@ def nominate_destination(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    trip = _get_trip_member(trip_id, user.id, db)
-    if trip.organizer_id != user.id:
-        raise HTTPException(status_code=403, detail="Only the organizer can add destination nominations")
+    _get_trip_member(trip_id, user.id, db)
 
     phase = get_phase(trip_id, PhaseName.destination, db)
     if phase.status != PhaseStatus.open:

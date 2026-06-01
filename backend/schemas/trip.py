@@ -10,6 +10,8 @@ class TripMemberOut(BaseModel):
     invite_email: Optional[str]
     joined: str
     user_id: Optional[int]
+    handicap: Optional[float] = None
+    last_nudged_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

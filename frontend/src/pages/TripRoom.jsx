@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTripStore } from '../store/trip'
 import { useAuthStore } from '../store/auth'
+import client from '../api/client'
 import MemberPanel from '../components/MemberPanel'
 import CostEstimate from '../components/CostEstimate'
 import AvailabilityPhase from '../phases/availability/AvailabilityPhase'
@@ -9,6 +10,44 @@ import DestinationPhase from '../phases/destination/DestinationPhase'
 import PlanningPhase from '../phases/planning/PlanningPhase'
 import LockInPhase from '../phases/lockin/LockInPhase'
 import HypeMoment from '../phases/lockin/HypeMoment'
+
+function TodoBanner({ phases, user, trip, refreshKey }) {
+  const openPhase = phases.find(p => p.status === 'open')?.phase
+  const [todo, setTodo] = useState(null)
+
+  useEffect(() => {
+    if (!openPhase || !trip?.id || !user?.id) { setTodo(null); return }
+    if (openPhase === 'availability') {
+      client.get(`/trips/${trip.id}/availability`)
+        .then(r => {
+          const responded = r.data.responded_user_ids ?? []
+          if (!responded.includes(user.id)) {
+            setTodo('Submit your availability — the organizer is waiting!')
+          } else {
+            setTodo(null)
+          }
+        })
+        .catch(() => setTodo(null))
+    } else if (openPhase === 'destination') {
+      setTodo('Vote on the destination options below.')
+    } else if (openPhase === 'planning') {
+      setTodo('Vote on courses and lodging options below.')
+    } else {
+      setTodo(null)
+    }
+  }, [openPhase, trip?.id, user?.id, refreshKey])
+
+  if (!todo) return null
+  return (
+    <div style={{
+      background: '#1a2a1a', border: '1px solid var(--accent-green)',
+      borderRadius: 8, padding: '10px 16px', marginBottom: 16,
+      fontSize: 13, color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: 8,
+    }}>
+      📋 <strong>Your action needed:</strong> {todo}
+    </div>
+  )
+}
 
 const PHASE_COMPONENTS = {
   availability: AvailabilityPhase,
@@ -26,7 +65,7 @@ const PHASE_LABELS = {
 
 const REOPENABLE = new Set(['availability', 'destination', 'planning'])
 
-function PhaseGate({ phases, isOrganizer, onReopen, trip }) {
+function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
   const openPhase = phases.find(p => p.status === 'open')
   const openIdx = phases.findIndex(p => p.status === 'open')
   const prevLockedPhase = openIdx > 0 ? phases[openIdx - 1] : null
@@ -99,15 +138,15 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip }) {
         </div>
       )}
 
-      {/* Active phase content */}
+      {/* Active phase content — key={refreshKey} forces re-mount on refresh so all data re-fetches */}
       {viewPhase ? (
         (() => {
-          if (trip?.status === 'finalized') return <HypeMoment trip={trip} isOrganizer={isOrganizer} />
+          if (trip?.status === 'finalized') return <HypeMoment key={refreshKey} trip={trip} isOrganizer={isOrganizer} />
           const Component = PHASE_COMPONENTS[viewPhase]
-          return Component ? <Component /> : null
+          return Component ? <Component key={refreshKey} /> : null
         })()
       ) : trip?.status === 'finalized' ? (
-        <HypeMoment trip={trip} isOrganizer={isOrganizer} />
+        <HypeMoment key={refreshKey} trip={trip} isOrganizer={isOrganizer} />
       ) : null}
     </div>
   )
@@ -116,7 +155,7 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip }) {
 export default function TripRoom() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { trip, phases, loading, refreshing, error, loadTrip, refreshPhases, reopenPhase } = useTripStore()
+  const { trip, phases, loading, refreshing, refreshKey, error, loadTrip, refreshPhases, reopenPhase } = useTripStore()
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
@@ -161,12 +200,16 @@ export default function TripRoom() {
         <MemberPanel trip={trip} />
       </div>
 
+      {/* Personal to-do banner */}
+      <TodoBanner phases={phases} user={user} trip={trip} refreshKey={refreshKey} />
+
       {/* Phase content */}
       {phases.length > 0 ? (
         <PhaseGate
           phases={phases}
           isOrganizer={isOrganizer}
           trip={trip}
+          refreshKey={refreshKey}
           onReopen={async (phase) => {
             try { await reopenPhase(phase) } catch {}
           }}

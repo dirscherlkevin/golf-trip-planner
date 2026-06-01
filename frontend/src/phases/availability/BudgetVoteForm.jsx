@@ -2,8 +2,9 @@ export default function BudgetVoteForm({ happySpend, hardLimit, onChange }) {
   return (
     <div>
       <div style={{ fontWeight: 600, marginBottom: 10 }}>Budget (optional)</div>
-      <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginBottom: 12 }}>
-        Only the organizer sees the group budget summary.
+      <div style={{ fontSize: 12, marginBottom: 12 }}>
+        <div style={{ color: 'var(--text-secondary)', marginBottom: 3 }}>Per person · rounds only (lodging ~$100/night assumed separately).</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Only the organizer sees the group budget summary.</div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>

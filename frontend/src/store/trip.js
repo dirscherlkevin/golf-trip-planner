@@ -7,6 +7,7 @@ export const useTripStore = create((set, get) => ({
   phases: [],
   loading: false,
   refreshing: false,
+  refreshKey: 0,
   error: null,
 
   loadTrip: async (id) => {
@@ -22,7 +23,8 @@ export const useTripStore = create((set, get) => ({
         client.get(`/trips/${id}`),
         getPhases(id),
       ])
-      set({ trip: tripRes.data, phases: phasesRes, loading: false, refreshing: false })
+      const prevKey = get().refreshKey
+      set({ trip: tripRes.data, phases: phasesRes, loading: false, refreshing: false, refreshKey: prevKey + 1 })
     } catch (e) {
       set({ error: e.message, loading: false, refreshing: false })
     }

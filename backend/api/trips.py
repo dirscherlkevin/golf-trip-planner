@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
 from database import get_db
 from models.trip import Trip, TripMember
 from models.round import TripRound
@@ -159,14 +161,47 @@ def delete_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depend
     db.commit()
     return {"ok": True}
 
+class _HandicapBody(BaseModel):
+    handicap: Optional[float] = None
+
+@router.patch("/{trip_id}/members/handicap")
+def update_handicap(trip_id: int, body: _HandicapBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    member = db.query(TripMember).filter(
+        TripMember.trip_id == trip_id, TripMember.user_id == user.id, TripMember.joined == "joined"
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Not a member of this trip")
+    member.handicap = body.handicap
+    db.commit()
+    return {"ok": True, "handicap": member.handicap}
+
+@router.post("/{trip_id}/nudge/{target_user_id}", status_code=204)
+def nudge_member(trip_id: int, target_user_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip or trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can nudge members")
+    member = db.query(TripMember).filter(
+        TripMember.trip_id == trip_id, TripMember.user_id == target_user_id, TripMember.joined == "joined"
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    member.last_nudged_at = datetime.now(timezone.utc)
+    db.commit()
+
+class _LodgingBookedBody(BaseModel):
+    booked: bool
+    confirmation_number: Optional[str] = None
+
 @router.patch("/{trip_id}/lodging-booked")
-def set_lodging_booked(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def set_lodging_booked(trip_id: int, body: _LodgingBookedBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = db.query(Trip).filter(Trip.id == trip_id).first()
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     if trip.organizer_id != user.id:
         raise HTTPException(status_code=403, detail="Only the organizer can mark lodging as booked")
-    trip.lodging_booked = not trip.lodging_booked
+    trip.lodging_booked = body.booked
+    if body.confirmation_number is not None:
+        trip.lodging_confirmation = body.confirmation_number or None
     db.commit()
     return {"ok": True, "lodging_booked": trip.lodging_booked}
 

@@ -130,27 +130,46 @@ function RoundScheduleEditor({ tripId, roundId, initialDate, initialTee, isOrgan
   )
 }
 
-function BookedCheck({ checked, onChange, label }) {
+function BookedCheck({ checked, onChange, onConfirmationChange, onConfirmationBlur, confirmation, label }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginTop: 8, fontSize: 12 }}>
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
-        style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent-green)' }} />
-      <span style={{ color: checked ? 'var(--accent-green)' : 'var(--text-muted)' }}>
-        {checked ? '✓ Booked' : label}
-      </span>
-    </label>
+    <div style={{ marginTop: 8 }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12 }}>
+        <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
+          style={{ width: 14, height: 14, cursor: 'pointer', accentColor: 'var(--accent-green)' }} />
+        <span style={{ color: checked ? 'var(--accent-green)' : 'var(--text-muted)' }}>
+          {checked ? '✓ Booked' : label}
+        </span>
+      </label>
+      {checked && onConfirmationChange && (
+        <input type="text" value={confirmation}
+          onChange={e => onConfirmationChange(e.target.value)}
+          onBlur={onConfirmationBlur}
+          placeholder="Confirmation # (optional)"
+          style={{ marginTop: 4, marginLeft: 20, padding: '3px 8px', background: '#1a1a1a', border: '1px solid #333', borderRadius: 4, color: '#fff', fontSize: 11, width: 200 }} />
+      )}
+      {checked && confirmation && !onConfirmationChange && (
+        <div style={{ marginLeft: 20, fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Conf: {confirmation}</div>
+      )}
+    </div>
   )
 }
 
 function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
   const [booked, setBooked] = useState(round.booked ?? false)
+  const [confirmation, setConfirmation] = useState(round.confirmation_number ?? '')
 
-  const toggleBooked = async (val) => {
-    setBooked(val)
+  const saveBooked = async (val, conf) => {
     try {
-      await client.patch(`/trips/${tripId}/rounds/${round.round_id}/booked`, { booked: val })
-    } catch { setBooked(!val) }
+      await client.patch(`/trips/${tripId}/rounds/${round.round_id}/booked`, { booked: val, confirmation_number: conf })
+    } catch { /* silent */ }
   }
+
+  const toggleBooked = (val) => {
+    setBooked(val)
+    saveBooked(val, confirmation)
+  }
+
+  const handleConfirmationBlur = () => saveBooked(booked, confirmation)
 
   const feeStr = round.green_fee
     ? `$${round.green_fee}${round.cart_fee ? ` + $${round.cart_fee} cart` : ''}`
@@ -198,24 +217,31 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
         dateOptions={dateOptions}
       />
       {isOrganizer && (
-        <BookedCheck checked={booked} onChange={toggleBooked} label="Mark as booked" />
+        <BookedCheck checked={booked} onChange={toggleBooked} label="Mark as booked"
+          confirmation={confirmation} onConfirmationChange={v => { setConfirmation(v) }}
+          onConfirmationBlur={handleConfirmationBlur} />
       )}
       {!isOrganizer && booked && (
-        <div style={{ fontSize: 12, color: 'var(--accent-green)', marginTop: 8 }}>✓ Booked</div>
+        <div style={{ fontSize: 12, color: 'var(--accent-green)', marginTop: 8 }}>
+          ✓ Booked{confirmation ? ` · Conf: ${confirmation}` : ''}
+        </div>
       )}
     </div>
   )
 }
 
-function LodgingCard({ lodging, tripId, isOrganizer, initialBooked }) {
+function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfirmation }) {
   const [booked, setBooked] = useState(initialBooked ?? false)
+  const [confirmation, setConfirmation] = useState(initialConfirmation ?? '')
 
-  const toggleBooked = async (val) => {
-    setBooked(val)
+  const saveBooked = async (val, conf) => {
     try {
-      await client.patch(`/trips/${tripId}/lodging-booked`)
-    } catch { setBooked(!val) }
+      await client.patch(`/trips/${tripId}/lodging-booked`, { booked: val, confirmation_number: conf })
+    } catch { /* silent */ }
   }
+
+  const toggleBooked = (val) => { setBooked(val); saveBooked(val, confirmation) }
+  const handleConfirmationBlur = () => saveBooked(booked, confirmation)
   return (
     <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '16px 18px' }}>
       <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 2 }}>{lodging.name}</div>
@@ -248,10 +274,14 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked }) {
         </a>
       )}
       {isOrganizer && (
-        <BookedCheck checked={booked} onChange={toggleBooked} label="Mark lodging as booked" />
+        <BookedCheck checked={booked} onChange={toggleBooked} label="Mark lodging as booked"
+          confirmation={confirmation} onConfirmationChange={v => setConfirmation(v)}
+          onConfirmationBlur={handleConfirmationBlur} />
       )}
       {!isOrganizer && booked && (
-        <div style={{ fontSize: 12, color: 'var(--accent-green)', marginTop: 8 }}>✓ Booked</div>
+        <div style={{ fontSize: 12, color: 'var(--accent-green)', marginTop: 8 }}>
+          ✓ Booked{confirmation ? ` · Conf: ${confirmation}` : ''}
+        </div>
       )}
     </div>
   )
@@ -336,7 +366,7 @@ export default function HypeMoment({ trip, isOrganizer }) {
 
           {data.lodging && (
             <Section title="Where We're Staying">
-              <LodgingCard lodging={data.lodging} tripId={trip.id} isOrganizer={isOrganizer} initialBooked={data.lodging_booked} />
+              <LodgingCard lodging={data.lodging} tripId={trip.id} isOrganizer={isOrganizer} initialBooked={data.lodging_booked} initialConfirmation={data.lodging_confirmation} />
             </Section>
           )}
 
