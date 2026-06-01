@@ -52,6 +52,7 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_booked BOOLEAN NOT NULL DEFAULT FALSE"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_confirmation VARCHAR(255)"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_skipped BOOLEAN NOT NULL DEFAULT FALSE"))
+    _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS handicap FLOAT"))
     _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS handicap FLOAT"))
     _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS last_nudged_at TIMESTAMP WITH TIME ZONE"))
     _conn.execute(text("ALTER TABLE lodging_options ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT FALSE"))
