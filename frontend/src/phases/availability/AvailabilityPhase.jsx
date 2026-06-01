@@ -8,6 +8,7 @@ import OverlapHeatmap from './OverlapHeatmap'
 
 export default function AvailabilityPhase() {
   const { trip, lockPhase, loadTrip } = useTripStore()
+  const refreshKey = useTripStore(s => s.refreshKey)
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
@@ -34,7 +35,7 @@ export default function AvailabilityPhase() {
         setBudgetData(data.budget)
       }
     }).catch(() => {})
-  }, [trip?.id])
+  }, [trip?.id, refreshKey])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

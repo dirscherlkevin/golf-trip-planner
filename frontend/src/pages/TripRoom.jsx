@@ -29,9 +29,25 @@ function TodoBanner({ phases, user, trip, refreshKey }) {
         })
         .catch(() => setTodo(null))
     } else if (openPhase === 'destination') {
-      setTodo('Vote on the destination options below.')
+      client.get(`/trips/${trip.id}/destinations`)
+        .then(r => {
+          const suggestions = r.data?.suggestion?.suggestions || []
+          const tallies = r.data?.vote_tallies || []
+          const hasVoted = tallies.some(t => t.my_vote != null)
+          setTodo(hasVoted && suggestions.length > 0 ? null : suggestions.length > 0 ? 'Vote on the destination options below.' : null)
+        })
+        .catch(() => setTodo('Vote on the destination options below.'))
     } else if (openPhase === 'planning') {
-      setTodo('Vote on courses and lodging options below.')
+      client.get(`/trips/${trip.id}/rounds`)
+        .then(r => {
+          const rounds = r.data || []
+          const unlockedRounds = rounds.filter(r => r.locked_course_id == null && r.nominations?.length > 0)
+          const hasVotedAll = unlockedRounds.length === 0 || unlockedRounds.every(r =>
+            r.nominations?.some(n => n.vote_tally?.my_vote != null)
+          )
+          setTodo(hasVotedAll ? null : 'Vote on courses and lodging options below.')
+        })
+        .catch(() => setTodo('Vote on courses and lodging options below.'))
     } else {
       setTodo(null)
     }

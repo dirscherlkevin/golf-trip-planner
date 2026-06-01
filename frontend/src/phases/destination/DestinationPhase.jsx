@@ -303,7 +303,16 @@ export default function DestinationPhase() {
             <div style={{ marginTop: 20, padding: '12px 16px', background: '#1a1a1a', borderRadius: 8, border: '1px solid #333' }}>
               <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>Not what you were looking for?</div>
               {!showRegenerate ? (
-                <button className="btn-ghost" onClick={() => setShowRegenerate(true)} style={{ fontSize: 13 }}>
+                <button className="btn-ghost" onClick={() => {
+                  const manualSuggestions = (suggestion?.suggestions || []).filter(s => s.source === 'manual' || s.manually_added)
+                  if (manualSuggestions.length > 0) {
+                    const ok = window.confirm(
+                      `Regenerating will remove your ${manualSuggestions.length} manually added destination${manualSuggestions.length > 1 ? 's' : ''}. Continue?`
+                    )
+                    if (!ok) return
+                  }
+                  setShowRegenerate(true)
+                }} style={{ fontSize: 13 }}>
                   Try Different Options
                 </button>
               ) : (
