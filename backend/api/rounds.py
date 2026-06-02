@@ -299,7 +299,10 @@ def vote_on_course(
         CourseVote.nomination_id == nom_id, CourseVote.user_id == user.id
     ).first()
     if existing:
-        existing.vote = body.vote
+        if existing.vote == body.vote:
+            db.delete(existing)
+        else:
+            existing.vote = body.vote
     else:
         db.add(CourseVote(nomination_id=nom_id, user_id=user.id, vote=body.vote))
     db.commit()

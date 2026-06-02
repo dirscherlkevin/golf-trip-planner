@@ -136,6 +136,7 @@ def get_picks(
         text("""
             SELECT * FROM restaurant_picks
             WHERE trip_id = :tid
+            AND deleted_at IS NULL
             AND (
                 (:rid IS NULL AND round_id IS NULL) OR
                 (round_id = :rid)
@@ -187,6 +188,7 @@ def save_pick(
         text("""
             SELECT id FROM restaurant_picks
             WHERE trip_id = :tid AND name = :name
+            AND deleted_at IS NULL
             AND (
                 (:rid IS NULL AND round_id IS NULL) OR
                 (round_id = :rid)
@@ -242,7 +244,7 @@ def vote_pick(
 
     # Verify pick belongs to this trip
     pick = db.execute(
-        text("SELECT id FROM restaurant_picks WHERE id = :pid AND trip_id = :tid"),
+        text("SELECT id FROM restaurant_picks WHERE id = :pid AND trip_id = :tid AND deleted_at IS NULL"),
         {"pid": pick_id, "tid": trip_id},
     ).fetchone()
     if not pick:
@@ -283,7 +285,7 @@ def delete_pick(
 ):
     _require_member(trip_id, user, db)
     db.execute(
-        text("DELETE FROM restaurant_picks WHERE id = :id AND trip_id = :tid"),
+        text("UPDATE restaurant_picks SET deleted_at = NOW() WHERE id = :id AND trip_id = :tid AND deleted_at IS NULL"),
         {"id": pick_id, "tid": trip_id},
     )
     db.commit()

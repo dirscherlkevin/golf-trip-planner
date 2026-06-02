@@ -97,6 +97,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
             "website": None,
             "rating_source": None,
             "ranking": None,
+            "yardage_options": None,
         }
         if r.locked_course_id:
             nomination = db.query(CourseNomination).filter(
@@ -120,6 +121,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
                 course["website"] = cd.get("website") or None
                 course["rating_source"] = cd.get("rating_source") or None
                 course["ranking"] = cd.get("ranking") or None
+                course["yardage_options"] = cd.get("yardage_options")
         rounds.append(course)
 
     # Lodging — collect all options with is_locked=True
@@ -175,7 +177,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
 
     # Restaurant picks (sorted by most up-votes first per round)
     picks_raw = db.execute(
-        text("SELECT * FROM restaurant_picks WHERE trip_id = :tid ORDER BY created_at"),
+        text("SELECT * FROM restaurant_picks WHERE trip_id = :tid AND deleted_at IS NULL ORDER BY created_at"),
         {"tid": trip_id},
     ).fetchall()
     votes_raw = db.execute(

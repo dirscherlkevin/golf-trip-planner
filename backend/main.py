@@ -69,6 +69,7 @@ with engine.connect() as _conn:
           END IF;
         END $$
     """))
+    _conn.execute(text("ALTER TABLE restaurant_picks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL"))
     _conn.execute(text("""
         CREATE TABLE IF NOT EXISTS restaurant_picks (
             id           SERIAL PRIMARY KEY,
