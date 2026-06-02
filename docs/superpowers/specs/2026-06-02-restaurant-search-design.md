@@ -59,8 +59,8 @@ Picks are sorted by 👍 count descending.
 ### Saving flow
 - **First save:** creates the canonical pick row + implicit 👍 vote for the saver
 - **Other members:** vote 👍 or 👎 on existing picks — no duplicate saves needed
-- **Remove vote:** any member can remove their vote; if all votes are removed (zero total), the pick auto-deletes from the list. A pick with only 👎 votes stays visible — it's useful group signal.
-- **Organizer hard delete:** organizer can force-remove any pick regardless of votes
+- **Remove pick:** any member can explicitly unsave/delete any pick via a remove button on the saved card. Votes have no effect on pick existence.
+- **Votes are social only:** 👍/👎 counts surface preference but never auto-delete a pick.
 
 ---
 
@@ -109,8 +109,8 @@ CREATE TABLE IF NOT EXISTS restaurant_votes (
 | `POST /trips/{trip_id}/restaurants/suggest` | Member | Calls Claude, returns 4–5 suggestions. Not saved to DB. |
 | `GET /trips/{trip_id}/restaurants` | Member | Returns all picks for the trip, with embedded votes list and `my_vote: "up" \| "down" \| null` per pick. Query param: `?round_id=` (omit for lodging picks). |
 | `POST /trips/{trip_id}/restaurants` | Member | Creates a pick + adds an implicit 👍 vote for the caller. Body: full restaurant object from suggest response. Upserts on (name, round_id) to prevent duplicates. |
-| `POST /trips/{trip_id}/restaurants/{pick_id}/vote` | Member | Toggle vote. Body: `{vote: "up" \| "down"}`. Switches vote if different type; removes if same type (second click). Auto-deletes pick if all votes removed. |
-| `DELETE /trips/{trip_id}/restaurants/{pick_id}` | Organizer | Hard delete. |
+| `POST /trips/{trip_id}/restaurants/{pick_id}/vote` | Member | Toggle vote. Body: `{vote: "up" \| "down"}`. Switches if different type; removes if same type (second click). No effect on pick existence. |
+| `DELETE /trips/{trip_id}/restaurants/{pick_id}` | Member | Explicit unsave — any member can remove any pick. |
 
 ### Suggest request body
 ```json
