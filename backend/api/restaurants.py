@@ -226,3 +226,65 @@ def save_pick(
     )
     db.commit()
     return {"id": pick_id}
+
+
+@router.post("/{trip_id}/restaurants/{pick_id}/vote")
+def vote_pick(
+    trip_id: int,
+    pick_id: int,
+    body: VoteRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_member(trip_id, user, db)
+    if body.vote not in ("up", "down"):
+        raise HTTPException(status_code=400, detail="vote must be 'up' or 'down'")
+
+    # Verify pick belongs to this trip
+    pick = db.execute(
+        text("SELECT id FROM restaurant_picks WHERE id = :pid AND trip_id = :tid"),
+        {"pid": pick_id, "tid": trip_id},
+    ).fetchone()
+    if not pick:
+        raise HTTPException(status_code=404, detail="Pick not found")
+
+    existing = db.execute(
+        text("SELECT vote FROM restaurant_votes WHERE pick_id = :pid AND user_id = :uid"),
+        {"pid": pick_id, "uid": user.id},
+    ).fetchone()
+
+    if existing and existing.vote == body.vote:
+        # Same vote again — toggle off (remove)
+        db.execute(
+            text("DELETE FROM restaurant_votes WHERE pick_id = :pid AND user_id = :uid"),
+            {"pid": pick_id, "uid": user.id},
+        )
+    else:
+        # New vote or switching direction — upsert
+        db.execute(
+            text("""
+                INSERT INTO restaurant_votes (pick_id, user_id, user_name, vote)
+                VALUES (:pid, :uid, :uname, :vote)
+                ON CONFLICT (pick_id, user_id) DO UPDATE SET vote = :vote
+            """),
+            {"pid": pick_id, "uid": user.id, "uname": user.name, "vote": body.vote},
+        )
+
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/{trip_id}/restaurants/{pick_id}")
+def delete_pick(
+    trip_id: int,
+    pick_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_member(trip_id, user, db)
+    db.execute(
+        text("DELETE FROM restaurant_picks WHERE id = :id AND trip_id = :tid"),
+        {"id": pick_id, "tid": trip_id},
+    )
+    db.commit()
+    return {"ok": True}
