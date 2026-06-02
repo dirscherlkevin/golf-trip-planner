@@ -8,8 +8,22 @@ import CostEstimate from '../components/CostEstimate'
 import AvailabilityPhase from '../phases/availability/AvailabilityPhase'
 import DestinationPhase from '../phases/destination/DestinationPhase'
 import PlanningPhase from '../phases/planning/PlanningPhase'
+import LodgingVoting from '../phases/planning/LodgingVoting'
 import LockInPhase from '../phases/lockin/LockInPhase'
 import HypeMoment from '../phases/lockin/HypeMoment'
+
+function LodgingPhase() {
+  const { trip } = useTripStore()
+  return (
+    <div>
+      <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Lodging</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
+        Vote on where to stay. The organizer locks it in when ready.
+      </p>
+      <LodgingVoting trip={trip} onLodgingUpdated={() => {}} />
+    </div>
+  )
+}
 
 function TodoBanner({ phases, user, trip, refreshKey }) {
   const openPhase = phases.find(p => p.status === 'open')?.phase
@@ -68,14 +82,16 @@ function TodoBanner({ phases, user, trip, refreshKey }) {
 const PHASE_COMPONENTS = {
   availability: AvailabilityPhase,
   destination: DestinationPhase,
-  planning: PlanningPhase,
+  courses: PlanningPhase,
+  lodging: LodgingPhase,
   locked_in: LockInPhase,
 }
 
 const PHASE_LABELS = {
   availability: 'Availability',
   destination: 'Destinations',
-  planning: 'Courses + Lodging',
+  courses: 'Courses',
+  lodging: 'Lodging',
   locked_in: 'Lock It In',
 }
 
@@ -89,33 +105,51 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
   const [activeTab, setActiveTab] = useState(null)
 
   useEffect(() => {
-    if (openPhase) setActiveTab(openPhase.phase)
+    if (openPhase) {
+      // 'planning' phase maps to the 'courses' tab by default
+      setActiveTab(openPhase.phase === 'planning' ? 'courses' : openPhase.phase)
+    }
   }, [openPhase?.phase])
 
-  const viewPhase = activeTab ?? openPhase?.phase
+  // Expand 'planning' into two display tabs: 'courses' and 'lodging'
+  const displayPhases = phases.flatMap(p => {
+    if (p.phase === 'planning') {
+      return [
+        { ...p, displayPhase: 'courses' },
+        { ...p, displayPhase: 'lodging' },
+      ]
+    }
+    return [{ ...p, displayPhase: p.phase }]
+  })
+
+  const viewPhase = activeTab ?? (openPhase?.phase === 'planning' ? 'courses' : openPhase?.phase)
+  // Map displayPhase back to backend phase for status checks
+  const backendPhase = (dp) => dp === 'courses' || dp === 'lodging' ? 'planning' : dp
+  const viewBackendPhase = backendPhase(viewPhase)
 
   return (
     <div>
-      {/* Phase tabs — horizontal scroll on narrow screens (M3) */}
+      {/* Phase tabs */}
       <div style={{
         display: 'flex', gap: 4, marginBottom: 24,
         overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
       }}>
-        {phases.map(p => {
+        {displayPhases.map(p => {
           const isOpen = p.status === 'open'
           const isLocked = p.status === 'locked'
           const isPending = p.status === 'pending'
-          const isActive = viewPhase === p.phase
-          const canReopen = isOrganizer && prevLockedPhase?.phase === p.phase && REOPENABLE.has(p.phase)
+          const isActive = viewPhase === p.displayPhase
+          // Only show reopen on the 'courses' tab, not the 'lodging' tab (same backend phase)
+          const canReopen = isOrganizer && prevLockedPhase?.phase === backendPhase(p.displayPhase) && REOPENABLE.has(backendPhase(p.displayPhase)) && p.displayPhase !== 'lodging'
           const clickable = !isPending
 
           return (
-            <div key={p.phase} style={{
+            <div key={p.displayPhase} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-              flex: '0 0 auto', minWidth: 110,
+              flex: '0 0 auto', minWidth: 100,
             }}>
               <button
-                onClick={() => clickable && setActiveTab(p.phase)}
+                onClick={() => clickable && setActiveTab(p.displayPhase)}
                 title={isPending ? 'Unlocks once the previous phase is completed' : undefined}
                 style={{
                   width: '100%',
@@ -130,9 +164,8 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
                   border: isActive ? `2px solid var(--accent-green)` : `1px solid ${isLocked ? '#2d4a2d' : '#333'}`,
                 }}
               >
-                {isLocked ? '✓ ' : isPending ? '🔒 ' : ''}{PHASE_LABELS[p.phase]}
+                {isLocked ? '✓ ' : isPending ? '🔒 ' : ''}{PHASE_LABELS[p.displayPhase]}
               </button>
-              {/* F5 — pending tab hint */}
               {isPending && (
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
                   Previous phase first
@@ -140,12 +173,8 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
               )}
               {canReopen && (
                 <button
-                  onClick={() => onReopen(p.phase)}
-                  style={{
-                    fontSize: 12, padding: '2px 8px',
-                    background: 'transparent', border: '1px solid #555',
-                    borderRadius: 4, color: '#aaa', cursor: 'pointer',
-                  }}
+                  onClick={() => onReopen(backendPhase(p.displayPhase))}
+                  style={{ fontSize: 12, padding: '2px 8px', background: 'transparent', border: '1px solid #555', borderRadius: 4, color: '#aaa', cursor: 'pointer' }}
                 >
                   Reopen
                 </button>
@@ -156,7 +185,7 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
       </div>
 
       {/* Locked-phase read-only banner */}
-      {viewPhase && phases.find(p => p.phase === viewPhase)?.status === 'locked' && (
+      {viewPhase && phases.find(p => p.phase === viewBackendPhase)?.status === 'locked' && (
         <div style={{
           fontSize: 12, color: 'var(--text-muted)', background: '#1a1a1a',
           border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 12px',

@@ -60,7 +60,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
     members = []
     if member_user_ids:
         users = db.query(User).filter(User.id.in_(member_user_ids)).all()
-        user_map = {u.id: _email_to_display_name(u.email) for u in users}
+        user_map = {u.id: (u.name or _email_to_display_name(u.email)) for u in users}
         members = [user_map[uid] for uid in member_user_ids if uid in user_map]
 
     # Rounds
@@ -124,6 +124,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         od = option.option_data
         ppn = od.get("price_per_night")
         return {
+            "option_id": option.id,
             "name": od.get("name", "TBD"),
             "type": od.get("type", ""),
             "price_per_night": float(ppn) if ppn is not None else None,
@@ -176,6 +177,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         "destination": destination,
         "destination_region": destination_region,
         "members": members,
+        "member_ids": member_user_ids,
         "member_count": member_count,
         "nights": nights,
         "rounds": rounds,

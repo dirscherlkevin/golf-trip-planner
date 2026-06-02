@@ -6,7 +6,6 @@ import { getLodging } from '../../api/lodging'
 import { getAvailability } from '../../api/availability'
 import RoundsSetup from './RoundsSetup'
 import RoundVoting from './RoundVoting'
-import LodgingVoting from './LodgingVoting'
 
 export default function PlanningPhase() {
   const { trip, lockPhase } = useTripStore()
@@ -15,10 +14,10 @@ export default function PlanningPhase() {
 
   const [rounds, setRounds] = useState(null)
   const [loadError, setLoadError] = useState(null)
-  const [lodging, setLodging] = useState(null)
   const [lodgingLocked, setLodgingLocked] = useState(false)
   const [advancing, setAdvancing] = useState(false)
   const [myBudget, setMyBudget] = useState(null)
+  const [lodging, setLodging] = useState(null)
 
   const loadRounds = () => {
     if (!trip) return
@@ -27,7 +26,7 @@ export default function PlanningPhase() {
       .catch(() => setLoadError('Failed to load rounds.'))
   }
 
-  const loadLodgingData = () => {
+  const checkLodging = () => {
     if (!trip) return
     if (trip.lodging_skipped) { setLodgingLocked(true); return }
     getLodging(trip.id)
@@ -42,7 +41,7 @@ export default function PlanningPhase() {
 
   useEffect(() => {
     loadRounds()
-    loadLodgingData()
+    checkLodging()
     if (trip?.id) {
       getAvailability(trip.id)
         .then(d => { if (d.own_response) setMyBudget({ happy: d.own_response.happy_spend, hard: d.own_response.hard_limit }) })
@@ -69,7 +68,7 @@ export default function PlanningPhase() {
     catch { setAdvancing(false) }
   }
 
-  // Compute per-person running total (courses + lodging)
+  // Combined budget banner (courses + lodging)
   const lockedCourseTotal = (rounds || []).reduce((sum, r) => {
     if (!r.locked_course_id) return sum
     const nom = r.nominations?.find(n => n.id === r.locked_course_id)
@@ -77,7 +76,6 @@ export default function PlanningPhase() {
     return sum + (parseFloat(cd.green_fee) || 0) + (parseFloat(cd.cart_fee) || 0)
   }, 0)
   const hasLockedRounds = (rounds || []).some(r => r.locked_course_id)
-
   const nights = trip?.trip_start && trip?.trip_end
     ? Math.round((new Date(trip.trip_end + 'T00:00:00') - new Date(trip.trip_start + 'T00:00:00')) / 86400000)
     : null
@@ -87,15 +85,14 @@ export default function PlanningPhase() {
     ? ((lockedLodgingOption.option_data?.price_per_night ?? 0) * nights) / groupSize
     : 0
   const runningTotal = lockedCourseTotal + lodgingPerPerson
-
   const overHard = myBudget?.hard != null && runningTotal > myBudget.hard
   const overHappy = myBudget?.happy != null && !overHard && runningTotal > myBudget.happy
 
   return (
     <div>
-      <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Phase 3: Courses + Lodging</h2>
+      <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Courses</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
-        Vote on courses and lodging. The organizer locks them in when you're ready.
+        Vote on courses for each round. The organizer locks them in when ready.
       </p>
 
       {/* Combined budget banner */}
@@ -125,7 +122,6 @@ export default function PlanningPhase() {
         </div>
       )}
 
-      {/* Courses section */}
       <CoursesSection
         trip={trip}
         rounds={rounds}
@@ -137,15 +133,6 @@ export default function PlanningPhase() {
         onRoundUpdated={loadRounds}
       />
 
-      {/* Lodging section */}
-      <div style={{ marginTop: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <h3 style={{ margin: 0, color: 'var(--accent-green)', fontSize: 18 }}>Lodging</h3>
-          {lodgingLocked && <span style={{ fontSize: 12, color: 'var(--accent-green)' }}>✅ Locked</span>}
-        </div>
-        <LodgingVoting trip={trip} onLodgingUpdated={loadLodgingData} />
-      </div>
-
       {/* Advance to Lock It In */}
       {isOrganizer && hasRounds && (
         <div style={{ marginTop: 32, padding: '16px 20px', background: readyToAdvance ? '#1a2a1a' : '#141414', borderRadius: 10, border: readyToAdvance ? '1px solid var(--accent-green)' : '1px solid #2a2a2a' }}>
@@ -156,7 +143,7 @@ export default function PlanningPhase() {
                   All set — ready to lock it in!
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                  All courses and lodging are locked. Advance to review and finalize the trip.
+                  All courses and lodging are locked. Advance to finalize the trip.
                 </div>
               </div>
               <button className="btn-primary" onClick={handleAdvance} disabled={advancing} style={{ whiteSpace: 'nowrap', marginLeft: 16 }}>
@@ -165,7 +152,7 @@ export default function PlanningPhase() {
             </div>
           ) : (
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              Lock all courses{!lodgingLocked ? ' and lodging' : ''} to advance to Lock It In.
+              Lock all courses{!lodgingLocked ? ' and lodging (Lodging tab)' : ''} to advance.
             </div>
           )}
         </div>
@@ -190,9 +177,7 @@ function CoursesSection({ trip, rounds, loadError, hasRounds, isOrganizer, myBud
     )
   }
 
-  if (rounds === null) {
-    return <div style={{ color: 'var(--text-secondary)', padding: 24 }}>Loading rounds...</div>
-  }
+  if (rounds === null) return <div style={{ color: 'var(--text-secondary)', padding: 24 }}>Loading rounds...</div>
 
   if (!hasRounds) {
     if (isOrganizer) return <RoundsSetup trip={trip} onSetup={onRoundsSetup} />

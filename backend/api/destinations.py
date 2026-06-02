@@ -116,6 +116,12 @@ def generate_destination_suggestions(
     db.commit()
     db.refresh(suggestion)
 
+    # Preserve manually-added destinations so AI regeneration doesn't wipe them
+    existing_manual = [
+        s for s in (suggestion.suggestions or [])
+        if s.get("source") == "manual"
+    ]
+
     # Call Claude synchronously (kept simple for now)
     try:
         results = generate_destinations(
@@ -131,6 +137,11 @@ def generate_destination_suggestions(
             region=body.region,
             public_courses_only=body.public_courses_only,
         )
+        # Dedup: re-append manual destinations not covered by AI results (case-insensitive name match)
+        ai_names_lower = {s["name"].lower() for s in results}
+        for manual in existing_manual:
+            if manual.get("name", "").lower() not in ai_names_lower:
+                results.append(manual)
         suggestion.suggestions = results
         suggestion.generation_status = GenerationStatus.complete
         suggestion.generated_at = datetime.now(timezone.utc)
@@ -282,6 +293,7 @@ def nominate_destination(
         "top_courses": [],
         "est_cost_per_person_rounds": body.est_cost_per_person_rounds,
         "booking_warning": None,
+        "source": "manual",
     }
 
     # Enrich with AI — fills in why_it_fits, top_courses, est_cost, booking_warning

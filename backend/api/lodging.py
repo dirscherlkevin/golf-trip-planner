@@ -353,6 +353,8 @@ def nominate_lodging(
         raise HTTPException(status_code=409, detail="Lodging is already locked")
 
     # Enrich with AI — fills in price, beds, capacity, amenities, etc.
+    # Only accept specific safe fields from enrichment; user input always wins.
+    _ENRICHABLE = {"price_per_night", "beds", "capacity", "distance_to_courses", "amenities"}
     option_data = dict(body.option_data)
     try:
         enriched = enrich_lodging(
@@ -360,9 +362,9 @@ def nominate_lodging(
             option_data.get("address", ""),
             option_data.get("type", ""),
         )
-        # User-supplied non-null values take priority
+        enriched_safe = {k: v for k, v in enriched.items() if k in _ENRICHABLE and v is not None}
         user_values = {k: v for k, v in option_data.items() if v is not None and v != ""}
-        option_data = {**enriched, **user_values}
+        option_data = {**enriched_safe, **user_values}
     except Exception:
         pass  # Keep as-is if enrichment fails
 
