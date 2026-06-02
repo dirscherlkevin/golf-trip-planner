@@ -15,6 +15,9 @@ function RestaurantPicks({ picks, label }) {
   return (
     <div style={{ marginTop: 14, padding: '10px 12px', background: '#0a150a', border: '1px solid #1d3a1d', borderRadius: 8 }}>
       <div style={{ fontSize: 10, color: '#5a9a5a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>🍽️ {label}</div>
+      <div style={{ fontSize: 10, color: '#446644', fontStyle: 'italic', marginBottom: 6 }}>
+        AI-generated suggestions — verify hours and address before you go
+      </div>
       {picks.map((pick, i) => {
         const badge = VIBE_BADGE[pick.vibe]
         return (
@@ -243,6 +246,15 @@ export default function SharePage() {
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
                           {[r.rating && `Rating ${r.rating}`, r.slope && `Slope ${r.slope}`, r.par && `Par ${r.par}`].filter(Boolean).join(' · ')}
                           {r.rating_source && <span style={{ color: 'var(--text-muted)', marginLeft: 5 }}>({r.rating_source})</span>}
+                        </div>
+                      )}
+                      {r.yardage_options && (r.yardage_options.championship || r.yardage_options.member || r.yardage_options.forward) && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>
+                          Yardage: {[
+                            r.yardage_options.championship && `${r.yardage_options.championship.toLocaleString()} (champ)`,
+                            r.yardage_options.member && `${r.yardage_options.member.toLocaleString()} (member)`,
+                            r.yardage_options.forward && `${r.yardage_options.forward.toLocaleString()} (fwd)`,
+                          ].filter(Boolean).join(' · ')}
                         </div>
                       )}
                       {r.architect && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Architect: {r.architect}</div>}
