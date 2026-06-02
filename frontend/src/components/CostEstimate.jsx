@@ -44,11 +44,11 @@ export default function CostEstimate({ tripId, trip, isOrganizer }) {
   let warning = null
   if (isOrganizer && compareCost > 0) {
     if (hardBudget && compareCost >= hardBudget) {
-      warning = { color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.3)', text: `🔴 Over hard limit (${fmt(hardBudget)}/person)` }
+      warning = { color: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.3)', text: `🔴 Over lowest member's hard limit (${fmt(hardBudget)}/person)` }
     } else if (happyBudget && compareCost >= happyBudget) {
-      warning = { color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.3)', text: `⚠️ Over budget target (${fmt(happyBudget)}/person)` }
+      warning = { color: '#fbbf24', bg: 'rgba(251,191,36,0.08)', border: 'rgba(251,191,36,0.3)', text: `⚠️ Over avg happy spend (${fmt(happyBudget)}/person)` }
     } else if (happyBudget && compareCost >= happyBudget * 0.9) {
-      warning = { color: '#fbbf24', bg: 'rgba(251,191,36,0.05)', border: 'rgba(251,191,36,0.2)', text: `⚠️ Near budget target (${fmt(happyBudget)}/person)` }
+      warning = { color: '#fbbf24', bg: 'rgba(251,191,36,0.05)', border: 'rgba(251,191,36,0.2)', text: `⚠️ Near avg happy spend (${fmt(happyBudget)}/person)` }
     }
   }
 
@@ -70,7 +70,7 @@ export default function CostEstimate({ tripId, trip, isOrganizer }) {
       )}
       {isOrganizer && (happyBudget || hardBudget) && !warning && (
         <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-muted)' }}>
-          {happyBudget && `Target: ${fmt(happyBudget)}`}{happyBudget && hardBudget && ' · '}{hardBudget && `Limit: ${fmt(hardBudget)}`}
+          {happyBudget && `Target (avg): ${fmt(happyBudget)}`}{happyBudget && hardBudget && ' · '}{hardBudget && `Limit (min): ${fmt(hardBudget)}`}
         </div>
       )}
     </div>
