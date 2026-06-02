@@ -70,8 +70,8 @@ with engine.connect() as _conn:
     _conn.execute(text("""
         CREATE TABLE IF NOT EXISTS restaurant_picks (
             id           SERIAL PRIMARY KEY,
-            trip_id      INTEGER NOT NULL REFERENCES trips(id),
-            round_id     INTEGER REFERENCES trip_rounds(id),
+            trip_id      INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+            round_id     INTEGER REFERENCES trip_rounds(id) ON DELETE SET NULL,
             name         TEXT NOT NULL,
             cuisine      TEXT,
             price_range  TEXT,
