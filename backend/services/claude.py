@@ -258,7 +258,7 @@ Return only valid JSON, no other text."""
 
     client = _client()
     message = _call_with_retry(lambda: client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     ))
@@ -267,30 +267,32 @@ Return only valid JSON, no other text."""
 
 def enrich_course(name: str, location: str) -> dict:
     """Ask Claude to fill in full details for a manually-added course."""
-    prompt = f"""You are a golf course expert. Provide accurate details for this course.
+    prompt = f"""You are a golf course expert with deep knowledge of real golf courses. Provide accurate details for this course from your knowledge.
 
 Course: {name}
 Location: {location}
 
-Return ONLY a JSON object (use null for unknown fields):
+Return ONLY a JSON object (use null for fields you are not confident about):
 {{
-  "rating": "74.2",
+  "rating": 74.2,
   "slope": 135,
   "par": 72,
   "green_fee": 250,
   "cart_fee": 25,
-  "walking_policy": "Walking allowed",
+  "walking_policy": "Walking allowed / cart required / walking preferred",
   "architect": "Designer Name",
   "pace_of_play": "4 hours 15 minutes",
   "tee_time_window": "Book 30 days in advance",
-  "website": "https://..."
+  "website": "https://...",
+  "ranking": "Top 10 Public in Minnesota",
+  "rating_source": "USGA 2024"
 }}
 
 Return only valid JSON, no other text."""
 
     client = _client()
     message = _call_with_retry(lambda: client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}],
     ))
@@ -321,7 +323,7 @@ Return only valid JSON, no other text."""
 
     client = _client()
     message = _call_with_retry(lambda: client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=256,
         messages=[{"role": "user", "content": prompt}],
     ))
