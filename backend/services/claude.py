@@ -441,6 +441,51 @@ Return only valid JSON, no other text."""
     return _parse_json_response(message.content[0].text)
 
 
+def suggest_round_order(rounds: list, destination: str, group_context: dict) -> dict:
+    """Suggest optimal round order and tier mix for a golf trip."""
+    rounds_text = "\n".join(
+        f"  Round {r['round_number']}: {r['tier']} tier"
+        + (f" — {r['course_name']}" if r.get("course_name") else " (course TBD)")
+        + (f", Rating {r['rating']}, Slope {r['slope']}" if r.get("rating") else "")
+        + (f", ${r['green_fee']} green fee" if r.get("green_fee") else "")
+        for r in rounds
+    )
+    skill = group_context.get("skill_mix", "mixed")
+    group_size = group_context.get("group_size", "?")
+    nights = group_context.get("nights", len(rounds))
+
+    prompt = f"""You are a golf trip strategist. Give advice on round order and mix for this trip.
+
+Destination: {destination}
+Group: {group_size} golfers, skill: {skill}
+Nights: {nights} | Rounds planned: {len(rounds)}
+
+Rounds:
+{rounds_text}
+
+Advise on:
+1. Optimal ORDER — which round to play on which day and why (warm-up vs. marquee vs. closer)
+2. TIER MIX — whether the current premium/midrange/value balance fits the group and budget
+3. Any specific tips for this destination or course combination
+
+Return ONLY a JSON object:
+{{
+  "order_advice": "2-3 sentences on the best sequence to play these rounds",
+  "mix_advice": "1-2 sentences on whether the tier mix is right or what to adjust",
+  "tip": "One specific insider tip for this destination or course combination, or null"
+}}
+
+Return only valid JSON, no other text."""
+
+    client = _client()
+    message = _call_with_retry(lambda: client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=300,
+        messages=[{"role": "user", "content": prompt}],
+    ))
+    return _parse_json_response(message.content[0].text)
+
+
 def generate_trip_tagline(trip_name: str, destination: str, dates: str, members: list, rounds: list, lodging_name: str | None = None) -> str:
     """Generate a 2-3 sentence hype narrative for the trip share page."""
     courses = [r.get("course_name", "") for r in rounds if r.get("course_name") and r.get("course_name") != "TBD"]

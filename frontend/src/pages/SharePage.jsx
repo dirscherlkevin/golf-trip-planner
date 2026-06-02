@@ -51,7 +51,6 @@ export default function SharePage() {
   const user = useAuthStore(s => s.user)
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
-  const [generatingTagline, setGeneratingTagline] = useState(false)
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL || ''}/share/${id}`)
@@ -153,28 +152,10 @@ export default function SharePage() {
           {data.destination_region && (
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>{data.destination_region}</div>
           )}
-          {/* AI trip summary */}
+          {/* AI trip summary — auto-generated at finalization */}
           {data.share_tagline && (
             <div style={{ marginTop: 20, fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, fontStyle: 'italic', maxWidth: 480, margin: '20px auto 0' }}>
               "{data.share_tagline}"
-            </div>
-          )}
-          {isMember && (
-            <div style={{ marginTop: 10 }}>
-              <button
-                onClick={async () => {
-                  setGeneratingTagline(true)
-                  try {
-                    const r = await client.post(`/share/${data.trip_id}/tagline`)
-                    setData(d => ({ ...d, share_tagline: r.data.tagline }))
-                  } catch { }
-                  finally { setGeneratingTagline(false) }
-                }}
-                disabled={generatingTagline}
-                style={{ background: 'none', border: '1px solid #2d4a2d', borderRadius: 6, color: 'var(--text-muted)', fontSize: 11, padding: '4px 12px', cursor: 'pointer' }}
-              >
-                {generatingTagline ? '✨ Writing...' : data.share_tagline ? '✨ Regenerate summary' : '✨ Generate trip summary'}
-              </button>
             </div>
           )}
 

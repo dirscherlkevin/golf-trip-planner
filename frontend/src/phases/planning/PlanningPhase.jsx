@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store/auth'
 import { useTripStore } from '../../store/trip'
-import { getRounds, addRound, removeRound } from '../../api/rounds'
+import { getRounds, addRound, removeRound, suggestRoundOrder } from '../../api/rounds'
 import { getLodging } from '../../api/lodging'
 import { getAvailability } from '../../api/availability'
 import RoundsSetup from './RoundsSetup'
@@ -18,6 +18,9 @@ export default function PlanningPhase({ onGoToLodging }) {
   const [advancing, setAdvancing] = useState(false)
   const [myBudget, setMyBudget] = useState(null)
   const [lodging, setLodging] = useState(null)
+  const [orderAdvice, setOrderAdvice] = useState(null)
+  const [loadingOrder, setLoadingOrder] = useState(false)
+  const [orderError, setOrderError] = useState(null)
 
   const loadRounds = () => {
     if (!trip) return
@@ -132,6 +135,57 @@ export default function PlanningPhase({ onGoToLodging }) {
         onRoundsSetup={setRounds}
         onRoundUpdated={loadRounds}
       />
+
+      {/* Round order / mix strategy */}
+      {hasRounds && rounds.length >= 2 && (
+        <div style={{ marginTop: 20 }}>
+          {!orderAdvice ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button className="btn-ghost" onClick={async () => {
+                setLoadingOrder(true); setOrderError(null)
+                try { setOrderAdvice(await suggestRoundOrder(trip.id)) }
+                catch { setOrderError('Could not get suggestion. Try again.') }
+                finally { setLoadingOrder(false) }
+              }} disabled={loadingOrder} style={{ fontSize: 12, padding: '4px 12px' }}>
+                {loadingOrder ? '✨ Thinking...' : '✨ Suggest round order / mix'}
+              </button>
+              {orderError && <span style={{ fontSize: 12, color: '#e55' }}>{orderError}</span>}
+            </div>
+          ) : (
+            <div style={{ padding: '14px 16px', background: '#111f11', border: '1px solid #2a3a2a', borderRadius: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>✨ Round Strategy</div>
+                <button onClick={() => setOrderAdvice(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, padding: 0 }}>✕</button>
+              </div>
+              {orderAdvice.order_advice && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{orderAdvice.order_advice}</div>
+                </div>
+              )}
+              {orderAdvice.mix_advice && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Mix</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{orderAdvice.mix_advice}</div>
+                </div>
+              )}
+              {orderAdvice.tip && (
+                <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid #1f2f1f' }}>
+                  <div style={{ fontSize: 12, color: 'var(--accent-green)', fontStyle: 'italic' }}>💡 {orderAdvice.tip}</div>
+                </div>
+              )}
+              <button className="btn-ghost" onClick={async () => {
+                setLoadingOrder(true); setOrderError(null)
+                try { setOrderAdvice(await suggestRoundOrder(trip.id)) }
+                catch { setOrderError('Try again.') }
+                finally { setLoadingOrder(false) }
+              }} disabled={loadingOrder} style={{ fontSize: 11, marginTop: 10, padding: '2px 8px' }}>
+                {loadingOrder ? 'Thinking...' : 'Re-ask'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Courses done → nudge to Lodging tab */}
       {isOrganizer && allRoundsLocked && !lodgingLocked && (

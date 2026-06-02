@@ -12,7 +12,7 @@ from schemas.round import (
     TripRoundOut, CourseNominationOut, CourseVoteTally
 )
 from services.phases import get_phase, lock_phase
-from services.claude import generate_courses_for_round, enrich_course, recommend_course
+from services.claude import generate_courses_for_round, enrich_course, recommend_course, suggest_round_order
 from datetime import datetime, timezone
 
 router = APIRouter()
@@ -548,6 +548,61 @@ def recommend_round_course(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Recommendation failed: {str(e)}")
+
+
+@router.post("/{trip_id}/rounds/suggest-order")
+def suggest_rounds_order(
+    trip_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Ask Sonnet for round order and tier mix advice."""
+    _get_trip_member(trip_id, user.id, db)
+    rounds = db.query(TripRound).filter(TripRound.trip_id == trip_id).order_by(TripRound.round_number).all()
+    if len(rounds) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 rounds for order advice")
+
+    destination = _get_destination_name(trip_id, db)
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+
+    nights = 0
+    if trip and trip.trip_start and trip.trip_end:
+        nights = (trip.trip_end - trip.trip_start).days
+
+    group_size = db.query(TripMember).filter(
+        TripMember.trip_id == trip_id, TripMember.joined == "joined"
+    ).count()
+
+    from models.availability import AvailabilityResponse
+    responses = db.query(AvailabilityResponse).filter(AvailabilityResponse.trip_id == trip_id).all()
+    skill_values = [r.skill_level for r in responses if r.skill_level]
+    skill_mix = ", ".join(skill_values) if skill_values else "mixed"
+
+    rounds_data = []
+    for r in rounds:
+        cd = {}
+        if r.locked_course_id:
+            nom = db.query(CourseNomination).filter(CourseNomination.id == r.locked_course_id).first()
+            if nom and nom.course_data:
+                cd = nom.course_data
+        rounds_data.append({
+            "round_number": r.round_number,
+            "tier": r.tier,
+            "course_name": cd.get("name"),
+            "rating": cd.get("rating"),
+            "slope": cd.get("slope"),
+            "green_fee": cd.get("green_fee"),
+        })
+
+    try:
+        result = suggest_round_order(
+            rounds=rounds_data,
+            destination=destination,
+            group_context={"group_size": group_size, "skill_mix": skill_mix, "nights": nights},
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Suggestion failed: {str(e)}")
 
 
 class _AddRoundBody(_BM):

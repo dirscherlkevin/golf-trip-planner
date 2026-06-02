@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import logging
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from database import get_db
 from api.auth import get_current_user
@@ -7,6 +9,28 @@ from models.phase import PhaseName
 from models.trip import Trip, TripStatus
 from schemas.phase import TripPhaseOut, LockPhaseIn
 from services.phases import get_phases, lock_phase, reopen_phase
+
+logger = logging.getLogger(__name__)
+
+
+def _generate_tagline_bg(trip_id: int, trip_name: str, destination: str, dates: str,
+                          member_names: list, rounds_data: list, lodging_name, db_url: str):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from services.claude import generate_trip_tagline
+    engine = create_engine(db_url)
+    BgSession = sessionmaker(bind=engine)
+    db = BgSession()
+    try:
+        tagline = generate_trip_tagline(trip_name, destination, dates, member_names, rounds_data, lodging_name)
+        trip = db.query(Trip).filter(Trip.id == trip_id).first()
+        if trip:
+            trip.share_tagline = tagline
+            db.commit()
+    except Exception as e:
+        logger.exception("Tagline generation failed for trip_id=%s: %s", trip_id, e)
+    finally:
+        db.close()
 
 router = APIRouter()
 
@@ -58,6 +82,7 @@ def reopen_trip_phase(
 @router.post("/{trip_id}/lock")
 def lock_trip(
     trip_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -136,16 +161,29 @@ def lock_trip(
 
     from models.user import User as UserModel
     from services.email import _email_to_display_name, _base_url
+    member_names = []
     for member in members:
         member_user = db.query(UserModel).filter(UserModel.id == member.user_id).first()
+        display = (member_user.name or _email_to_display_name(member_user.email)) if member_user else "Golfer"
+        member_names.append(display)
         enqueue_email(db, trip_id, member.user_id, "trip_summary", {
             "trip_name": trip.name,
-            "name": _email_to_display_name(member_user.email) if member_user else "Golfer",
+            "name": display,
             "dates": dates,
             "destination": destination_name,
             "courses": ", ".join(course_names) if course_names else "TBD",
             "lodging_name": lodging_name,
             "url": f"{_base_url()}/trips/{trip_id}",
         })
+
+    # Generate share page tagline in background (non-blocking)
+    db_url = os.getenv("DATABASE_URL", "")
+    background_tasks.add_task(
+        _generate_tagline_bg,
+        trip_id, trip.name, destination_name, dates, member_names,
+        [{"course_name": n} for n in course_names],
+        lodging_name if lodging_name != "TBD" else None,
+        db_url,
+    )
 
     return {"status": "finalized", "trip_id": trip_id}

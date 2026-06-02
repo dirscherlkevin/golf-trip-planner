@@ -12,3 +12,4 @@ export const addRound = (tripId, tier) => client.post(`/trips/${tripId}/rounds/a
 export const removeRound = (tripId, roundId) => client.delete(`/trips/${tripId}/rounds/${roundId}`).then(r => r.data)
 export const setRoundBooked = (tripId, roundId, booked) => client.patch(`/trips/${tripId}/rounds/${roundId}/booked`, { booked })
 export const recommendCourse = (tripId, roundId) => client.post(`/trips/${tripId}/rounds/${roundId}/recommend`).then(r => r.data)
+export const suggestRoundOrder = (tripId) => client.post(`/trips/${tripId}/rounds/suggest-order`).then(r => r.data)
