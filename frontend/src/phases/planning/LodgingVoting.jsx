@@ -39,6 +39,40 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, onUpdated })
   const [notesText, setNotesText] = useState(od.notes || '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [notesSaved, setNotesSaved] = useState(false)
+  // Detail editing
+  const [editingDetails, setEditingDetails] = useState(false)
+  const [detailFields, setDetailFields] = useState({
+    price_per_night: od.price_per_night ?? '',
+    beds: od.beds ?? '',
+    rooms: od.rooms ?? '',
+    capacity: od.capacity ?? '',
+    distance_to_courses: od.distance_to_courses ?? '',
+    amenities: od.amenities ?? '',
+    parking_fee: od.parking_fee ?? '',
+    breakfast_cost: od.breakfast_cost ?? '',
+  })
+  const [savingDetails, setSavingDetails] = useState(false)
+
+  const handleSaveDetails = async () => {
+    setSavingDetails(true)
+    try {
+      const patch = {}
+      const n = (v) => v !== '' ? parseFloat(v) : null
+      const i = (v) => v !== '' ? parseInt(v, 10) : null
+      if (detailFields.price_per_night !== '') patch.price_per_night = n(detailFields.price_per_night)
+      if (detailFields.beds !== '') patch.beds = i(detailFields.beds)
+      if (detailFields.rooms !== '') patch.rooms = i(detailFields.rooms)
+      if (detailFields.capacity !== '') patch.capacity = i(detailFields.capacity)
+      if (detailFields.distance_to_courses !== '') patch.distance_to_courses = detailFields.distance_to_courses
+      if (detailFields.amenities !== '') patch.amenities = detailFields.amenities
+      if (detailFields.parking_fee !== '') patch.parking_fee = n(detailFields.parking_fee)
+      if (detailFields.breakfast_cost !== '') patch.breakfast_cost = n(detailFields.breakfast_cost)
+      await patchOption(patch)
+      setEditingDetails(false)
+    } finally {
+      setSavingDetails(false)
+    }
+  }
 
   const isThisLocked = option.is_locked ?? false
 
@@ -184,6 +218,44 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, onUpdated })
               </div>
             )}
           </div>
+          {/* Edit details panel */}
+          <div style={{ marginTop: 6 }}>
+            {!editingDetails ? (
+              <button className="btn-ghost" onClick={() => setEditingDetails(true)}
+                style={{ fontSize: 11, padding: '1px 6px', color: 'var(--text-muted)' }}>
+                ✏️ Edit details
+              </button>
+            ) : (
+              <div style={{ marginTop: 6, padding: '10px 12px', background: '#111', border: '1px solid #333', borderRadius: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 6, marginBottom: 8 }}>
+                  {[
+                    { label: 'Price/night ($)', key: 'price_per_night', type: 'number', ph: '850' },
+                    { label: 'Beds', key: 'beds', type: 'number', ph: '4' },
+                    { label: 'Rooms', key: 'rooms', type: 'number', ph: '3' },
+                    { label: 'Sleeps', key: 'capacity', type: 'number', ph: '8' },
+                    { label: 'Parking/night ($)', key: 'parking_fee', type: 'number', ph: '20' },
+                    { label: 'Breakfast/person ($)', key: 'breakfast_cost', type: 'number', ph: '15' },
+                    { label: 'Distance to courses', key: 'distance_to_courses', type: 'text', ph: '5 min drive' },
+                    { label: 'Amenities', key: 'amenities', type: 'text', ph: 'Pool, hot tub…' },
+                  ].map(({ label, key, type, ph }) => (
+                    <div key={key}>
+                      <label style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</label>
+                      <input type={type} value={detailFields[key]} placeholder={ph}
+                        onChange={e => setDetailFields(f => ({ ...f, [key]: e.target.value }))}
+                        style={{ width: '100%', padding: '4px 7px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#fff', fontSize: 12, boxSizing: 'border-box' }} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn-primary" onClick={handleSaveDetails} disabled={savingDetails} style={{ fontSize: 11, padding: '3px 10px' }}>
+                    {savingDetails ? '...' : 'Save'}
+                  </button>
+                  <button className="btn-ghost" onClick={() => setEditingDetails(false)} style={{ fontSize: 11, padding: '3px 8px' }}>Cancel</button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Notes */}
           <div style={{ marginTop: 8 }}>
             <textarea
