@@ -67,6 +67,33 @@ with engine.connect() as _conn:
           END IF;
         END $$
     """))
+    _conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS restaurant_picks (
+            id           SERIAL PRIMARY KEY,
+            trip_id      INTEGER NOT NULL REFERENCES trips(id),
+            round_id     INTEGER REFERENCES trip_rounds(id),
+            name         TEXT NOT NULL,
+            cuisine      TEXT,
+            price_range  TEXT,
+            vibe         TEXT,
+            reason       TEXT,
+            address      TEXT,
+            phone        TEXT,
+            maps_url     TEXT,
+            created_at   TIMESTAMP DEFAULT NOW()
+        )
+    """))
+    _conn.execute(text("""
+        CREATE TABLE IF NOT EXISTS restaurant_votes (
+            id         SERIAL PRIMARY KEY,
+            pick_id    INTEGER NOT NULL REFERENCES restaurant_picks(id) ON DELETE CASCADE,
+            user_id    INTEGER,
+            user_name  TEXT NOT NULL,
+            vote       TEXT NOT NULL CHECK (vote IN ('up', 'down')),
+            voted_at   TIMESTAMP DEFAULT NOW(),
+            UNIQUE(pick_id, user_id)
+        )
+    """))
     _conn.commit()
 
 from api.auth import router as auth_router
