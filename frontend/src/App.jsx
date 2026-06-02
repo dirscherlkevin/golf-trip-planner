@@ -21,7 +21,7 @@ function SpinupScreen({ slow }) {
     }}>
       <div style={{ fontSize: 48, marginBottom: 20, animation: 'spin 2s linear infinite' }}>⛳</div>
       <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--accent-green)', marginBottom: 8 }}>
-        Golf Trip Planner
+        Fairway
       </div>
       {slow ? (
         <>

@@ -73,8 +73,13 @@ export default function DestinationCard({ trip, destination, index, tally, isOrg
   const netVotes = (tally?.up_votes ?? 0) - (tally?.down_votes ?? 0)
   const myVote = tally?.my_vote
 
+  const isMyPick = !isOrganizer && myVote === 'up'
+
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="card" style={{
+      display: 'flex', flexDirection: 'column', gap: 14,
+      ...(isMyPick ? { border: '2px solid var(--accent-green)', background: '#0f1f0f' } : {}),
+    }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>

@@ -2,6 +2,18 @@ import { useState } from 'react'
 import { voteOnCourse, lockRound, unlockRound, generateMoreCourses, nominateCourse, removeCourseNomination } from '../../api/rounds'
 import client from '../../api/client'
 
+async function saveRoundNotes(tripId, roundId, notes) {
+  await client.patch(`/trips/${tripId}/rounds/${roundId}/notes`, { notes })
+}
+
+async function saveTeeTime(tripId, roundId, teeTime, roundDate, golfersPer) {
+  await client.patch(`/trips/${tripId}/rounds/${roundId}/tee-time`, {
+    tee_time: teeTime,
+    round_date: roundDate || null,
+    golfers_per_tee: golfersPer ? parseInt(golfersPer, 10) : null,
+  })
+}
+
 const TIER_LABELS = {
   premium: 'Premium',
   midrange: 'Midrange',
@@ -17,7 +29,7 @@ function CourseDetail({ label, value }) {
   )
 }
 
-function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lockedNomId, onUpdated }) {
+function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lockedNomId, onUpdated, myBudget, lockedCostSoFar }) {
   const { id, course_data, vote_tally } = nomination
   const cd = course_data || {}
   const tally = vote_tally || {}
@@ -146,6 +158,28 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
           </div>
         </div>
 
+        {/* Over-budget warning for this course */}
+        {(() => {
+          const fee = (parseFloat(cd.green_fee) || 0) + (parseFloat(cd.cart_fee) || 0)
+          const projectedTotal = (lockedCostSoFar || 0) + fee
+          if (!myBudget || fee === 0) return null
+          if (myBudget.hard != null && projectedTotal > myBudget.hard) {
+            return (
+              <div style={{ fontSize: 11, color: '#f87171', background: '#2a0a0a', border: '1px solid #7a1a1a', borderRadius: 4, padding: '3px 8px', marginTop: 4, alignSelf: 'flex-start' }}>
+                ⚠️ Would put you ${Math.round(projectedTotal - myBudget.hard).toLocaleString()} over your hard limit
+              </div>
+            )
+          }
+          if (myBudget.happy != null && projectedTotal > myBudget.happy) {
+            return (
+              <div style={{ fontSize: 11, color: '#f6ad55', background: '#2a1f00', border: '1px solid #6a4a00', borderRadius: 4, padding: '3px 8px', marginTop: 4, alignSelf: 'flex-start' }}>
+                ⚡ Would exceed your happy-spend by ${Math.round(projectedTotal - myBudget.happy).toLocaleString()}
+              </div>
+            )
+          }
+          return null
+        })()}
+
         {/* Vote + lock controls */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, minWidth: 80 }}>
           {!isLocked && (
@@ -245,7 +279,7 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
   )
 }
 
-export default function RoundVoting({ round, tripId, isOrganizer, onUpdated, onRemove, removing }) {
+export default function RoundVoting({ round, tripId, isOrganizer, myBudget, lockedCostSoFar, onUpdated, onRemove, removing }) {
   const [generatingMore, setGeneratingMore] = useState(false)
   const [generateError, setGenerateError] = useState(null)
   const [changingTier, setChangingTier] = useState(false)
@@ -260,9 +294,41 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated, onR
   const [addingManual, setAddingManual] = useState(false)
   const [manualError, setManualError] = useState(null)
   const [unlocking, setUnlocking] = useState(false)
+  // Tee time editing
+  const [editingTeeTime, setEditingTeeTime] = useState(false)
+  const [teeTimeStr, setTeeTimeStr] = useState(round.tee_time || '')
+  const [roundDateStr, setRoundDateStr] = useState(round.round_date || '')
+  const [golfersPer, setGolfersPer] = useState(round.golfers_per_tee?.toString() || '')
+  const [savingTeeTime, setSavingTeeTime] = useState(false)
+  // Notes
+  const [notesText, setNotesText] = useState(round.notes || '')
+  const [savingNotes, setSavingNotes] = useState(false)
+  const [notesSaved, setNotesSaved] = useState(false)
 
   const lockedNomId = round.locked_course_id
   const isLocked = lockedNomId !== null
+
+  const handleSaveTeeTime = async () => {
+    setSavingTeeTime(true)
+    try {
+      await saveTeeTime(tripId, round.id, teeTimeStr, roundDateStr, golfersPer)
+      setEditingTeeTime(false)
+      onUpdated()
+    } finally {
+      setSavingTeeTime(false)
+    }
+  }
+
+  const handleSaveNotes = async () => {
+    setSavingNotes(true)
+    try {
+      await saveRoundNotes(tripId, round.id, notesText)
+      setNotesSaved(true)
+      setTimeout(() => setNotesSaved(false), 2000)
+    } finally {
+      setSavingNotes(false)
+    }
+  }
 
   const handleUnlock = async () => {
     setUnlocking(true)
@@ -439,6 +505,8 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated, onR
               isLocked={isLocked}
               isOrganizer={isOrganizer}
               lockedNomId={lockedNomId}
+              myBudget={myBudget}
+              lockedCostSoFar={lockedCostSoFar}
               onUpdated={onUpdated}
             />
           ))
@@ -449,6 +517,75 @@ export default function RoundVoting({ round, tripId, isOrganizer, onUpdated, onR
             </div>
           )
         )}
+
+        {/* Tee time + golfers (organizer, locked round) */}
+        {isLocked && isOrganizer && (
+          <div style={{ marginTop: 12, padding: '10px 14px', background: '#0f1a0f', border: '1px solid #2a3a2a', borderRadius: 8 }}>
+            {!editingTeeTime ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {round.tee_time ? <>⏰ {round.tee_time}{round.round_date ? ` · ${round.round_date}` : ''}{round.golfers_per_tee ? ` · ${round.golfers_per_tee} golfers` : ''}</> : 'No tee time set yet'}
+                </span>
+                <button className="btn-ghost" onClick={() => setEditingTeeTime(true)} style={{ fontSize: 11, padding: '2px 8px' }}>
+                  {round.tee_time ? 'Edit tee time' : '+ Set tee time'}
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Tee time <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>(local destination time)</span></label>
+                  <input type="text" value={teeTimeStr} onChange={e => setTeeTimeStr(e.target.value)} placeholder="e.g. 8:00 AM"
+                    style={{ width: 120, padding: '5px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Date</label>
+                  <input type="date" value={roundDateStr} onChange={e => setRoundDateStr(e.target.value)}
+                    style={{ width: 140, padding: '5px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13 }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 3 }}>Golfers per tee time</label>
+                  <select value={golfersPer} onChange={e => setGolfersPer(e.target.value)}
+                    style={{ width: 80, padding: '5px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13 }}>
+                    <option value="">—</option>
+                    {[2,3,4].map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <button className="btn-primary" onClick={handleSaveTeeTime} disabled={savingTeeTime} style={{ fontSize: 12, padding: '5px 12px' }}>
+                  {savingTeeTime ? 'Saving...' : 'Save'}
+                </button>
+                <button className="btn-ghost" onClick={() => setEditingTeeTime(false)} style={{ fontSize: 12, padding: '5px 8px' }}>Cancel</button>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Tee time display for non-organizers (locked round) */}
+        {isLocked && !isOrganizer && round.tee_time && (
+          <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-secondary)' }}>
+            ⏰ {round.tee_time}{round.round_date ? ` · ${round.round_date}` : ''}{round.golfers_per_tee ? ` · ${round.golfers_per_tee} golfers/tee` : ''}
+            <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>(local destination time)</span>
+          </div>
+        )}
+
+        {/* Shared notes */}
+        <div style={{ marginTop: 12, padding: '10px 14px', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 8 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Round notes (shared — anyone can edit)</div>
+          <textarea
+            value={notesText}
+            onChange={e => setNotesText(e.target.value)}
+            placeholder="Add notes, reminders, group decisions..."
+            rows={2}
+            style={{
+              width: '100%', padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444',
+              borderRadius: 6, color: '#fff', fontSize: 13, resize: 'vertical', boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+            <button className="btn-ghost" onClick={handleSaveNotes} disabled={savingNotes} style={{ fontSize: 12, padding: '3px 10px' }}>
+              {savingNotes ? 'Saving...' : 'Save notes'}
+            </button>
+            {notesSaved && <span style={{ fontSize: 12, color: 'var(--accent-green)' }}>Saved ✓</span>}
+          </div>
+        </div>
 
         {/* Add manually */}
         {!isLocked && (

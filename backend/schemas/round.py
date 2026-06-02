@@ -44,5 +44,11 @@ class TripRoundOut(BaseModel):
     generation_status: RoundGenerationStatus
     locked_course_id: Optional[int] = None
     nominations: list[CourseNominationOut] = []
+    tee_time: Optional[str] = None
+    round_date: Optional[str] = None
+    booked: bool = False
+    confirmation_number: Optional[str] = None
+    notes: Optional[str] = None
+    golfers_per_tee: Optional[int] = None
 
     model_config = {"from_attributes": True}

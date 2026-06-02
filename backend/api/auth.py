@@ -78,3 +78,16 @@ def update_my_handicap(body: HandicapUpdate, db: Session = Depends(get_db), user
     db.commit()
     db.refresh(user)
     return {"handicap": user.handicap}
+
+class NameUpdate(BaseModel):
+    name: str
+
+@router.patch("/me/name")
+def update_my_name(body: NameUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    name = body.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    user.name = name
+    db.commit()
+    db.refresh(user)
+    return {"name": user.name}

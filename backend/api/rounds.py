@@ -71,6 +71,12 @@ def _build_round_with_nominations(trip_round: TripRound, user_id: int, db: Sessi
         generation_status=trip_round.generation_status,
         locked_course_id=trip_round.locked_course_id,
         nominations=nom_outs,
+        tee_time=trip_round.tee_time,
+        round_date=str(trip_round.round_date) if trip_round.round_date else None,
+        booked=bool(trip_round.booked),
+        confirmation_number=trip_round.confirmation_number,
+        notes=getattr(trip_round, 'notes', None),
+        golfers_per_tee=getattr(trip_round, 'golfers_per_tee', None),
     )
 
 def _generate_courses_for_round_bg(trip_round_id: int, destination: str, tier: str, db_url: str):
@@ -440,6 +446,7 @@ def set_round_tier(
 class _TeeTimeBody(_BM):
     tee_time: str = ""
     round_date: _Opt[str] = None  # ISO date "YYYY-MM-DD", or empty string to clear
+    golfers_per_tee: _Opt[int] = None
 
 @router.patch("/{trip_id}/rounds/{round_id}/tee-time")
 def set_tee_time(
@@ -461,8 +468,32 @@ def set_tee_time(
     if body.round_date is not None:
         from datetime import date as _date
         trip_round.round_date = _date.fromisoformat(body.round_date) if body.round_date else None
+    if body.golfers_per_tee is not None:
+        trip_round.golfers_per_tee = body.golfers_per_tee if body.golfers_per_tee > 0 else None
     db.commit()
-    return {"ok": True, "tee_time": trip_round.tee_time, "round_date": str(trip_round.round_date) if trip_round.round_date else None}
+    return {"ok": True, "tee_time": trip_round.tee_time, "round_date": str(trip_round.round_date) if trip_round.round_date else None, "golfers_per_tee": trip_round.golfers_per_tee}
+
+
+class _NotesBody(_BM):
+    notes: str = ""
+
+@router.patch("/{trip_id}/rounds/{round_id}/notes")
+def set_round_notes(
+    trip_id: int,
+    round_id: int,
+    body: _NotesBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _get_trip_member(trip_id, user.id, db)
+    trip_round = db.query(TripRound).filter(
+        TripRound.id == round_id, TripRound.trip_id == trip_id
+    ).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    trip_round.notes = body.notes.strip() or None
+    db.commit()
+    return {"ok": True, "notes": trip_round.notes}
 
 
 class _AddRoundBody(_BM):

@@ -32,8 +32,20 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, onUpdated })
   const [lockError, setLockError] = useState(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [removing, setRemoving] = useState(false)
+  // Inline edit state
+  const [editingLink, setEditingLink] = useState(false)
+  const [linkStr, setLinkStr] = useState(od.booking_link || '')
+  const [savingLink, setSavingLink] = useState(false)
+  const [notesText, setNotesText] = useState(od.notes || '')
+  const [savingNotes, setSavingNotes] = useState(false)
+  const [notesSaved, setNotesSaved] = useState(false)
 
   const isThisLocked = option.is_locked ?? false
+
+  const patchOption = async (fields) => {
+    await client.patch(`/trips/${tripId}/lodging/options/${id}`, fields)
+    onUpdated()
+  }
 
   const handleVote = async (vote) => {
     if (voting || isLocked) return
@@ -123,8 +135,24 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, onUpdated })
               <span style={{ color: 'var(--text-muted)' }}>Distance: </span>{od.distance_to_courses}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
-            {od.booking_link && (
+          {od.rooms != null && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Rooms: </span>{od.rooms}
+            </div>
+          )}
+          {od.parking_fee != null && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Parking: </span>${od.parking_fee}/night
+            </div>
+          )}
+          {od.breakfast_cost != null && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Breakfast: </span>${od.breakfast_cost}/person
+            </div>
+          )}
+          {/* Booking link + edit */}
+          <div style={{ display: 'flex', gap: 12, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+            {od.booking_link && !editingLink && (
               <a href={od.booking_link} target="_blank" rel="noopener noreferrer"
                 style={{ fontSize: 12, color: 'var(--accent-green)' }}>
                 Book →
@@ -138,6 +166,44 @@ function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, onUpdated })
                 📍 Map
               </a>
             )}
+            {!editingLink ? (
+              <button className="btn-ghost" onClick={() => setEditingLink(true)}
+                style={{ fontSize: 11, padding: '1px 6px', color: 'var(--text-muted)' }}>
+                {od.booking_link ? 'Edit link' : '+ Add link'}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input type="text" value={linkStr} onChange={e => setLinkStr(e.target.value)} placeholder="https://..."
+                  style={{ width: 200, padding: '4px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#fff', fontSize: 12 }} />
+                <button className="btn-primary" disabled={savingLink} onClick={async () => {
+                  setSavingLink(true)
+                  try { await patchOption({ booking_link: linkStr.trim() || null }); setEditingLink(false) }
+                  finally { setSavingLink(false) }
+                }} style={{ fontSize: 11, padding: '3px 10px' }}>{savingLink ? '...' : 'Save'}</button>
+                <button className="btn-ghost" onClick={() => setEditingLink(false)} style={{ fontSize: 11, padding: '3px 6px' }}>✕</button>
+              </div>
+            )}
+          </div>
+          {/* Notes */}
+          <div style={{ marginTop: 8 }}>
+            <textarea
+              value={notesText}
+              onChange={e => setNotesText(e.target.value)}
+              placeholder="Add notes..."
+              rows={1}
+              style={{
+                width: '100%', padding: '5px 8px', background: '#111', border: '1px solid #333',
+                borderRadius: 5, color: '#ccc', fontSize: 12, resize: 'vertical', boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <button className="btn-ghost" disabled={savingNotes} onClick={async () => {
+                setSavingNotes(true)
+                try { await patchOption({ notes: notesText.trim() || null }); setNotesSaved(true); setTimeout(() => setNotesSaved(false), 2000) }
+                finally { setSavingNotes(false) }
+              }} style={{ fontSize: 11, padding: '2px 8px' }}>{savingNotes ? '...' : 'Save notes'}</button>
+              {notesSaved && <span style={{ fontSize: 11, color: 'var(--accent-green)' }}>✓</span>}
+            </div>
           </div>
         </div>
 
@@ -250,8 +316,11 @@ function ManualLodgingForm({ tripId, onAdded }) {
   const [type, setType] = useState('')
   const [address, setAddress] = useState('')
   const [beds, setBeds] = useState('')
+  const [rooms, setRooms] = useState('')
   const [capacity, setCapacity] = useState('')
   const [link, setLink] = useState('')
+  const [parking, setParking] = useState('')
+  const [breakfast, setBreakfast] = useState('')
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState(null)
 
@@ -267,11 +336,15 @@ function ManualLodgingForm({ tripId, onAdded }) {
           type: type.trim() || undefined,
           address: address.trim() || undefined,
           beds: beds ? parseInt(beds, 10) : undefined,
+          rooms: rooms ? parseInt(rooms, 10) : undefined,
           capacity: capacity ? parseInt(capacity, 10) : undefined,
           booking_link: link.trim() || undefined,
+          parking_fee: parking ? parseFloat(parking) : undefined,
+          breakfast_cost: breakfast ? parseFloat(breakfast) : undefined,
         },
       })
-      setName(''); setPrice(''); setType(''); setAddress(''); setBeds(''); setCapacity(''); setLink('')
+      setName(''); setPrice(''); setType(''); setAddress(''); setBeds(''); setRooms('')
+      setCapacity(''); setLink(''); setParking(''); setBreakfast('')
       onAdded()
     } catch {
       setError('Failed to add lodging. Try again.')
@@ -287,8 +360,11 @@ function ManualLodgingForm({ tripId, onAdded }) {
           { label: 'Name *', val: name, set: setName, ph: 'e.g. Sycamore House' },
           { label: 'Type', val: type, set: setType, ph: 'vacation rental, hotel…' },
           { label: 'Price/night ($)', val: price, set: setPrice, ph: '850', type: 'number' },
+          { label: 'Rooms', val: rooms, set: setRooms, ph: '3', type: 'number' },
           { label: 'Beds', val: beds, set: setBeds, ph: '4', type: 'number' },
           { label: 'Sleeps', val: capacity, set: setCapacity, ph: '8', type: 'number' },
+          { label: 'Parking/night ($)', val: parking, set: setParking, ph: '20', type: 'number' },
+          { label: 'Breakfast/person ($)', val: breakfast, set: setBreakfast, ph: '15', type: 'number' },
           { label: 'Address', val: address, set: setAddress, ph: '123 Golf Rd…' },
           { label: 'Booking link', val: link, set: setLink, ph: 'https://…' },
         ].map(({ label, val, set, ph, type: t }) => (

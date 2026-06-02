@@ -7,7 +7,7 @@ export default function SharePage() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetch(`/share/${id}`)
+    fetch(`${import.meta.env.VITE_API_URL || ''}/share/${id}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(d => {
         setData(d)
@@ -219,9 +219,50 @@ export default function SharePage() {
           </section>
         )}
 
+        {/* Email export */}
+        <div style={{ textAlign: 'center', marginTop: 40, paddingTop: 24, borderTop: '1px solid #1f2d1f' }}>
+          <button
+            onClick={() => {
+              const subject = encodeURIComponent(`${data.trip_name} — Golf Trip!`)
+              const lines = [
+                `Hey crew!`,
+                ``,
+                `Here are the details for ${data.trip_name}:`,
+                ``,
+                data.dates ? `📅 Dates: ${data.dates}` : null,
+                data.destination ? `📍 Destination: ${data.destination}${data.destination_region ? ` (${data.destination_region})` : ''}` : null,
+                ``,
+                data.members?.length ? `👥 Who's Going: ${data.members.join(', ')}` : null,
+                ``,
+                data.rounds?.length ? `⛳ THE COURSES` : null,
+                ...(data.rounds || []).map(r => [
+                  `Round ${r.round_number}: ${r.course_name}${r.course_location ? ` — ${r.course_location}` : ''}`,
+                  r.green_fee ? `  Green fee: $${r.green_fee}${r.cart_fee ? ` + $${r.cart_fee} cart` : ''}` : null,
+                  r.tee_time ? `  Tee time: ${r.tee_time}${r.round_date ? ` on ${r.round_date}` : ''} (local time)` : null,
+                  r.website ? `  Book: ${r.website}` : null,
+                ].filter(Boolean).join('\n')),
+                ``,
+                data.lodging ? `🏠 WHERE WE'RE STAYING` : null,
+                data.lodging ? `${data.lodging.name}${data.lodging.type ? ` (${data.lodging.type})` : ''}` : null,
+                data.lodging?.price_per_night ? `  $${data.lodging.price_per_night}/night` : null,
+                data.lodging?.booking_link ? `  Book: ${data.lodging.booking_link}` : null,
+                ``,
+                `See full trip details: ${window.location.href}`,
+              ].filter(l => l !== null).join('\n')
+              window.location.href = `mailto:?subject=${subject}&body=${encodeURIComponent(lines)}`
+            }}
+            style={{
+              background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8,
+              color: 'var(--accent-green)', fontSize: 13, padding: '10px 20px', cursor: 'pointer',
+            }}
+          >
+            ✉️ Compose Email to Crew
+          </button>
+        </div>
+
         {/* Footer */}
-        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12, marginTop: 48 }}>
-          Golf Trip Planner
+        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12, marginTop: 24 }}>
+          Fairway
         </div>
       </div>
     </div>

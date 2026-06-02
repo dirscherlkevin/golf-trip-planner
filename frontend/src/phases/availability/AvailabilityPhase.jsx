@@ -13,7 +13,7 @@ export default function AvailabilityPhase() {
   const isOrganizer = user?.id === trip?.organizer_id
 
   const [dateRanges, setDateRanges] = useState([])
-  const [budget, setBudget] = useState({ happySpend: '', hardLimit: '' })
+  const [budget, setBudget] = useState({ happySpend: '', hardLimit: '', noHardLimit: false })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [locking, setLocking] = useState(false)
@@ -29,6 +29,12 @@ export default function AvailabilityPhase() {
       setAvailabilityData(data)
       if (data.own_response) {
         setDateRanges(data.own_response.date_ranges)
+        const hl = data.own_response.hard_limit
+        setBudget({
+          happySpend: data.own_response.happy_spend ?? '',
+          hardLimit: hl ?? '',
+          noHardLimit: hl === null && data.own_response.happy_spend != null,
+        })
         setSaved(true)
       }
       if (isOrganizer && data.budget) {
@@ -43,7 +49,8 @@ export default function AvailabilityPhase() {
     setSaving(true)
     setSaved(false)
     try {
-      await submitAvailability(trip.id, dateRanges, budget.happySpend || null, budget.hardLimit || null)
+      const hardLimit = budget.noHardLimit ? null : (budget.hardLimit || null)
+      await submitAvailability(trip.id, dateRanges, budget.happySpend || null, hardLimit)
       setSaved(true)
       loadTrip(trip.id)  // bumps refreshKey so MemberPanel re-fetches and shows ✅
     } finally {
@@ -92,7 +99,9 @@ export default function AvailabilityPhase() {
                 <BudgetVoteForm
                   happySpend={budget.happySpend}
                   hardLimit={budget.hardLimit}
+                  noHardLimit={budget.noHardLimit}
                   onChange={setBudget}
+                  readOnly={saved}
                 />
               </div>
               {saved && (

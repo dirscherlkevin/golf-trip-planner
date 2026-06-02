@@ -39,6 +39,8 @@ export default function MemberPanel({ trip }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [editingHandicap, setEditingHandicap] = useState(false)
   const [handicapStr, setHandicapStr] = useState('')
+  const [editingName, setEditingName] = useState(false)
+  const [nameStr, setNameStr] = useState('')
   const searchTimer = useRef(null)
 
   // F6 — re-fetch when refreshKey bumps (after availability submit)
@@ -72,6 +74,17 @@ export default function MemberPanel({ trip }) {
       setEditingHandicap(false)
       loadTrip(trip.id)
       fetchMe()
+    } catch { }
+  }
+
+  const saveName = async () => {
+    const name = nameStr.trim()
+    if (!name) return
+    try {
+      await client.patch('/auth/me/name', { name })
+      setEditingName(false)
+      fetchMe()
+      loadTrip(trip.id)
     } catch { }
   }
 
@@ -146,10 +159,11 @@ export default function MemberPanel({ trip }) {
             </div>
 
             {isMe && (
-              <div style={{ marginLeft: 20, marginTop: 2 }}>
+              <div style={{ marginLeft: 20, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Handicap edit */}
                 {!editingHandicap ? (
                   <button className="btn-ghost" onClick={() => { setHandicapStr((m.handicap ?? user?.handicap)?.toString() ?? ''); setEditingHandicap(true) }}
-                    style={{ fontSize: 12, padding: '1px 6px', color: '#888' }}>
+                    style={{ fontSize: 12, padding: '1px 6px', color: '#888', alignSelf: 'flex-start' }}>
                     {m.handicap != null ? `✏️ Edit HCP` : '+ Add HCP'}
                   </button>
                 ) : (
@@ -160,6 +174,22 @@ export default function MemberPanel({ trip }) {
                       autoFocus />
                     <button className="btn-primary" onClick={saveHandicap} style={{ fontSize: 12, padding: '2px 6px' }}>Save</button>
                     <button className="btn-ghost" onClick={() => setEditingHandicap(false)} style={{ fontSize: 12, padding: '2px 4px' }}>✕</button>
+                  </div>
+                )}
+                {/* Display name edit */}
+                {!editingName ? (
+                  <button className="btn-ghost" onClick={() => { setNameStr(user?.name || ''); setEditingName(true) }}
+                    style={{ fontSize: 12, padding: '1px 6px', color: '#888', alignSelf: 'flex-start' }}>
+                    ✏️ Edit name
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <input type="text" value={nameStr} onChange={e => setNameStr(e.target.value)}
+                      placeholder="Display name"
+                      style={{ width: 120, fontSize: 12, padding: '2px 6px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 4, color: '#fff' }}
+                      autoFocus />
+                    <button className="btn-primary" onClick={saveName} style={{ fontSize: 12, padding: '2px 6px' }}>Save</button>
+                    <button className="btn-ghost" onClick={() => setEditingName(false)} style={{ fontSize: 12, padding: '2px 4px' }}>✕</button>
                   </div>
                 )}
               </div>

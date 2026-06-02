@@ -40,9 +40,9 @@ export default function Login() {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 16 }}>
       <div className="card" style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>⛳</div>
-        <h2 style={{ marginBottom: 4, color: 'var(--accent-green)' }}>Golf Trip Planner</h2>
+        <h2 style={{ marginBottom: 4, color: 'var(--accent-green)' }}>Fairway</h2>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>
-          Plan golf trips with your crew
+          Golf trip planning for the crew
         </p>
 
         <button

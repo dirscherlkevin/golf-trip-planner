@@ -522,6 +522,55 @@ def unlock_lodging_option(
     return _build_setup_out(setup, trip, user.id, db)
 
 
+from pydantic import BaseModel as _BM
+from typing import Optional as _Opt
+
+class _LodgingOptionPatch(_BM):
+    name: _Opt[str] = None
+    price_per_night: _Opt[float] = None
+    type: _Opt[str] = None
+    address: _Opt[str] = None
+    beds: _Opt[int] = None
+    rooms: _Opt[int] = None
+    capacity: _Opt[int] = None
+    booking_link: _Opt[str] = None
+    parking_fee: _Opt[float] = None
+    breakfast_cost: _Opt[float] = None
+    notes: _Opt[str] = None
+
+@router.patch("/{trip_id}/lodging/options/{opt_id}", response_model=LodgingSetupOut)
+def patch_lodging_option(
+    trip_id: int,
+    opt_id: int,
+    body: _LodgingOptionPatch,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _get_trip_member(trip_id, user.id, db)
+    opt = db.query(LodgingOption).filter(
+        LodgingOption.id == opt_id, LodgingOption.trip_id == trip_id
+    ).first()
+    if not opt:
+        raise HTTPException(status_code=404, detail="Lodging option not found")
+
+    od = dict(opt.option_data or {})
+    patch = body.model_dump(exclude_unset=True)
+    for k, v in patch.items():
+        if v is not None:
+            od[k] = v
+        elif k in od and v is None and k in patch:
+            od[k] = None
+    opt.option_data = od
+
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(opt, "option_data")
+    db.commit()
+
+    setup = db.query(LodgingSetup).filter(LodgingSetup.trip_id == trip_id).first()
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    return _build_setup_out(setup, trip, user.id, db)
+
+
 @router.delete("/{trip_id}/lodging/lock", response_model=LodgingSetupOut)
 def unlock_lodging_all(
     trip_id: int,

@@ -38,9 +38,13 @@ export const useAuthStore = create((set) => ({
     try {
       const { data } = await client.get('/auth/me')
       set({ user: data })
-    } catch {
-      localStorage.removeItem('token')
-      set({ user: null, token: null })
+    } catch (err) {
+      // Only clear token if server explicitly rejects it (401)
+      // Network errors or server cold-start (5xx) keep the token so the user stays logged in
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token')
+        set({ user: null, token: null })
+      }
     }
   },
 }))

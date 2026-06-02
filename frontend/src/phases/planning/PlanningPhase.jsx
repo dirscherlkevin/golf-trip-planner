@@ -3,6 +3,7 @@ import { useAuthStore } from '../../store/auth'
 import { useTripStore } from '../../store/trip'
 import { getRounds, addRound, removeRound } from '../../api/rounds'
 import { getLodging } from '../../api/lodging'
+import { getAvailability } from '../../api/availability'
 import RoundsSetup from './RoundsSetup'
 import RoundVoting from './RoundVoting'
 import LodgingVoting from './LodgingVoting'
@@ -17,6 +18,7 @@ export default function PlanningPhase() {
   const [loadError, setLoadError] = useState(null)
   const [lodgingLocked, setLodgingLocked] = useState(false)
   const [advancing, setAdvancing] = useState(false)
+  const [myBudget, setMyBudget] = useState(null)  // {happy_spend, hard_limit}
 
   const loadRounds = () => {
     if (!trip) return
@@ -43,6 +45,11 @@ export default function PlanningPhase() {
   useEffect(() => {
     loadRounds()
     checkLodging()
+    if (trip?.id) {
+      getAvailability(trip.id)
+        .then(d => { if (d.own_response) setMyBudget({ happy: d.own_response.happy_spend, hard: d.own_response.hard_limit }) })
+        .catch(() => {})
+    }
   }, [trip?.id])
 
   // Poll every 10s while any round has generation_status === 'pending'
@@ -96,6 +103,7 @@ export default function PlanningPhase() {
           loadError={loadError}
           hasRounds={hasRounds}
           isOrganizer={isOrganizer}
+          myBudget={myBudget}
           onRoundsSetup={setRounds}
           onRoundUpdated={loadRounds}
         />
@@ -138,7 +146,7 @@ export default function PlanningPhase() {
   )
 }
 
-function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsSetup, onRoundUpdated }) {
+function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, myBudget, onRoundsSetup, onRoundUpdated }) {
   const [addingRound, setAddingRound] = useState(false)
   const [addTier, setAddTier] = useState('midrange')
   const [removingId, setRemovingId] = useState(null)
@@ -194,14 +202,58 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, onRoundsS
     }
   }
 
+  // Compute running cost total from locked rounds
+  const lockedCostTotal = (rounds || []).reduce((sum, r) => {
+    if (!r.locked_course_id) return sum
+    const nom = r.nominations?.find(n => n.id === r.locked_course_id)
+    const cd = nom?.course_data || {}
+    return sum + (parseFloat(cd.green_fee) || 0) + (parseFloat(cd.cart_fee) || 0)
+  }, 0)
+  const hasLockedRounds = (rounds || []).some(r => r.locked_course_id)
+  const overHard = myBudget?.hard != null && lockedCostTotal > myBudget.hard
+  const overHappy = myBudget?.happy != null && !overHard && lockedCostTotal > myBudget.happy
+
   return (
     <div>
+      {/* Budget summary */}
+      {myBudget && (myBudget.happy || myBudget.hard) && (
+        <div style={{
+          background: overHard ? '#2a0a0a' : overHappy ? '#2a1f00' : '#141f14',
+          border: `1px solid ${overHard ? '#7a1a1a' : overHappy ? '#6a4a00' : '#2a3a2a'}`,
+          borderRadius: 8, padding: '10px 14px', marginBottom: 16,
+          display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', fontSize: 13,
+        }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            Your budget: {myBudget.happy ? <strong style={{ color: 'var(--accent-green)' }}>${myBudget.happy.toLocaleString()} happy</strong> : null}
+            {myBudget.happy && myBudget.hard ? ' · ' : ''}
+            {myBudget.hard ? <strong style={{ color: '#cc9900' }}>${myBudget.hard.toLocaleString()} max</strong> : <span style={{ color: 'var(--text-muted)' }}>no hard limit</span>}
+          </span>
+          {hasLockedRounds && (
+            <span style={{ color: overHard ? '#f87171' : overHappy ? '#f6ad55' : 'var(--accent-green)', fontWeight: 600 }}>
+              {overHard ? '⚠️ ' : overHappy ? '⚡ ' : '✅ '}
+              Running total: ${lockedCostTotal.toLocaleString()}
+              {overHard ? ' — over your hard limit!' : overHappy ? ' — over happy spend' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
       {rounds.map(round => (
         <RoundVoting
           key={round.id}
           round={round}
           tripId={trip.id}
           isOrganizer={isOrganizer}
+          myBudget={myBudget}
+          lockedCostSoFar={
+            (rounds || [])
+              .filter(r => r.id !== round.id && r.locked_course_id)
+              .reduce((sum, r) => {
+                const nom = r.nominations?.find(n => n.id === r.locked_course_id)
+                const cd = nom?.course_data || {}
+                return sum + (parseFloat(cd.green_fee) || 0) + (parseFloat(cd.cart_fee) || 0)
+              }, 0)
+          }
           onUpdated={onRoundUpdated}
           onRemove={round.locked_course_id == null ? () => handleRemoveRound(round.id) : null}
           removing={removingId === round.id}
