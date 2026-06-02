@@ -200,6 +200,7 @@ const VIBE_BADGE = {
 function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
   const [booked, setBooked] = useState(round.booked ?? false)
   const [confirmation, setConfirmation] = useState(round.confirmation_number ?? '')
+  const [showMoreDetails, setShowMoreDetails] = useState(false)
 
   const [restDrawerOpen, setRestDrawerOpen] = useState(false)
   const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' })
@@ -318,11 +319,22 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
           )}
           <DetailRow label="Rating" value={ratingStr} />
           <DetailRow label="Yardage" value={yardageStr} />
-          <DetailRow label="Rating source" value={round.rating_source} />
           <DetailRow label="Walking" value={round.walking_policy} />
-          <DetailRow label="Architect" value={round.architect} />
-          <DetailRow label="Pace of play" value={round.pace_of_play} />
-          <DetailRow label="Tee time availability" value={round.tee_time_window} />
+          {showMoreDetails && (
+            <>
+              <DetailRow label="Architect" value={round.architect} />
+              <DetailRow label="Pace of play" value={round.pace_of_play} />
+              <DetailRow label="Tee time availability" value={round.tee_time_window} />
+              <DetailRow label="Rating source" value={round.rating_source} />
+            </>
+          )}
+          {(round.architect || round.pace_of_play || round.tee_time_window || round.rating_source) && (
+            <button
+              onClick={() => setShowMoreDetails(v => !v)}
+              style={{ background: 'none', border: 'none', fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer', padding: '2px 0', marginTop: 2 }}>
+              {showMoreDetails ? '▲ Less' : '▾ More details'}
+            </button>
+          )}
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontStyle: 'italic' }}>
             AI-estimated · verify fees and links before booking
           </div>
@@ -411,7 +423,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
                       {pick.phone && <span style={{ fontSize: 11, color: '#666' }}>{pick.phone}</span>}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <button
                       onClick={() => handleVote(pick.id, 'up')}
                       style={{ background: pick.my_vote === 'up' ? '#1a2a1a' : 'none', border: `1px solid ${pick.my_vote === 'up' ? '#3a6a3a' : '#2a2a2a'}`, borderRadius: 6, padding: '3px 9px', fontSize: 12, color: pick.my_vote === 'up' ? '#5a9a5a' : '#555', cursor: 'pointer' }}>
@@ -422,30 +434,31 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
                       style={{ background: pick.my_vote === 'down' ? '#2a1a1a' : 'none', border: `1px solid ${pick.my_vote === 'down' ? '#6a3a3a' : '#2a2a2a'}`, borderRadius: 6, padding: '3px 9px', fontSize: 12, color: pick.my_vote === 'down' ? '#9a5a5a' : '#555', cursor: 'pointer' }}>
                       👎 {pick.down_votes?.length ?? 0}
                     </button>
-                    {confirmRemoveId === pick.id ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                        <div style={{ fontSize: 9, color: '#e55', textAlign: 'center', lineHeight: 1.3 }}>
-                          {(pick.up_votes?.length ?? 0) > 0
-                            ? `${pick.up_votes.length} liked this`
-                            : 'Remove?'}
-                        </div>
-                        <button onClick={() => handleRemovePick(pick.id)}
-                          style={{ background: 'none', border: '1px solid #e55', borderRadius: 4, fontSize: 9, color: '#e55', cursor: 'pointer', padding: '2px 6px' }}>
-                          Remove
-                        </button>
-                        <button onClick={() => setConfirmRemoveId(null)}
-                          style={{ background: 'none', border: 'none', fontSize: 9, color: '#555', cursor: 'pointer', padding: '1px 4px' }}>
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
+                    {confirmRemoveId !== pick.id && (
                       <button
                         onClick={() => setConfirmRemoveId(pick.id)}
-                        style={{ background: 'none', border: 'none', fontSize: 10, color: '#444', cursor: 'pointer', padding: '2px 4px' }}
+                        style={{ background: 'none', border: 'none', fontSize: 12, color: '#444', cursor: 'pointer', padding: '4px 6px' }}
                         title="Remove pick">✕</button>
                     )}
                   </div>
                 </div>
+                {confirmRemoveId === pick.id && (
+                  <div style={{ marginTop: 8, padding: '8px 10px', background: '#1a0a0a', border: '1px solid #7a2a2a', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: '#e55' }}>
+                      {(pick.up_votes?.length ?? 0) > 0 ? `${pick.up_votes.length} liked this — Remove?` : 'Remove this pick?'}
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleRemovePick(pick.id)}
+                        style={{ background: 'none', border: '1px solid #e55', borderRadius: 4, fontSize: 12, color: '#e55', cursor: 'pointer', padding: '4px 10px' }}>
+                        Remove
+                      </button>
+                      <button onClick={() => setConfirmRemoveId(null)}
+                        style={{ background: 'none', border: 'none', fontSize: 12, color: '#888', cursor: 'pointer', padding: '4px 8px' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -456,7 +469,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
       <div style={{ marginTop: savedPicks.length > 0 ? 6 : 12 }}>
         <button
           onClick={() => { setRestDrawerOpen(o => !o); setSuggestions([]) }}
-          style={{ width: '100%', background: 'none', border: '1px solid #2d4a2d', borderRadius: 6, color: '#5a9a5a', fontSize: 11, padding: '6px', cursor: 'pointer' }}>
+          style={{ width: '100%', background: '#0d1a0d', border: '1px solid #2d4a2d', borderRadius: 6, color: '#5a9a5a', fontSize: 11, padding: '10px 14px', cursor: 'pointer' }}>
           🍽️ {savedPicks.length > 0 ? 'Search for more restaurants' : 'Find food near this course'} {restDrawerOpen ? '▴' : '▾'}
         </button>
 
@@ -493,7 +506,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
                   {chip.label}
                 </button>
               ))}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 11, color: filters.hideChains ? '#5a9a5a' : '#666', marginLeft: 'auto' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 11, color: filters.hideChains ? '#5a9a5a' : '#666', marginLeft: 'auto', minHeight: 44 }}>
                 <div style={{ width: 28, height: 16, background: filters.hideChains ? '#2d4a2d' : '#222', borderRadius: 8, position: 'relative', transition: 'background 0.2s' }}>
                   <div style={{ width: 12, height: 12, background: filters.hideChains ? '#5a9a5a' : '#555', borderRadius: '50%', position: 'absolute', right: filters.hideChains ? 2 : 14, top: 2, transition: 'right 0.2s' }} />
                 </div>
@@ -550,7 +563,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
                         <button
                           onClick={() => handleSavePick(s)}
                           disabled={alreadySaved}
-                          style={{ background: alreadySaved ? '#2d4a2d' : 'none', border: `1px solid ${alreadySaved ? '#3a6a3a' : '#333'}`, borderRadius: 6, padding: '3px 8px', fontSize: 10, color: alreadySaved ? '#5a9a5a' : '#888', cursor: alreadySaved ? 'default' : 'pointer', flexShrink: 0 }}>
+                          style={{ background: alreadySaved ? '#2d4a2d' : 'none', border: `1px solid ${alreadySaved ? '#3a6a3a' : '#333'}`, borderRadius: 6, padding: '6px 10px', fontSize: 12, color: alreadySaved ? '#5a9a5a' : '#888', cursor: alreadySaved ? 'default' : 'pointer', flexShrink: 0 }}>
                           {alreadySaved ? '📌 Saved' : '📌 Save'}
                         </button>
                       </div>
@@ -742,7 +755,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
                       {pick.phone && <span style={{ fontSize: 11, color: '#666' }}>{pick.phone}</span>}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                     <button
                       onClick={() => handleVote(pick.id, 'up')}
                       style={{ background: pick.my_vote === 'up' ? '#1a2a1a' : 'none', border: `1px solid ${pick.my_vote === 'up' ? '#3a6a3a' : '#2a2a2a'}`, borderRadius: 6, padding: '3px 9px', fontSize: 12, color: pick.my_vote === 'up' ? '#5a9a5a' : '#555', cursor: 'pointer' }}>
@@ -753,30 +766,31 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
                       style={{ background: pick.my_vote === 'down' ? '#2a1a1a' : 'none', border: `1px solid ${pick.my_vote === 'down' ? '#6a3a3a' : '#2a2a2a'}`, borderRadius: 6, padding: '3px 9px', fontSize: 12, color: pick.my_vote === 'down' ? '#9a5a5a' : '#555', cursor: 'pointer' }}>
                       👎 {pick.down_votes?.length ?? 0}
                     </button>
-                    {confirmRemoveId === pick.id ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                        <div style={{ fontSize: 9, color: '#e55', textAlign: 'center', lineHeight: 1.3 }}>
-                          {(pick.up_votes?.length ?? 0) > 0
-                            ? `${pick.up_votes.length} liked this`
-                            : 'Remove?'}
-                        </div>
-                        <button onClick={() => handleRemovePick(pick.id)}
-                          style={{ background: 'none', border: '1px solid #e55', borderRadius: 4, fontSize: 9, color: '#e55', cursor: 'pointer', padding: '2px 6px' }}>
-                          Remove
-                        </button>
-                        <button onClick={() => setConfirmRemoveId(null)}
-                          style={{ background: 'none', border: 'none', fontSize: 9, color: '#555', cursor: 'pointer', padding: '1px 4px' }}>
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
+                    {confirmRemoveId !== pick.id && (
                       <button
                         onClick={() => setConfirmRemoveId(pick.id)}
-                        style={{ background: 'none', border: 'none', fontSize: 10, color: '#444', cursor: 'pointer', padding: '2px 4px' }}
+                        style={{ background: 'none', border: 'none', fontSize: 12, color: '#444', cursor: 'pointer', padding: '4px 6px' }}
                         title="Remove pick">✕</button>
                     )}
                   </div>
                 </div>
+                {confirmRemoveId === pick.id && (
+                  <div style={{ marginTop: 8, padding: '8px 10px', background: '#1a0a0a', border: '1px solid #7a2a2a', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: '#e55' }}>
+                      {(pick.up_votes?.length ?? 0) > 0 ? `${pick.up_votes.length} liked this — Remove?` : 'Remove this pick?'}
+                    </span>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleRemovePick(pick.id)}
+                        style={{ background: 'none', border: '1px solid #e55', borderRadius: 4, fontSize: 12, color: '#e55', cursor: 'pointer', padding: '4px 10px' }}>
+                        Remove
+                      </button>
+                      <button onClick={() => setConfirmRemoveId(null)}
+                        style={{ background: 'none', border: 'none', fontSize: 12, color: '#888', cursor: 'pointer', padding: '4px 8px' }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}
@@ -787,7 +801,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
       <div style={{ marginTop: savedPicks.length > 0 ? 6 : 12 }}>
         <button
           onClick={() => { setRestDrawerOpen(o => !o); setSuggestions([]) }}
-          style={{ width: '100%', background: 'none', border: '1px solid #2d4a2d', borderRadius: 6, color: '#5a9a5a', fontSize: 11, padding: '6px', cursor: 'pointer' }}>
+          style={{ width: '100%', background: '#0d1a0d', border: '1px solid #2d4a2d', borderRadius: 6, color: '#5a9a5a', fontSize: 11, padding: '10px 14px', cursor: 'pointer' }}>
           🍽️ {savedPicks.length > 0 ? 'Search for more restaurants' : 'Find food near lodging'} {restDrawerOpen ? '▴' : '▾'}
         </button>
 
@@ -824,7 +838,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
                   {chip.label}
                 </button>
               ))}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 11, color: filters.hideChains ? '#5a9a5a' : '#666', marginLeft: 'auto' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 11, color: filters.hideChains ? '#5a9a5a' : '#666', marginLeft: 'auto', minHeight: 44 }}>
                 <div style={{ width: 28, height: 16, background: filters.hideChains ? '#2d4a2d' : '#222', borderRadius: 8, position: 'relative', transition: 'background 0.2s' }}>
                   <div style={{ width: 12, height: 12, background: filters.hideChains ? '#5a9a5a' : '#555', borderRadius: '50%', position: 'absolute', right: filters.hideChains ? 2 : 14, top: 2, transition: 'right 0.2s' }} />
                 </div>
@@ -881,7 +895,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
                         <button
                           onClick={() => handleSavePick(s)}
                           disabled={alreadySaved}
-                          style={{ background: alreadySaved ? '#2d4a2d' : 'none', border: `1px solid ${alreadySaved ? '#3a6a3a' : '#333'}`, borderRadius: 6, padding: '3px 8px', fontSize: 10, color: alreadySaved ? '#5a9a5a' : '#888', cursor: alreadySaved ? 'default' : 'pointer', flexShrink: 0 }}>
+                          style={{ background: alreadySaved ? '#2d4a2d' : 'none', border: `1px solid ${alreadySaved ? '#3a6a3a' : '#333'}`, borderRadius: 6, padding: '6px 10px', fontSize: 12, color: alreadySaved ? '#5a9a5a' : '#888', cursor: alreadySaved ? 'default' : 'pointer', flexShrink: 0 }}>
                           {alreadySaved ? '📌 Saved' : '📌 Save'}
                         </button>
                       </div>
@@ -982,7 +996,7 @@ export default function HypeMoment({ trip, isOrganizer }) {
           </button>
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-          <button className="btn-ghost" onClick={() => window.open('/share/' + trip.id, '_blank')}
+          <button className="btn-ghost" onClick={() => window.open('/share/' + (trip.share_token || trip.id), '_blank')}
             style={{ fontSize: 12 }}>
             Share Trip ↗
           </button>
