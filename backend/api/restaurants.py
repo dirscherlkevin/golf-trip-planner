@@ -14,6 +14,22 @@ from services.claude import suggest_restaurants
 
 router = APIRouter()
 
+import threading
+import time as _time
+
+_rl_lock = threading.Lock()
+_rl_calls: dict = {}  # user_id -> [timestamps]
+
+def _check_suggest_rate_limit(user_id: int):
+    now = _time.time()
+    cutoff = now - 300  # 5-minute window
+    with _rl_lock:
+        calls = [t for t in _rl_calls.get(user_id, []) if t > cutoff]
+        if len(calls) >= 10:
+            raise HTTPException(status_code=429, detail="Too many restaurant suggestions. Please wait a few minutes.")
+        calls.append(now)
+        _rl_calls[user_id] = calls
+
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -105,6 +121,7 @@ def suggest(
     db: Session = Depends(get_db),
 ):
     trip = _require_member(trip_id, user, db)
+    _check_suggest_rate_limit(user.id)
     location = _derive_location(trip_id, body.round_id, trip, db)
 
     member_count = db.query(TripMember).filter(
@@ -284,6 +301,28 @@ def delete_pick(
     db: Session = Depends(get_db),
 ):
     _require_member(trip_id, user, db)
+
+    # Only the pick's saver or the organizer can remove it
+    pick_row = db.execute(
+        text("SELECT trip_id FROM restaurant_picks WHERE id = :id AND trip_id = :tid AND deleted_at IS NULL"),
+        {"id": pick_id, "tid": trip_id},
+    ).fetchone()
+    if not pick_row:
+        raise HTTPException(status_code=404, detail="Pick not found")
+
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    is_organizer = trip.organizer_id == user.id
+
+    # Check if user is the saver (they have the first/implicit up-vote)
+    saver_vote = db.execute(
+        text("SELECT user_id FROM restaurant_votes WHERE pick_id = :pid AND vote = 'up' ORDER BY id ASC LIMIT 1"),
+        {"pid": pick_id},
+    ).fetchone()
+    is_saver = saver_vote and saver_vote.user_id == user.id
+
+    if not is_organizer and not is_saver:
+        raise HTTPException(status_code=403, detail="Only the person who saved this pick or the organizer can remove it")
+
     db.execute(
         text("UPDATE restaurant_picks SET deleted_at = NOW() WHERE id = :id AND trip_id = :tid AND deleted_at IS NULL"),
         {"id": pick_id, "tid": trip_id},

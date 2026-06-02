@@ -565,6 +565,9 @@ def patch_lodging_option(
     user: User = Depends(get_current_user),
 ):
     _get_trip_member(trip_id, user.id, db)
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can edit lodging options")
     opt = db.query(LodgingOption).filter(
         LodgingOption.id == opt_id, LodgingOption.trip_id == trip_id
     ).first()

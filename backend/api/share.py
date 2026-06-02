@@ -24,10 +24,18 @@ def _fmt_date(d) -> str:
     return f"{d.strftime('%b')} {d.day}, {d.year}"
 
 
-@router.get("/{trip_id}")
-def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
+@router.get("/{identifier}")
+def get_trip_share(identifier: str, db: Session = Depends(get_db)):
+    import re
+    _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+    if _UUID_RE.match(identifier):
+        trip = db.query(Trip).filter(Trip.share_token == identifier).first()
+    else:
+        try:
+            trip = db.query(Trip).filter(Trip.id == int(identifier)).first()
+        except ValueError:
+            raise HTTPException(status_code=404, detail="Trip not found")
     # 1. Load trip; 404 if not found
-    trip = db.query(Trip).filter(Trip.id == trip_id).first()
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
 
@@ -226,7 +234,6 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         "destination": destination,
         "destination_region": destination_region,
         "members": members,
-        "member_ids": member_user_ids,
         "member_count": member_count,
         "nights": nights,
         "rounds": rounds,
@@ -238,6 +245,9 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         "total_course_per_person": round(total_course_per_person, 2) if total_course_per_person else None,
         "total_per_person": round(total_per_person, 2) if total_per_person else None,
         "share_tagline": trip.share_tagline or None,
+        "share_token": trip.share_token,
+        "trip_start": trip.trip_start.isoformat() if trip.trip_start else None,
+        "trip_end": trip.trip_end.isoformat() if trip.trip_end else None,
         "restaurant_lodging_picks": restaurant_lodging_picks,
     }
 

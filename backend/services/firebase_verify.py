@@ -1,8 +1,11 @@
 import os
 import httpx
 
-FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "AIzaSyDJAXufIt5izDti9zdOnU7wqMjriXWlEFg")
-FIREBASE_LOOKUP_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={FIREBASE_API_KEY}"
+_api_key = os.getenv("FIREBASE_API_KEY")
+if not _api_key:
+    raise RuntimeError("FIREBASE_API_KEY environment variable is required")
+
+FIREBASE_LOOKUP_URL = f"https://identitytoolkit.googleapis.com/v1/accounts:lookup?key={_api_key}"
 
 
 def verify_firebase_token(id_token: str) -> dict:

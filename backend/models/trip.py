@@ -28,6 +28,7 @@ class Trip(Base):
     share_tagline = Column(Text, nullable=True)
     budget_happy_spend = Column(Float, nullable=True)
     budget_hard_limit = Column(Float, nullable=True)
+    share_token = Column(String(36), nullable=True, index=True)
 
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
 

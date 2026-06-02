@@ -61,6 +61,8 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS share_tagline TEXT"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_happy_spend FLOAT"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_hard_limit FLOAT"))
+    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS share_token VARCHAR(36)"))
+    _conn.execute(text("UPDATE trips SET share_token = gen_random_uuid()::text WHERE share_token IS NULL"))
     _conn.execute(text("ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user"))
     _conn.execute(text("""
         DO $$ BEGIN

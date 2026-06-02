@@ -30,6 +30,7 @@ class TripOut(BaseModel):
     members: list[TripMemberOut]
     current_phase: Optional[str] = None
     user_action_pending: bool = False
+    share_token: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
