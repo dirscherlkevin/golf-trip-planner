@@ -27,7 +27,7 @@ A **"🍽️ Find food near here"** button lives at the bottom of each `CourseCa
 Clicking the button expands a drawer attached to the card. All filters are optional — the only required input is location (derived automatically from the card).
 
 **Filters:**
-- **Vibe chips (multi-select, optional):** 🥩 Steakhouse, 🍺 Brewery, 🍸 Cocktail Bar, 🍺 Sports Bar, 🍕 Pizza, 🔥 BBQ, 🍔 Burgers, 🐟 Seafood — none selected = any cuisine
+- **Vibe chips (multi-select, optional):** 🥩 Steakhouse, 🍺 Brewery, 🍸 Cocktail Bar, 📺 Sports Bar, 🍕 Pizza, 🔥 BBQ, 🍔 Burgers, 🐟 Seafood — none selected = any cuisine
 - **Discover (multi-select, optional):** ⭐ Top Rated, 💎 Hidden Gem — both can be selected simultaneously
 - **Hide chains toggle:** default off; when on, instructs Claude to exclude chain restaurants
 - **Free text (optional):** "patio, live music, cheap" — passed as extra context to Claude
@@ -59,7 +59,7 @@ Picks are sorted by 👍 count descending.
 ### Saving flow
 - **First save:** creates the canonical pick row + implicit 👍 vote for the saver
 - **Other members:** vote 👍 or 👎 on existing picks — no duplicate saves needed
-- **Unsave / remove:** any member can remove their vote; if the last 👍 is removed, the pick auto-deletes from the list
+- **Remove vote:** any member can remove their vote; if all votes are removed (zero total), the pick auto-deletes from the list. A pick with only 👎 votes stays visible — it's useful group signal.
 - **Organizer hard delete:** organizer can force-remove any pick regardless of votes
 
 ---
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS restaurant_votes (
 | Endpoint | Auth | What it does |
 |---|---|---|
 | `POST /trips/{trip_id}/restaurants/suggest` | Member | Calls Claude, returns 4–5 suggestions. Not saved to DB. |
-| `GET /trips/{trip_id}/restaurants` | Member | Returns all picks for the trip, with embedded votes list and `i_saved` bool. Query param: `?round_id=` (pass `null` for lodging). |
+| `GET /trips/{trip_id}/restaurants` | Member | Returns all picks for the trip, with embedded votes list and `my_vote: "up" \| "down" \| null` per pick. Query param: `?round_id=` (omit for lodging picks). |
 | `POST /trips/{trip_id}/restaurants` | Member | Creates a pick + adds an implicit 👍 vote for the caller. Body: full restaurant object from suggest response. Upserts on (name, round_id) to prevent duplicates. |
 | `POST /trips/{trip_id}/restaurants/{pick_id}/vote` | Member | Toggle vote. Body: `{vote: "up" \| "down"}`. Switches vote if different type; removes if same type (second click). Auto-deletes pick if all votes removed. |
 | `DELETE /trips/{trip_id}/restaurants/{pick_id}` | Organizer | Hard delete. |
@@ -157,7 +157,7 @@ Model: `claude-sonnet-4-6` (consistent with other enrichment functions).
 - "Find food" button toggles `drawerOpen`
 - Drawer: filter chips + search → POST suggest → render results list
 - Each result: 📌 Save button → POST create pick → refresh `savedPicks`
-- Each saved pick: 👍/👎 buttons → POST vote toggle → refresh `savedPicks`
+- Each saved pick: 👍/👎 buttons (highlighted based on `my_vote`) → POST vote toggle → refresh `savedPicks`
 
 **`LodgingCard` changes:**
 - Identical logic, `round_id = null` passed to all API calls
