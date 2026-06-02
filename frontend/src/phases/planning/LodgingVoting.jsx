@@ -694,18 +694,27 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
         </div>
       )}
 
-      {/* Options list */}
+      {/* Options list — hide unlocked options when any option is locked */}
       {lodging.options && lodging.options.length > 0 ? (
-        lodging.options.map(opt => (
-          <LodgingOptionCard
-            key={opt.id}
-            option={opt}
-            tripId={trip.id}
-            isLocked={isLocked}
-            isOrganizer={isOrganizer}
-            onUpdated={loadLodging}
-          />
-        ))
+        <>
+          {lodging.options
+            .filter(opt => !isLocked || opt.is_locked)
+            .map(opt => (
+              <LodgingOptionCard
+                key={opt.id}
+                option={opt}
+                tripId={trip.id}
+                isLocked={isLocked}
+                isOrganizer={isOrganizer}
+                onUpdated={loadLodging}
+              />
+            ))}
+          {isLocked && lodging.options.filter(o => !o.is_locked).length > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+              {lodging.options.filter(o => !o.is_locked).length} other option{lodging.options.filter(o => !o.is_locked).length !== 1 ? 's' : ''} hidden — unlock to see all
+            </div>
+          )}
+        </>
       ) : (
         lodging.generation_status !== 'pending' && (
           <div style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 16 }}>

@@ -53,7 +53,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db)):
 
     # Destination
     dest_row = db.query(DestinationSuggestion).filter(
-        DestinationSuggestion.trip_id == trip_id
+        DestinationSuggestion.trip_id == trip.id
     ).first()
     destination = "TBD"
     destination_region = ""
@@ -64,7 +64,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db)):
     # Members (joined, with a user account)
     joined_members = (
         db.query(TripMember)
-        .filter(TripMember.trip_id == trip_id, TripMember.joined == "joined")
+        .filter(TripMember.trip_id == trip.id, TripMember.joined == "joined")
         .all()
     )
     member_user_ids = [m.user_id for m in joined_members if m.user_id is not None]
@@ -77,7 +77,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db)):
     # Rounds
     rounds_db = (
         db.query(TripRound)
-        .filter(TripRound.trip_id == trip_id)
+        .filter(TripRound.trip_id == trip.id)
         .order_by(TripRound.round_number)
         .all()
     )
@@ -153,7 +153,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db)):
         }
 
     locked_options = db.query(LodgingOption).filter(
-        LodgingOption.trip_id == trip_id,
+        LodgingOption.trip_id == trip.id,
         LodgingOption.is_locked == True,
     ).all()
 
@@ -186,7 +186,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db)):
     # Restaurant picks (sorted by most up-votes first per round)
     picks_raw = db.execute(
         text("SELECT * FROM restaurant_picks WHERE trip_id = :tid AND deleted_at IS NULL ORDER BY created_at"),
-        {"tid": trip_id},
+        {"tid": trip.id},
     ).fetchall()
     votes_raw = db.execute(
         text("""
@@ -195,7 +195,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db)):
             JOIN restaurant_picks rp ON rp.id = rv.pick_id
             WHERE rp.trip_id = :tid
         """),
-        {"tid": trip_id},
+        {"tid": trip.id},
     ).fetchall() if picks_raw else []
 
     votes_by_pick = {}

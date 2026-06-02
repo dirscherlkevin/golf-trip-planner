@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useAuthStore } from '../../store/auth'
 import { generateDestinations } from '../../api/destinations'
 
 const TIER_OPTIONS = [
@@ -8,18 +9,20 @@ const TIER_OPTIONS = [
   { value: 'luxury', label: 'Luxury — $200+/round' },
 ]
 
-function buildHcpString(members) {
+function buildHcpString(members, currentUser) {
   const joined = (members || []).filter(m => m.joined === 'joined')
   if (!joined.length) return ''
-  const withHcp = joined.filter(m => m.handicap != null)
+  const getHcp = (m) => m.handicap ?? (currentUser && m.user_id === currentUser.id ? currentUser.handicap : null)
+  const withHcp = joined.filter(m => getHcp(m) != null)
   if (withHcp.length === 0) return `${joined.length} players — no handicaps set in profiles`
-  const hcps = withHcp.map(m => m.handicap).join(', ')
+  const hcps = withHcp.map(m => getHcp(m)).join(', ')
   const noHcp = joined.length - withHcp.length
   return `${joined.length} players — handicaps: ${hcps}${noHcp > 0 ? ` (${noHcp} not set)` : ''}`
 }
 
 export default function GenerateForm({ trip, budgetHint, onGenerated }) {
-  const autoHcp = buildHcpString(trip?.members)
+  const currentUser = useAuthStore(s => s.user)
+  const autoHcp = buildHcpString(trip?.members, currentUser)
   const [useProfileHcp, setUseProfileHcp] = useState(true)
   const [skillMix, setSkillMix] = useState('')
   const [tierFilter, setTierFilter] = useState('show_all')
@@ -126,9 +129,10 @@ export default function GenerateForm({ trip, budgetHint, onGenerated }) {
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{autoHcp}</div>
               )}
               {useProfileHcp && autoHcp && (() => {
-                const joined = (trip?.members || []).filter(m => m.joined === 'joined' && m.handicap != null)
+                const getHcp = (m) => m.handicap ?? (currentUser && m.user_id === currentUser.id ? currentUser.handicap : null)
+                const joined = (trip?.members || []).filter(m => m.joined === 'joined' && getHcp(m) != null)
                 if (joined.length < 2) return null
-                const hcps = joined.map(m => m.handicap)
+                const hcps = joined.map(m => getHcp(m))
                 const avg = (hcps.reduce((a, b) => a + b, 0) / hcps.length).toFixed(1)
                 const min = Math.min(...hcps)
                 const max = Math.max(...hcps)
