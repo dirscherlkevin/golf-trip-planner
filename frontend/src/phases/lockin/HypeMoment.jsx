@@ -528,6 +528,67 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
 function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfirmation }) {
   const [booked, setBooked] = useState(initialBooked ?? false)
   const [confirmation, setConfirmation] = useState(initialConfirmation ?? '')
+  const [restDrawerOpen, setRestDrawerOpen] = useState(false)
+  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '' })
+  const [suggestions, setSuggestions] = useState([])
+  const [loadingSuggest, setLoadingSuggest] = useState(false)
+  const [savedPicks, setSavedPicks] = useState([])
+
+  useEffect(() => {
+    if (!tripId) return
+    getSavedPicks(tripId, null).then(setSavedPicks).catch(() => {})
+  }, [tripId])
+
+  const refreshPicks = () =>
+    getSavedPicks(tripId, null).then(setSavedPicks).catch(() => {})
+
+  const handleSuggest = async () => {
+    setLoadingSuggest(true)
+    setSuggestions([])
+    try {
+      const results = await suggestRestaurants(tripId, {
+        round_id: null,
+        vibe_types: filters.vibes,
+        discover_modes: filters.discover,
+        hide_chains: filters.hideChains,
+        extra_notes: filters.extraNotes,
+      })
+      setSuggestions(results)
+    } catch { /* silent */ }
+    finally { setLoadingSuggest(false) }
+  }
+
+  const handleSavePick = async (s) => {
+    try {
+      await saveRestaurantPick(tripId, {
+        round_id: null,
+        name: s.name, cuisine: s.cuisine, price_range: s.price_range,
+        vibe: s.vibe, reason: s.reason, address: s.address,
+        phone: s.phone, maps_url: s.maps_url,
+      })
+      await refreshPicks()
+    } catch { /* silent */ }
+  }
+
+  const handleVote = async (pickId, vote) => {
+    try {
+      await voteOnPick(tripId, pickId, vote)
+      await refreshPicks()
+    } catch { /* silent */ }
+  }
+
+  const handleRemovePick = async (pickId) => {
+    try {
+      await deleteRestaurantPick(tripId, pickId)
+      setSavedPicks(p => p.filter(x => x.id !== pickId))
+    } catch { /* silent */ }
+  }
+
+  const toggleChip = (field, value) =>
+    setFilters(f => ({
+      ...f,
+      [field]: f[field].includes(value) ? f[field].filter(v => v !== value) : [...f[field], value],
+    }))
 
   const saveBooked = async (val, conf) => {
     try {
@@ -587,6 +648,173 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
           ✓ Booked{confirmation ? ` · Conf: ${confirmation}` : ''}
         </div>
       )}
+
+      {/* ── Restaurant section ── */}
+      {savedPicks.length > 0 && (
+        <div style={{ marginTop: 12, padding: '10px 12px', background: '#0a150a', border: '1px solid #1d3a1d', borderRadius: 8 }}>
+          <div style={{ fontSize: 10, color: '#5a9a5a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+            🍽️ Dining picks — near lodging
+          </div>
+          {savedPicks.map(pick => {
+            const badge = VIBE_BADGE[pick.vibe]
+            return (
+              <div key={pick.id} style={{ background: '#111', border: '1px solid #2a3a2a', borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{pick.name}</span>
+                      {badge && (
+                        <span style={{ fontSize: 9, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}`, borderRadius: 3, padding: '1px 5px' }}>
+                          {badge.label}
+                        </span>
+                      )}
+                      {pick.cuisine && (
+                        <span style={{ fontSize: 9, color: '#888', background: '#1a1a1a', border: '1px solid #2d2d2d', borderRadius: 3, padding: '1px 5px' }}>
+                          {pick.cuisine}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#666', marginBottom: pick.reason ? 4 : 0 }}>
+                      {[pick.price_range, pick.address].filter(Boolean).join(' · ')}
+                      {pick.up_votes?.length > 0 && ` · saved by ${pick.up_votes.slice(0, 2).join(', ')}${pick.up_votes.length > 2 ? ` +${pick.up_votes.length - 2}` : ''}`}
+                    </div>
+                    {pick.reason && (
+                      <div style={{ fontSize: 11, color: '#777', fontStyle: 'italic', marginBottom: 5 }}>"{pick.reason}"</div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {pick.maps_url && (
+                        <a href={pick.maps_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#6699cc' }}>📍 Maps ↗</a>
+                      )}
+                      {pick.phone && <span style={{ fontSize: 11, color: '#666' }}>{pick.phone}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                    <button
+                      onClick={() => handleVote(pick.id, 'up')}
+                      style={{ background: pick.my_vote === 'up' ? '#1a2a1a' : 'none', border: `1px solid ${pick.my_vote === 'up' ? '#3a6a3a' : '#2a2a2a'}`, borderRadius: 6, padding: '3px 9px', fontSize: 12, color: pick.my_vote === 'up' ? '#5a9a5a' : '#555', cursor: 'pointer' }}>
+                      👍 {pick.up_votes?.length ?? 0}
+                    </button>
+                    <button
+                      onClick={() => handleVote(pick.id, 'down')}
+                      style={{ background: pick.my_vote === 'down' ? '#2a1a1a' : 'none', border: `1px solid ${pick.my_vote === 'down' ? '#6a3a3a' : '#2a2a2a'}`, borderRadius: 6, padding: '3px 9px', fontSize: 12, color: pick.my_vote === 'down' ? '#9a5a5a' : '#555', cursor: 'pointer' }}>
+                      👎 {pick.down_votes?.length ?? 0}
+                    </button>
+                    <button
+                      onClick={() => handleRemovePick(pick.id)}
+                      style={{ background: 'none', border: 'none', fontSize: 10, color: '#444', cursor: 'pointer', padding: '2px 4px' }}
+                      title="Remove pick">✕</button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* ── Search drawer ── */}
+      <div style={{ marginTop: savedPicks.length > 0 ? 6 : 12 }}>
+        <button
+          onClick={() => { setRestDrawerOpen(o => !o); setSuggestions([]) }}
+          style={{ width: '100%', background: 'none', border: '1px solid #2d4a2d', borderRadius: 6, color: '#5a9a5a', fontSize: 11, padding: '6px', cursor: 'pointer' }}>
+          🍽️ {savedPicks.length > 0 ? 'Search for more restaurants' : 'Find food near lodging'} {restDrawerOpen ? '▴' : '▾'}
+        </button>
+
+        {restDrawerOpen && (
+          <div style={{ marginTop: 6, padding: '12px 14px', background: '#111', border: '1px solid #1d3a1d', borderRadius: 8 }}>
+            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Vibe</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+              {VIBE_CHIPS.map(chip => (
+                <button key={chip.value}
+                  onClick={() => toggleChip('vibes', chip.value)}
+                  style={{ background: filters.vibes.includes(chip.value) ? '#1a2a1a' : 'none', border: `1px solid ${filters.vibes.includes(chip.value) ? '#3a6a3a' : '#2a2a2a'}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, color: filters.vibes.includes(chip.value) ? '#7ab87a' : '#666', cursor: 'pointer' }}>
+                  {chip.label}
+                </button>
+              ))}
+              {filters.vibes.length === 0 && <span style={{ fontSize: 10, color: '#444', alignSelf: 'center' }}>none = any type</span>}
+            </div>
+
+            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Discover</div>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
+              {DISCOVER_CHIPS.map(chip => (
+                <button key={chip.value}
+                  onClick={() => toggleChip('discover', chip.value)}
+                  style={{ background: filters.discover.includes(chip.value) ? '#1a2a1a' : 'none', border: `1px solid ${filters.discover.includes(chip.value) ? '#3a6a3a' : '#2a2a2a'}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, color: filters.discover.includes(chip.value) ? '#7ab87a' : '#666', cursor: 'pointer' }}>
+                  {chip.label}
+                </button>
+              ))}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 11, color: filters.hideChains ? '#5a9a5a' : '#666', marginLeft: 'auto' }}>
+                <div style={{ width: 28, height: 16, background: filters.hideChains ? '#2d4a2d' : '#222', borderRadius: 8, position: 'relative' }}>
+                  <div style={{ width: 12, height: 12, background: filters.hideChains ? '#5a9a5a' : '#555', borderRadius: '50%', position: 'absolute', right: filters.hideChains ? 2 : 14, top: 2 }} />
+                </div>
+                Hide chains
+                <input type="checkbox" checked={filters.hideChains} onChange={e => setFilters(f => ({ ...f, hideChains: e.target.checked }))} style={{ display: 'none' }} />
+              </label>
+            </div>
+
+            <input
+              placeholder="Anything else? (patio, live music, cheap...)"
+              value={filters.extraNotes}
+              onChange={e => setFilters(f => ({ ...f, extraNotes: e.target.value }))}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', background: '#1a1a1a', border: '1px solid #333', borderRadius: 6, color: '#fff', fontSize: 11, marginBottom: 8 }}
+            />
+
+            <button onClick={handleSuggest} disabled={loadingSuggest}
+              style={{ width: '100%', background: '#2d4a2d', border: 'none', borderRadius: 6, color: '#7ab87a', fontSize: 12, fontWeight: 600, padding: '8px', cursor: 'pointer' }}>
+              {loadingSuggest ? '✨ Finding spots...' : '✨ Find restaurants'}
+            </button>
+
+            {suggestions.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 11, color: '#5a9a5a', marginBottom: 8 }}>✨ {suggestions.length} spots near lodging</div>
+                {suggestions.map((s, i) => {
+                  const badge = VIBE_BADGE[s.vibe]
+                  const alreadySaved = savedPicks.some(p => p.name === s.name)
+                  return (
+                    <div key={s.name} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                            <span style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{s.name}</span>
+                            {badge && (
+                              <span style={{ fontSize: 9, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}`, borderRadius: 3, padding: '1px 5px' }}>
+                                {badge.label}
+                              </span>
+                            )}
+                            {s.cuisine && (
+                              <span style={{ fontSize: 9, color: '#888', background: '#111', border: '1px solid #2d2d2d', borderRadius: 3, padding: '1px 5px' }}>
+                                {s.cuisine}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#666', marginBottom: s.reason ? 4 : 0 }}>
+                            {[s.price_range, s.address].filter(Boolean).join(' · ')}
+                          </div>
+                          {s.reason && (
+                            <div style={{ fontSize: 11, color: '#777', fontStyle: 'italic', marginBottom: 5 }}>"{s.reason}"</div>
+                          )}
+                          {s.maps_url && (
+                            <a href={s.maps_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#6699cc' }}>📍 Maps ↗</a>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleSavePick(s)}
+                          disabled={alreadySaved}
+                          style={{ background: alreadySaved ? '#2d4a2d' : 'none', border: `1px solid ${alreadySaved ? '#3a6a3a' : '#333'}`, borderRadius: 6, padding: '3px 8px', fontSize: 10, color: alreadySaved ? '#5a9a5a' : '#888', cursor: alreadySaved ? 'default' : 'pointer', flexShrink: 0 }}>
+                          {alreadySaved ? '📌 Saved' : '📌 Save'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '' }) }}
+                  style={{ width: '100%', background: 'none', border: '1px solid #2a2a2a', borderRadius: 6, color: '#555', fontSize: 11, padding: '5px', cursor: 'pointer', marginTop: 4 }}>
+                  ↻ Try different filters
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
