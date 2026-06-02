@@ -59,6 +59,8 @@ with engine.connect() as _conn:
     _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS notes TEXT"))
     _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS golfers_per_tee INTEGER"))
     _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS share_tagline TEXT"))
+    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_happy_spend FLOAT"))
+    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_hard_limit FLOAT"))
     _conn.execute(text("ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user"))
     _conn.execute(text("""
         DO $$ BEGIN

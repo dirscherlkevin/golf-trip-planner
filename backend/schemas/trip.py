@@ -25,6 +25,8 @@ class TripOut(BaseModel):
     trip_end: Optional[date] = None
     planned_rounds: Optional[int] = None
     lodging_skipped: bool = False
+    budget_happy_spend: Optional[float] = None
+    budget_hard_limit: Optional[float] = None
     members: list[TripMemberOut]
     current_phase: Optional[str] = None
     user_action_pending: bool = False

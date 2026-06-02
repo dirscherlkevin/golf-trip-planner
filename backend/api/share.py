@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from database import get_db
 from api.auth import get_current_user
 from models.trip import Trip, TripMember
@@ -172,6 +173,50 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         lodging_per_person = float(ppn) * nights / max(member_count, 1)
     total_per_person = total_course_per_person + lodging_per_person
 
+    # Restaurant picks (sorted by most up-votes first per round)
+    picks_raw = db.execute(
+        text("SELECT * FROM restaurant_picks WHERE trip_id = :tid ORDER BY created_at"),
+        {"tid": trip_id},
+    ).fetchall()
+    votes_raw = db.execute(
+        text("""
+            SELECT rv.pick_id, rv.user_name, rv.vote
+            FROM restaurant_votes rv
+            JOIN restaurant_picks rp ON rp.id = rv.pick_id
+            WHERE rp.trip_id = :tid
+        """),
+        {"tid": trip_id},
+    ).fetchall() if picks_raw else []
+
+    votes_by_pick = {}
+    for v in votes_raw:
+        votes_by_pick.setdefault(v.pick_id, []).append({"user_name": v.user_name, "vote": v.vote})
+
+    def _build_pick(p):
+        vs = votes_by_pick.get(p.id, [])
+        return {
+            "id": p.id, "name": p.name, "cuisine": p.cuisine,
+            "price_range": p.price_range, "vibe": p.vibe, "reason": p.reason,
+            "address": p.address, "phone": p.phone, "maps_url": p.maps_url,
+            "up_votes": [v["user_name"] for v in vs if v["vote"] == "up"],
+        }
+
+    restaurant_by_round = {}
+    restaurant_lodging_picks = []
+    for p in picks_raw:
+        pd = _build_pick(p)
+        if p.round_id is None:
+            restaurant_lodging_picks.append(pd)
+        else:
+            restaurant_by_round.setdefault(p.round_id, []).append(pd)
+
+    # Sort each round's picks by up-vote count desc and attach to round dicts
+    for course in rounds:
+        picks = sorted(restaurant_by_round.get(course["round_id"], []), key=lambda x: len(x["up_votes"]), reverse=True)
+        course["restaurant_picks"] = picks
+
+    restaurant_lodging_picks.sort(key=lambda x: len(x["up_votes"]), reverse=True)
+
     return {
         "trip_id": trip.id,
         "trip_name": trip.name,
@@ -191,6 +236,7 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         "total_course_per_person": round(total_course_per_person, 2) if total_course_per_person else None,
         "total_per_person": round(total_per_person, 2) if total_per_person else None,
         "share_tagline": trip.share_tagline or None,
+        "restaurant_lodging_picks": restaurant_lodging_picks,
     }
 
 

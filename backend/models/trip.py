@@ -26,6 +26,8 @@ class Trip(Base):
     lodging_confirmation = Column(String, nullable=True)
     lodging_skipped = Column(Boolean, nullable=False, default=False, server_default='false')
     share_tagline = Column(Text, nullable=True)
+    budget_happy_spend = Column(Float, nullable=True)
+    budget_hard_limit = Column(Float, nullable=True)
 
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
 

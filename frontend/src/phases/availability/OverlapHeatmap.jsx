@@ -253,11 +253,28 @@ export default function OverlapHeatmap({ trip, budget, onDateClick, responses, m
         </>
       )}
 
-      {budget && (
+      {budget && (budget.median_happy || budget.min_hard) && (
         <div style={{ marginTop: 14, padding: 12, background: '#1a2a1a', borderRadius: 8, fontSize: 13 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Group Budget ({budget.responded_count} responded)</div>
-          {budget.median_happy && <div>Happy spend: <strong>${budget.median_happy.toLocaleString()}/person</strong></div>}
-          {budget.median_hard && <div>Max stretch: <strong>${budget.median_hard.toLocaleString()}/person</strong></div>}
+          <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Group Budget · {budget.responded_count} responded
+          </div>
+          {budget.median_happy != null && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Happy to spend (avg)</span>
+              <strong style={{ color: 'var(--accent-green)' }}>${Math.round(budget.median_happy).toLocaleString()}/person</strong>
+            </div>
+          )}
+          {budget.min_hard != null && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Hard limit (lowest member)</span>
+              <strong style={{ color: '#cc9900' }}>${Math.round(budget.min_hard).toLocaleString()}/person</strong>
+            </div>
+          )}
+          {budget.min_hard != null && budget.max_hard != null && budget.min_hard !== budget.max_hard && (
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+              Hard limits range: ${Math.round(budget.min_hard).toLocaleString()} – ${Math.round(budget.max_hard).toLocaleString()}
+            </div>
+          )}
         </div>
       )}
     </div>

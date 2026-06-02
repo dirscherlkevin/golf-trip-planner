@@ -49,7 +49,7 @@ def lock_trip_phase(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    # If locking availability, require dates
+    # If locking availability, require dates + compute budget aggregates
     if phase == PhaseName.availability:
         if not body.trip_start or not body.trip_end:
             raise HTTPException(status_code=400, detail="trip_start and trip_end are required to lock availability")
@@ -60,6 +60,16 @@ def lock_trip_phase(
             raise HTTPException(status_code=404, detail="Trip not found")
         trip.trip_start = body.trip_start
         trip.trip_end = body.trip_end
+        # Snapshot group budget: median happy spend, min hard limit
+        import statistics
+        from models.availability import AvailabilityResponse
+        responses = db.query(AvailabilityResponse).filter(AvailabilityResponse.trip_id == trip_id).all()
+        happy_vals = [float(r.happy_spend) for r in responses if r.happy_spend is not None]
+        hard_vals = [float(r.hard_limit) for r in responses if r.hard_limit is not None]
+        if happy_vals:
+            trip.budget_happy_spend = statistics.median(happy_vals)
+        if hard_vals:
+            trip.budget_hard_limit = min(hard_vals)
 
     locked = lock_phase(trip_id, phase, user.id, db, body.entity_id, body.entity_type, body.override)
     db.commit()

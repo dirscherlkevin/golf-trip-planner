@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import client from '../../api/client'
 import { suggestRestaurants, getSavedPicks, saveRestaurantPick, voteOnPick, deleteRestaurantPick } from '../../api/restaurants'
+import NotesEditor from '../../components/NotesEditor'
 
 const TIER_COLORS = { premium: '#cc9900', midrange: 'var(--accent-green)', value: '#6699cc' }
 
@@ -354,6 +355,10 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
           ✓ Booked{confirmation ? ` · Conf: ${confirmation}` : ''}
         </div>
       )}
+      <NotesEditor
+        initialNotes={round.notes}
+        onSave={async (notes) => { await client.patch(`/trips/${tripId}/rounds/${round.round_id}/notes`, { notes }) }}
+      />
 
       {/* ── Restaurant section ── */}
       {savedPicks.length > 0 && (
@@ -648,6 +653,10 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
           ✓ Booked{confirmation ? ` · Conf: ${confirmation}` : ''}
         </div>
       )}
+      <NotesEditor
+        initialNotes={lodging.notes}
+        onSave={async (notes) => { await client.patch(`/trips/${tripId}/lodging/options/${lodging.option_id}`, { notes: notes || null }) }}
+      />
 
       {/* ── Restaurant section ── */}
       {savedPicks.length > 0 && (

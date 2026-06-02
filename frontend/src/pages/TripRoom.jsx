@@ -327,7 +327,7 @@ export default function TripRoom() {
             </div>
             <h1 style={{ color: 'var(--accent-green)', fontSize: 24, margin: 0 }}>{trip.name}</h1>
             <div style={{ marginTop: 6 }}>
-              <CostEstimate tripId={trip.id} />
+              <CostEstimate tripId={trip.id} trip={trip} isOrganizer={user?.id === trip?.organizer_id} />
             </div>
           </div>
           {/* M1 — full panel only on desktop */}

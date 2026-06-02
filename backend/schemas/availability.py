@@ -32,10 +32,15 @@ class MemberAvailabilityOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class OwnAvailabilityOut(MemberAvailabilityOut):
+    """Like MemberAvailabilityOut but includes the submitter's own budget fields."""
+    happy_spend: Optional[float] = None
+    hard_limit: Optional[float] = None
+
 class AvailabilityOut(BaseModel):
     responses: list[MemberAvailabilityOut]
     budget: Optional[BudgetAggregate] = None  # only returned for organizer
-    own_response: Optional[MemberAvailabilityOut] = None
+    own_response: Optional[OwnAvailabilityOut] = None
     responded_user_ids: list[int] = []  # always returned; all members can see who has responded (not what)
 
 class OverlapDay(BaseModel):

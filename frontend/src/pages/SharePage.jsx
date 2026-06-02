@@ -2,46 +2,54 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import client from '../api/client'
+import NotesEditor from '../components/NotesEditor'
 
-function NotesEditor({ initialNotes, onSave, readOnly }) {
-  const [text, setText] = useState(initialNotes || '')
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+const VIBE_BADGE = {
+  top_rated:  { label: '⭐ Top Rated', color: '#cc9900', bg: 'rgba(204,153,0,0.1)',    border: 'rgba(204,153,0,0.3)' },
+  hidden_gem: { label: '💎 Hidden Gem', color: '#6699cc', bg: 'rgba(102,153,204,0.1)', border: 'rgba(102,153,204,0.3)' },
+  both:       { label: '⭐💎 Both',     color: '#5a9a5a', bg: 'rgba(90,154,90,0.1)',   border: 'rgba(90,154,90,0.3)' },
+}
 
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      await onSave(text.trim())
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch { }
-    finally { setSaving(false) }
-  }
-
-  if (readOnly) {
-    if (!text) return null
-    return (
-      <div style={{ marginTop: 10, padding: '8px 10px', background: '#0d170d', borderRadius: 6, fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-        {text}
-      </div>
-    )
-  }
-
+function RestaurantPicks({ picks, label }) {
+  if (!picks || picks.length === 0) return null
   return (
-    <div style={{ marginTop: 10 }}>
-      <textarea
-        value={text}
-        onChange={e => setText(e.target.value)}
-        placeholder="Add notes..."
-        rows={text ? Math.max(2, text.split('\n').length) : 2}
-        style={{ width: '100%', padding: '6px 10px', background: '#0d170d', border: '1px solid #2a3a2a', borderRadius: 6, color: 'var(--text-secondary)', fontSize: 12, resize: 'vertical', boxSizing: 'border-box' }}
-      />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-        <button className="btn-ghost" disabled={saving} onClick={handleSave} style={{ fontSize: 11, padding: '2px 10px' }}>
-          {saving ? '...' : 'Save notes'}
-        </button>
-        {saved && <span style={{ fontSize: 11, color: 'var(--accent-green)' }}>✓ Saved</span>}
-      </div>
+    <div style={{ marginTop: 14, padding: '10px 12px', background: '#0a150a', border: '1px solid #1d3a1d', borderRadius: 8 }}>
+      <div style={{ fontSize: 10, color: '#5a9a5a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>🍽️ {label}</div>
+      {picks.map((pick, i) => {
+        const badge = VIBE_BADGE[pick.vibe]
+        return (
+          <div key={pick.id || i} style={{ background: '#111', border: '1px solid #1d3a1d', borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>{pick.name}</span>
+              {badge && (
+                <span style={{ fontSize: 9, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}`, borderRadius: 3, padding: '1px 5px' }}>
+                  {badge.label}
+                </span>
+              )}
+              {pick.cuisine && (
+                <span style={{ fontSize: 9, color: '#888', background: '#1a1a1a', border: '1px solid #2d2d2d', borderRadius: 3, padding: '1px 5px' }}>
+                  {pick.cuisine}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: '#666', marginBottom: pick.reason ? 4 : 0 }}>
+              {[pick.price_range, pick.address].filter(Boolean).join(' · ')}
+            </div>
+            {pick.reason && (
+              <div style={{ fontSize: 11, color: '#777', fontStyle: 'italic', marginBottom: 5 }}>"{pick.reason}"</div>
+            )}
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {pick.maps_url && (
+                <a href={pick.maps_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#6699cc' }}>📍 Maps ↗</a>
+              )}
+              {pick.phone && <span style={{ fontSize: 11, color: '#666' }}>{pick.phone}</span>}
+              {pick.up_votes?.length > 0 && (
+                <span style={{ fontSize: 10, color: '#5a9a5a', marginLeft: 'auto' }}>👍 {pick.up_votes.length}</span>
+              )}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -218,14 +226,27 @@ export default function SharePage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 14 }}>
               {data.rounds.map((r, i) => (
                 <div key={i} style={{ background: '#111b11', border: '1px solid #243524', borderRadius: 12, padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>
                         Round {r.round_number}
                         {r.tier && <span style={{ marginLeft: 8, color: 'var(--accent-green)' }}>· {r.tier}</span>}
+                        {r.ranking && (
+                          <span style={{ marginLeft: 8, fontSize: 10, color: '#cc9900', background: 'rgba(204,153,0,0.1)', border: '1px solid rgba(204,153,0,0.3)', borderRadius: 4, padding: '1px 5px' }}>
+                            {r.ranking}
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{r.course_name}</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{r.course_location}</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{r.course_location}</div>
+                      {(r.rating || r.slope || r.par) && (
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                          {[r.rating && `Rating ${r.rating}`, r.slope && `Slope ${r.slope}`, r.par && `Par ${r.par}`].filter(Boolean).join(' · ')}
+                          {r.rating_source && <span style={{ color: 'var(--text-muted)', marginLeft: 5 }}>({r.rating_source})</span>}
+                        </div>
+                      )}
+                      {r.architect && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Architect: {r.architect}</div>}
+                      {r.walking_policy && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Walking: {r.walking_policy}</div>}
                       {r.tee_time && (
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 6 }}>
                           🕐 {r.tee_time}{r.round_date ? ` · ${r.round_date}` : ''} <span style={{ color: 'var(--text-muted)' }}>(local time)</span>
@@ -233,9 +254,10 @@ export default function SharePage() {
                       )}
                     </div>
                     {r.green_fee != null && (
-                      <div style={{ textAlign: 'right', color: 'var(--accent-green)', fontSize: 20, fontWeight: 800 }}>
-                        ${r.green_fee}
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>green fee</div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ color: 'var(--accent-green)', fontSize: 20, fontWeight: 800 }}>${r.green_fee}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>green fee</div>
+                        {r.cart_fee != null && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>+${r.cart_fee} cart</div>}
                       </div>
                     )}
                   </div>
@@ -258,6 +280,7 @@ export default function SharePage() {
                       </a>
                     )}
                   </div>
+                  <RestaurantPicks picks={r.restaurant_picks} label="Dinner picks — after this round" />
                 </div>
               ))}
             </div>
@@ -315,6 +338,7 @@ export default function SharePage() {
                   </a>
                 )}
               </div>
+              <RestaurantPicks picks={data.restaurant_lodging_picks} label="Dining picks — near lodging" />
             </div>
           </section>
         )}

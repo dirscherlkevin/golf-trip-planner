@@ -8,7 +8,7 @@ from models.trip import Trip, TripMember
 from models.availability import AvailabilityResponse
 from models.email_queue import EmailQueue, EmailStatus
 from models.phase import PhaseName, PhaseStatus
-from schemas.availability import AvailabilityIn, AvailabilityOut, MemberAvailabilityOut, OverlapOut, OverlapDay, BudgetAggregate
+from schemas.availability import AvailabilityIn, AvailabilityOut, MemberAvailabilityOut, OwnAvailabilityOut, OverlapOut, OverlapDay, BudgetAggregate
 from services.phases import get_phase
 from datetime import datetime, timezone, timedelta
 from typing import Optional
@@ -80,7 +80,14 @@ def get_availability(
         for r in responses
     ]
 
-    own = next((m for m in member_outs if m.user_id == user.id), None)
+    own_raw = next((r for r in responses if r.user_id == user.id), None)
+    own = OwnAvailabilityOut(
+        user_id=own_raw.user_id,
+        date_ranges=[{"start": d["start"], "end": d["end"], "type": d.get("type", "available")} for d in own_raw.date_ranges],
+        submitted_at=own_raw.submitted_at.isoformat() if own_raw.submitted_at else None,
+        happy_spend=float(own_raw.happy_spend) if own_raw.happy_spend is not None else None,
+        hard_limit=float(own_raw.hard_limit) if own_raw.hard_limit is not None else None,
+    ) if own_raw else None
 
     budget = None
     if is_organizer and responses:
