@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Date, Boolean, Float
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Date, Boolean, Float, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -25,6 +25,7 @@ class Trip(Base):
     lodging_booked = Column(Boolean, nullable=False, default=False, server_default='false')
     lodging_confirmation = Column(String, nullable=True)
     lodging_skipped = Column(Boolean, nullable=False, default=False, server_default='false')
+    share_tagline = Column(Text, nullable=True)
 
     members = relationship("TripMember", back_populates="trip", cascade="all, delete-orphan")
 

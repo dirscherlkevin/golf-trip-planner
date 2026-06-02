@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuthStore } from '../../store/auth'
 import { useTripStore } from '../../store/trip'
 import client from '../../api/client'
@@ -383,7 +383,7 @@ function ManualLodgingForm({ tripId, onAdded }) {
   )
 }
 
-export default function LodgingVoting({ trip, onLodgingUpdated }) {
+export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) {
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
@@ -400,6 +400,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
 
   const [generatingMore, setGeneratingMore] = useState(false)
   const [skipped, setSkipped] = useState(trip?.lodging_skipped ?? false)
+  const prevLockedRef = useRef(undefined)
 
   const loadLodging = () => {
     if (!trip) return
@@ -409,6 +410,11 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
         setNotSetUp(false)
         setLoadError(null)
         onLodgingUpdated?.()
+        const nowLocked = data.options?.some(o => o.is_locked) ?? false
+        if (prevLockedRef.current !== nowLocked) {
+          prevLockedRef.current = nowLocked
+          onLockChange?.(nowLocked)
+        }
       })
       .catch(err => {
         if (err.response?.status === 404) {

@@ -11,16 +11,69 @@ import PlanningPhase from '../phases/planning/PlanningPhase'
 import LodgingVoting from '../phases/planning/LodgingVoting'
 import LockInPhase from '../phases/lockin/LockInPhase'
 import HypeMoment from '../phases/lockin/HypeMoment'
+import { getRounds } from '../api/rounds'
 
 function LodgingPhase() {
-  const { trip, loadTrip } = useTripStore()
+  const { trip, lockPhase } = useTripStore()
+  const user = useAuthStore(s => s.user)
+  const isOrganizer = user?.id === trip?.organizer_id
+  const [lodgingLocked, setLodgingLocked] = useState(false)
+  const [allCoursesLocked, setAllCoursesLocked] = useState(false)
+  const [advancing, setAdvancing] = useState(false)
+  const [skipping, setSkipping] = useState(false)
+
+  useEffect(() => {
+    if (!trip?.id || !isOrganizer) return
+    getRounds(trip.id)
+      .then(rounds => setAllCoursesLocked(rounds.length > 0 && rounds.every(r => r.locked_course_id !== null)))
+      .catch(() => {})
+  }, [trip?.id, lodgingLocked])
+
+  const handleAdvance = async () => {
+    setAdvancing(true)
+    try { await lockPhase('planning') } catch { setAdvancing(false) }
+  }
+
+  const handleSkipAndAdvance = async () => {
+    setSkipping(true)
+    try {
+      await client.patch(`/trips/${trip.id}/lodging-skipped`, { skipped: true })
+      await lockPhase('planning')
+    } catch { setSkipping(false) }
+  }
+
   return (
     <div>
       <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Lodging</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
         Vote on where to stay. The organizer locks it in when ready.
       </p>
-      <LodgingVoting trip={trip} onLodgingUpdated={() => {}} />
+      <LodgingVoting trip={trip} onLodgingUpdated={() => {}} onLockChange={setLodgingLocked} />
+
+      {isOrganizer && allCoursesLocked && (
+        <div style={{ marginTop: 24, padding: '16px 20px', background: lodgingLocked ? '#1a2a1a' : '#141414', borderRadius: 10, border: lodgingLocked ? '1px solid var(--accent-green)' : '1px solid #2a2a2a' }}>
+          {lodgingLocked ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--accent-green)', marginBottom: 4 }}>All set — ready to lock it in!</div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>All courses and lodging are locked. Advance to finalize the trip.</div>
+              </div>
+              <button className="btn-primary" onClick={handleAdvance} disabled={advancing} style={{ whiteSpace: 'nowrap', marginLeft: 16 }}>
+                {advancing ? 'Advancing...' : 'Advance to Lock It In →'}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+                All courses are locked. Lock a lodging option above or skip to advance.
+              </div>
+              <button className="btn-ghost" onClick={handleSkipAndAdvance} disabled={skipping} style={{ fontSize: 13 }}>
+                {skipping ? 'Advancing...' : 'Skip Lodging and Advance →'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

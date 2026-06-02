@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { voteOnCourse, lockRound, unlockRound, generateMoreCourses, nominateCourse, removeCourseNomination } from '../../api/rounds'
+import { voteOnCourse, lockRound, unlockRound, generateMoreCourses, nominateCourse, removeCourseNomination, recommendCourse } from '../../api/rounds'
 import client from '../../api/client'
 
 async function saveRoundNotes(tripId, roundId, notes) {
@@ -125,7 +125,12 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
             )}
           </div>
           {cd.location && (
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>{cd.location}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>{cd.location}</div>
+          )}
+          {cd.description && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 6, lineHeight: 1.4 }}>
+              {cd.description}
+            </div>
           )}
           <CourseDetail label="Rating" value={ratingStr} />
           <CourseDetail label="Yardage" value={yardageStr} />
@@ -294,6 +299,10 @@ export default function RoundVoting({ round, tripId, isOrganizer, myBudget, lock
   const [addingManual, setAddingManual] = useState(false)
   const [manualError, setManualError] = useState(null)
   const [unlocking, setUnlocking] = useState(false)
+  // AI recommendation
+  const [recommendation, setRecommendation] = useState(null)
+  const [loadingRec, setLoadingRec] = useState(false)
+  const [recError, setRecError] = useState(null)
   // Tee time editing
   const [editingTeeTime, setEditingTeeTime] = useState(false)
   const [teeTimeStr, setTeeTimeStr] = useState(round.tee_time || '')
@@ -341,6 +350,19 @@ export default function RoundVoting({ round, tripId, isOrganizer, myBudget, lock
       setUnlocking(false)
     }
   }
+  const handleRecommend = async () => {
+    setLoadingRec(true)
+    setRecError(null)
+    try {
+      const data = await recommendCourse(tripId, round.id)
+      setRecommendation(data)
+    } catch {
+      setRecError('Could not get a recommendation. Try again.')
+    } finally {
+      setLoadingRec(false)
+    }
+  }
+
   const lockedNom = isLocked ? round.nominations?.find(n => n.id === lockedNomId) : null
   const tierLabel = TIER_LABELS[round.tier] ?? round.tier
 
@@ -586,6 +608,38 @@ export default function RoundVoting({ round, tripId, isOrganizer, myBudget, lock
             {notesSaved && <span style={{ fontSize: 12, color: 'var(--accent-green)' }}>Saved ✓</span>}
           </div>
         </div>
+
+        {/* AI recommendation */}
+        {!isLocked && round.nominations?.length >= 2 && (
+          <div style={{ marginTop: 12 }}>
+            {!recommendation ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button className="btn-ghost" onClick={handleRecommend} disabled={loadingRec}
+                  style={{ fontSize: 12, padding: '4px 12px' }}>
+                  {loadingRec ? '✨ Thinking...' : '✨ Help me decide'}
+                </button>
+                {recError && <span style={{ fontSize: 12, color: '#e55' }}>{recError}</span>}
+              </div>
+            ) : (
+              <div style={{ padding: '12px 14px', background: '#111f11', border: '1px solid #2a3a2a', borderRadius: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>✨ AI Pick</div>
+                  <button onClick={() => setRecommendation(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, padding: 0 }}>✕</button>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--accent-green)', marginBottom: 6 }}>
+                  {recommendation.recommended}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  {recommendation.reason}
+                </div>
+                <button className="btn-ghost" onClick={handleRecommend} disabled={loadingRec}
+                  style={{ fontSize: 11, marginTop: 8, padding: '2px 8px' }}>
+                  {loadingRec ? 'Thinking...' : 'Re-ask'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Add manually */}
         {!isLocked && (

@@ -12,7 +12,7 @@ from schemas.round import (
     TripRoundOut, CourseNominationOut, CourseVoteTally
 )
 from services.phases import get_phase, lock_phase
-from services.claude import generate_courses_for_round, enrich_course
+from services.claude import generate_courses_for_round, enrich_course, recommend_course
 from datetime import datetime, timezone
 
 router = APIRouter()
@@ -494,6 +494,60 @@ def set_round_notes(
     trip_round.notes = body.notes.strip() or None
     db.commit()
     return {"ok": True, "notes": trip_round.notes}
+
+
+@router.post("/{trip_id}/rounds/{round_id}/recommend")
+def recommend_round_course(
+    trip_id: int,
+    round_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Ask Sonnet to recommend the best course option for a round."""
+    _get_trip_member(trip_id, user.id, db)
+    trip_round = db.query(TripRound).filter(TripRound.id == round_id, TripRound.trip_id == trip_id).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    if trip_round.locked_course_id:
+        raise HTTPException(status_code=409, detail="Round is already locked")
+
+    nominations = db.query(CourseNomination).filter(CourseNomination.round_id == round_id).all()
+    if len(nominations) < 2:
+        raise HTTPException(status_code=400, detail="Need at least 2 options to recommend")
+
+    all_votes = db.query(CourseVote).filter(
+        CourseVote.nomination_id.in_([n.id for n in nominations])
+    ).all()
+
+    nom_data = []
+    for n in nominations:
+        votes = [v for v in all_votes if v.nomination_id == n.id]
+        cd = n.course_data or {}
+        nom_data.append({
+            "name": cd.get("name", "Unknown"),
+            "location": cd.get("location", ""),
+            "rating": cd.get("rating"),
+            "slope": cd.get("slope"),
+            "green_fee": cd.get("green_fee"),
+            "up_votes": sum(1 for v in votes if v.vote == "up"),
+            "down_votes": sum(1 for v in votes if v.vote == "down"),
+        })
+
+    destination = _get_destination_name(trip_id, db)
+    group_size = db.query(TripMember).filter(
+        TripMember.trip_id == trip_id, TripMember.joined == "joined"
+    ).count()
+
+    try:
+        result = recommend_course(
+            round_number=trip_round.round_number,
+            tier=trip_round.tier,
+            nominations=nom_data,
+            trip_context={"destination": destination, "group_size": group_size},
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Recommendation failed: {str(e)}")
 
 
 class _AddRoundBody(_BM):

@@ -274,6 +274,7 @@ Location: {location}
 
 Return ONLY a JSON object (use null for fields you are not confident about):
 {{
+  "description": "1-2 sentence narrative about what makes this course special or distinctive",
   "rating": 74.2,
   "slope": 135,
   "par": 72,
@@ -404,3 +405,63 @@ Return only the JSON array, no other text."""
             raise ValueError(f"Lodging option {i} missing required fields: {missing}")
 
     return data
+
+
+def recommend_course(round_number: int, tier: str, nominations: list, trip_context: dict) -> dict:
+    """Recommend the best course option for a round based on votes and context."""
+    options_text = "\n".join(
+        f"  - {n['name']} ({n.get('location', 'unknown location')}): "
+        f"Rating {n.get('rating') or '?'}, Slope {n.get('slope') or '?'}, "
+        f"${n.get('green_fee') or '?'} green fee | 👍{n.get('up_votes', 0)} 👎{n.get('down_votes', 0)}"
+        for n in nominations
+    )
+    prompt = f"""You are a golf trip advisor recommending the best course for a group.
+
+Round {round_number} ({tier} tier) | Trip to {trip_context.get('destination', '?')} | {trip_context.get('group_size', '?')} golfers
+
+Options:
+{options_text}
+
+Consider course quality, value, vote sentiment, and how well it fits a {tier}-tier round.
+
+Return ONLY a JSON object:
+{{
+  "recommended": "exact course name as listed above",
+  "reason": "2-3 sentences on why this course best fits this round and group"
+}}
+
+Return only valid JSON, no other text."""
+
+    client = _client()
+    message = _call_with_retry(lambda: client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=256,
+        messages=[{"role": "user", "content": prompt}],
+    ))
+    return _parse_json_response(message.content[0].text)
+
+
+def generate_trip_tagline(trip_name: str, destination: str, dates: str, members: list, rounds: list, lodging_name: str | None = None) -> str:
+    """Generate a 2-3 sentence hype narrative for the trip share page."""
+    courses = [r.get("course_name", "") for r in rounds if r.get("course_name") and r.get("course_name") != "TBD"]
+    courses_text = ", ".join(courses) if courses else "some great courses"
+    lodging_text = f" Staying at {lodging_name}." if lodging_name else ""
+    crew_text = ", ".join(members[:4]) + (" and more" if len(members) > 4 else "")
+
+    prompt = f"""Write a 2-3 sentence trip announcement for a golf group. Be specific, exciting, use the real course names and details.
+
+Trip: {trip_name}
+Destination: {destination}
+Dates: {dates}
+Crew: {crew_text}
+Courses: {courses_text}{lodging_text}
+
+Write only the announcement text — no emojis, no hashtags, no quotes around the text, no intro phrase like "Here's the announcement"."""
+
+    client = _client()
+    message = _call_with_retry(lambda: client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=150,
+        messages=[{"role": "user", "content": prompt}],
+    ))
+    return message.content[0].text.strip()

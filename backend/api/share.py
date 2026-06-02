@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
+from api.auth import get_current_user
 from models.trip import Trip, TripMember
 from models.user import User
 from models.destination import DestinationSuggestion
 from models.round import TripRound, CourseNomination
 from models.lodging import LodgingOption
+from services.claude import generate_trip_tagline
 
 router = APIRouter()
 
@@ -188,4 +190,55 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         "lodging_per_person": round(lodging_per_person, 2) if lodging_per_person else None,
         "total_course_per_person": round(total_course_per_person, 2) if total_course_per_person else None,
         "total_per_person": round(total_per_person, 2) if total_per_person else None,
+        "share_tagline": trip.share_tagline or None,
     }
+
+
+@router.post("/{trip_id}/tagline")
+def create_share_tagline(
+    trip_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Generate (or regenerate) the AI trip summary narrative and save it."""
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip or trip.status != "finalized":
+        raise HTTPException(status_code=404, detail="Trip not found or not finalized")
+    member = db.query(TripMember).filter(
+        TripMember.trip_id == trip_id,
+        TripMember.user_id == user.id,
+        TripMember.joined == "joined",
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member")
+
+    # Gather context
+    dest_row = db.query(DestinationSuggestion).filter(DestinationSuggestion.trip_id == trip_id).first()
+    destination = dest_row.locked_destination.get("name", "") if dest_row and dest_row.locked_destination else ""
+
+    dates = ""
+    if trip.trip_start and trip.trip_end:
+        dates = f"{trip.trip_start.strftime('%b %d')} – {trip.trip_end.strftime('%b %d, %Y')}"
+
+    joined = db.query(TripMember).filter(TripMember.trip_id == trip_id, TripMember.joined == "joined").all()
+    user_ids = [m.user_id for m in joined if m.user_id]
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    members = [u.name or u.email.split("@")[0].title() for u in users]
+
+    rounds_db = db.query(TripRound).filter(TripRound.trip_id == trip_id).order_by(TripRound.round_number).all()
+    rounds = []
+    for r in rounds_db:
+        if r.locked_course_id:
+            nom = db.query(CourseNomination).filter(CourseNomination.id == r.locked_course_id).first()
+            if nom and nom.course_data:
+                rounds.append({"course_name": nom.course_data.get("name", "")})
+
+    locked_lodging = db.query(LodgingOption).filter(
+        LodgingOption.trip_id == trip_id, LodgingOption.is_locked == True
+    ).first()
+    lodging_name = (locked_lodging.option_data or {}).get("name") if locked_lodging else None
+
+    tagline = generate_trip_tagline(trip.name, destination, dates, members, rounds, lodging_name)
+    trip.share_tagline = tagline
+    db.commit()
+    return {"tagline": tagline}
