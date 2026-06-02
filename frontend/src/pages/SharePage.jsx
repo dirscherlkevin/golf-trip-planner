@@ -262,7 +262,7 @@ export default function SharePage() {
 
         {/* Footer */}
         <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12, marginTop: 24 }}>
-          Fairway
+          Par-Tee Planner
         </div>
       </div>
     </div>
