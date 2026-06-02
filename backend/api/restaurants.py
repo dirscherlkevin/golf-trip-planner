@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional, List
 from database import get_db
@@ -8,6 +7,8 @@ from api.auth import get_current_user
 from models.trip import Trip, TripMember
 from models.round import TripRound, CourseNomination
 from models.lodging import LodgingOption
+from models.destination import DestinationSuggestion
+from models.user import User
 from services.claude import suggest_restaurants
 
 router = APIRouter()
@@ -15,7 +16,7 @@ router = APIRouter()
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _require_member(trip_id: int, user, db: Session) -> Trip:
+def _require_member(trip_id: int, user: User, db: Session) -> Trip:
     trip = db.query(Trip).filter(Trip.id == trip_id).first()
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
@@ -44,7 +45,7 @@ def _derive_location(trip_id: int, round_id: Optional[int], trip: Trip, db: Sess
                 name = cd.get("name", "")
                 loc = cd.get("location", "")
                 return f"{name}, {loc}".strip(", ") or "the golf course"
-        return f"Round {round_id} course"
+        # No locked course — fall through to lodging/destination fallback
 
     # Lodging fallback
     lodging = db.query(LodgingOption).filter(
@@ -58,12 +59,11 @@ def _derive_location(trip_id: int, round_id: Optional[int], trip: Trip, db: Sess
         return f"{name}, {addr}".strip(", ") or "the lodging"
 
     # Destination fallback
-    dest = db.execute(
-        text("SELECT locked_destination FROM destination_suggestions WHERE trip_id = :tid"),
-        {"tid": trip_id},
-    ).fetchone()
-    if dest and dest.locked_destination:
-        return dest.locked_destination.get("name", "the destination")
+    dest_suggestion = db.query(DestinationSuggestion).filter(
+        DestinationSuggestion.trip_id == trip_id
+    ).first()
+    if dest_suggestion and dest_suggestion.locked_destination:
+        return (dest_suggestion.locked_destination or {}).get("name", "the destination")
 
     return "the destination"
 
@@ -100,7 +100,7 @@ class VoteRequest(BaseModel):
 def suggest(
     trip_id: int,
     body: SuggestRequest,
-    user=Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     trip = _require_member(trip_id, user, db)
