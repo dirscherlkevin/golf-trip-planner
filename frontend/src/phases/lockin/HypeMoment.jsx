@@ -355,6 +355,7 @@ export default function HypeMoment({ trip, isOrganizer }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [generatingTagline, setGeneratingTagline] = useState(false)
 
   useEffect(() => {
     client.get('/share/' + trip.id)
@@ -397,6 +398,26 @@ export default function HypeMoment({ trip, isOrganizer }) {
               <span style={{ color: 'var(--text-muted)', marginLeft: 5 }}>({data.destination_region})</span>
             )}
           </div>
+        )}
+        {data?.share_tagline ? (
+          <div style={{ marginTop: 12, fontSize: 14, color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: 1.6 }}>
+            "{data.share_tagline}"
+          </div>
+        ) : isOrganizer && data && (
+          <button
+            onClick={async () => {
+              setGeneratingTagline(true)
+              try {
+                const r = await client.post(`/share/${trip.id}/tagline`)
+                setData(d => ({ ...d, share_tagline: r.data.tagline }))
+              } catch { }
+              finally { setGeneratingTagline(false) }
+            }}
+            disabled={generatingTagline}
+            style={{ marginTop: 10, background: 'none', border: '1px solid #2d4a2d', borderRadius: 6, color: 'var(--text-muted)', fontSize: 11, padding: '4px 12px', cursor: 'pointer' }}
+          >
+            {generatingTagline ? '✨ Writing...' : '✨ Generate trip summary'}
+          </button>
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
           <button className="btn-ghost" onClick={() => window.open('/share/' + trip.id, '_blank')}
