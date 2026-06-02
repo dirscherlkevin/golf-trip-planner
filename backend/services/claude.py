@@ -3,6 +3,7 @@ import json
 import time
 import random
 import logging
+from urllib.parse import quote_plus
 from anthropic import Anthropic, RateLimitError, APITimeoutError, APIConnectionError, InternalServerError
 
 logger = logging.getLogger(__name__)
@@ -521,8 +522,6 @@ def suggest_restaurants(
     extra_notes: str,
 ) -> list:
     """Return 4-5 restaurant suggestions near location as a list of dicts."""
-    from urllib.parse import quote_plus
-
     vibe_str = ", ".join(vibe_types) if vibe_types else "any cuisine"
     chain_note = (
         " Do NOT include chain restaurants (e.g. Applebee's, Chili's, Olive Garden, TGI Fridays, Buffalo Wild Wings)."
@@ -561,12 +560,12 @@ Return only the JSON array, no other text."""
     client = _client()
     message = _call_with_retry(lambda: client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=2000,
+        max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
     ))
     results = _parse_json_response(message.content[0].text)
-    if not isinstance(results, list):
-        raise ValueError("Expected a JSON array of restaurant suggestions")
+    if not isinstance(results, list) or len(results) == 0:
+        raise ValueError("Expected a non-empty JSON array of restaurant suggestions")
 
     for r in results:
         query = r.get("maps_search_query") or r.get("name", "")
