@@ -140,7 +140,6 @@ def get_picks(
                 (:rid IS NULL AND round_id IS NULL) OR
                 (round_id = :rid)
             )
-            ORDER BY created_at
         """),
         {"tid": trip_id, "rid": round_id},
     ).fetchall()
@@ -148,15 +147,12 @@ def get_picks(
     result = []
     for p in picks:
         votes = db.execute(
-            text("SELECT user_name, vote FROM restaurant_votes WHERE pick_id = :pid"),
+            text("SELECT user_id, user_name, vote FROM restaurant_votes WHERE pick_id = :pid"),
             {"pid": p.id},
         ).fetchall()
         up_voters = [v.user_name for v in votes if v.vote == "up"]
         down_voters = [v.user_name for v in votes if v.vote == "down"]
-        my_vote_row = db.execute(
-            text("SELECT vote FROM restaurant_votes WHERE pick_id = :pid AND user_id = :uid"),
-            {"pid": p.id, "uid": user.id},
-        ).fetchone()
+        my_vote = next((v.vote for v in votes if v.user_id == user.id), None)
         result.append({
             "id": p.id,
             "round_id": p.round_id,
@@ -170,7 +166,7 @@ def get_picks(
             "maps_url": p.maps_url,
             "up_votes": up_voters,
             "down_votes": down_voters,
-            "my_vote": my_vote_row.vote if my_vote_row else None,
+            "my_vote": my_vote,
         })
 
     result.sort(key=lambda x: len(x["up_votes"]), reverse=True)
