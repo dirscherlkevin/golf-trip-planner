@@ -20,7 +20,7 @@ function LodgingPhase() {
       <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
         Vote on where to stay. The organizer locks it in when ready.
       </p>
-      <LodgingVoting trip={trip} onLodgingUpdated={() => loadTrip(trip?.id)} />
+      <LodgingVoting trip={trip} onLodgingUpdated={() => {}} />
     </div>
   )
 }
