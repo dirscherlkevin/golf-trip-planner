@@ -202,10 +202,11 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
   const [confirmation, setConfirmation] = useState(round.confirmation_number ?? '')
 
   const [restDrawerOpen, setRestDrawerOpen] = useState(false)
-  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '' })
+  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' })
   const [suggestions, setSuggestions] = useState([])
   const [loadingSuggest, setLoadingSuggest] = useState(false)
   const [savedPicks, setSavedPicks] = useState([])
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null)
 
   useEffect(() => {
     if (!tripId || !round.round_id) return
@@ -221,7 +222,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
     try {
       const results = await suggestRestaurants(tripId, {
         round_id: round.round_id,
-        vibe_types: filters.vibes,
+        vibe_types: [...filters.vibes, ...(filters.otherVibe.trim() ? [filters.otherVibe.trim()] : [])],
         discover_modes: filters.discover,
         hide_chains: filters.hideChains,
         extra_notes: filters.extraNotes,
@@ -251,6 +252,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
   }
 
   const handleRemovePick = async (pickId) => {
+    setConfirmRemoveId(null)
     try {
       await deleteRestaurantPick(tripId, pickId)
       setSavedPicks(p => p.filter(x => x.id !== pickId))
@@ -282,6 +284,12 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
   const ratingStr = (round.rating || round.slope)
     ? [round.rating && `Rating ${round.rating}`, round.slope && `Slope ${round.slope}`, round.par && `Par ${round.par}`].filter(Boolean).join(' · ')
     : null
+  const yo = round.yardage_options || {}
+  const yardageStr = [
+    yo.championship && `${yo.championship.toLocaleString()} (champ)`,
+    yo.member && `${yo.member.toLocaleString()} (member)`,
+    yo.forward && `${yo.forward.toLocaleString()} (fwd)`,
+  ].filter(Boolean).join(' · ') || null
   const tierColor = TIER_COLORS[round.tier] || 'var(--text-muted)'
 
   return (
@@ -309,6 +317,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>📍 {round.course_location}</div>
           )}
           <DetailRow label="Rating" value={ratingStr} />
+          <DetailRow label="Yardage" value={yardageStr} />
           <DetailRow label="Rating source" value={round.rating_source} />
           <DetailRow label="Walking" value={round.walking_policy} />
           <DetailRow label="Architect" value={round.architect} />
@@ -366,6 +375,9 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
           <div style={{ fontSize: 10, color: '#5a9a5a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
             🍽️ Dinner picks — after this round
           </div>
+          <div style={{ fontSize: 10, color: '#446644', fontStyle: 'italic', marginBottom: 6 }}>
+            AI-generated suggestions — verify hours and address before you go
+          </div>
           {savedPicks.map(pick => {
             const badge = VIBE_BADGE[pick.vibe]
             return (
@@ -410,10 +422,28 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
                       style={{ background: pick.my_vote === 'down' ? '#2a1a1a' : 'none', border: `1px solid ${pick.my_vote === 'down' ? '#6a3a3a' : '#2a2a2a'}`, borderRadius: 6, padding: '3px 9px', fontSize: 12, color: pick.my_vote === 'down' ? '#9a5a5a' : '#555', cursor: 'pointer' }}>
                       👎 {pick.down_votes?.length ?? 0}
                     </button>
-                    <button
-                      onClick={() => handleRemovePick(pick.id)}
-                      style={{ background: 'none', border: 'none', fontSize: 10, color: '#444', cursor: 'pointer', padding: '2px 4px' }}
-                      title="Remove pick">✕</button>
+                    {confirmRemoveId === pick.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        <div style={{ fontSize: 9, color: '#e55', textAlign: 'center', lineHeight: 1.3 }}>
+                          {(pick.up_votes?.length ?? 0) > 0
+                            ? `${pick.up_votes.length} liked this`
+                            : 'Remove?'}
+                        </div>
+                        <button onClick={() => handleRemovePick(pick.id)}
+                          style={{ background: 'none', border: '1px solid #e55', borderRadius: 4, fontSize: 9, color: '#e55', cursor: 'pointer', padding: '2px 6px' }}>
+                          Remove
+                        </button>
+                        <button onClick={() => setConfirmRemoveId(null)}
+                          style={{ background: 'none', border: 'none', fontSize: 9, color: '#555', cursor: 'pointer', padding: '1px 4px' }}>
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmRemoveId(pick.id)}
+                        style={{ background: 'none', border: 'none', fontSize: 10, color: '#444', cursor: 'pointer', padding: '2px 4px' }}
+                        title="Remove pick">✕</button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -443,8 +473,18 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
               ))}
               {filters.vibes.length === 0 && <span style={{ fontSize: 10, color: '#444', alignSelf: 'center' }}>none = any type</span>}
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <span style={{ fontSize: 10, color: '#444' }}>Other:</span>
+              <input
+                type="text"
+                value={filters.otherVibe}
+                onChange={e => setFilters(f => ({ ...f, otherVibe: e.target.value }))}
+                placeholder="e.g. Indian, sushi..."
+                style={{ flex: 1, padding: '3px 8px', background: '#1a1a1a', border: `1px solid ${filters.otherVibe ? '#3a6a3a' : '#222'}`, borderRadius: 12, color: '#fff', fontSize: 11 }}
+              />
+            </div>
 
-            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Discover</div>
+            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, marginTop: 10 }}>Discover</div>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
               {DISCOVER_CHIPS.map(chip => (
                 <button key={chip.value}
@@ -517,7 +557,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
                     </div>
                   )
                 })}
-                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '' }) }}
+                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' }) }}
                   style={{ width: '100%', background: 'none', border: '1px solid #2a2a2a', borderRadius: 6, color: '#555', fontSize: 11, padding: '5px', cursor: 'pointer', marginTop: 4 }}>
                   ↻ Try different filters
                 </button>
@@ -534,10 +574,11 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
   const [booked, setBooked] = useState(initialBooked ?? false)
   const [confirmation, setConfirmation] = useState(initialConfirmation ?? '')
   const [restDrawerOpen, setRestDrawerOpen] = useState(false)
-  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '' })
+  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' })
   const [suggestions, setSuggestions] = useState([])
   const [loadingSuggest, setLoadingSuggest] = useState(false)
   const [savedPicks, setSavedPicks] = useState([])
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null)
 
   useEffect(() => {
     if (!tripId) return
@@ -553,7 +594,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
     try {
       const results = await suggestRestaurants(tripId, {
         round_id: null,
-        vibe_types: filters.vibes,
+        vibe_types: [...filters.vibes, ...(filters.otherVibe.trim() ? [filters.otherVibe.trim()] : [])],
         discover_modes: filters.discover,
         hide_chains: filters.hideChains,
         extra_notes: filters.extraNotes,
@@ -583,6 +624,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
   }
 
   const handleRemovePick = async (pickId) => {
+    setConfirmRemoveId(null)
     try {
       await deleteRestaurantPick(tripId, pickId)
       setSavedPicks(p => p.filter(x => x.id !== pickId))
@@ -664,6 +706,9 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
           <div style={{ fontSize: 10, color: '#5a9a5a', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
             🍽️ Dining picks — near lodging
           </div>
+          <div style={{ fontSize: 10, color: '#446644', fontStyle: 'italic', marginBottom: 6 }}>
+            AI-generated suggestions — verify hours and address before you go
+          </div>
           {savedPicks.map(pick => {
             const badge = VIBE_BADGE[pick.vibe]
             return (
@@ -708,10 +753,28 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
                       style={{ background: pick.my_vote === 'down' ? '#2a1a1a' : 'none', border: `1px solid ${pick.my_vote === 'down' ? '#6a3a3a' : '#2a2a2a'}`, borderRadius: 6, padding: '3px 9px', fontSize: 12, color: pick.my_vote === 'down' ? '#9a5a5a' : '#555', cursor: 'pointer' }}>
                       👎 {pick.down_votes?.length ?? 0}
                     </button>
-                    <button
-                      onClick={() => handleRemovePick(pick.id)}
-                      style={{ background: 'none', border: 'none', fontSize: 10, color: '#444', cursor: 'pointer', padding: '2px 4px' }}
-                      title="Remove pick">✕</button>
+                    {confirmRemoveId === pick.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                        <div style={{ fontSize: 9, color: '#e55', textAlign: 'center', lineHeight: 1.3 }}>
+                          {(pick.up_votes?.length ?? 0) > 0
+                            ? `${pick.up_votes.length} liked this`
+                            : 'Remove?'}
+                        </div>
+                        <button onClick={() => handleRemovePick(pick.id)}
+                          style={{ background: 'none', border: '1px solid #e55', borderRadius: 4, fontSize: 9, color: '#e55', cursor: 'pointer', padding: '2px 6px' }}>
+                          Remove
+                        </button>
+                        <button onClick={() => setConfirmRemoveId(null)}
+                          style={{ background: 'none', border: 'none', fontSize: 9, color: '#555', cursor: 'pointer', padding: '1px 4px' }}>
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmRemoveId(pick.id)}
+                        style={{ background: 'none', border: 'none', fontSize: 10, color: '#444', cursor: 'pointer', padding: '2px 4px' }}
+                        title="Remove pick">✕</button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -741,8 +804,18 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
               ))}
               {filters.vibes.length === 0 && <span style={{ fontSize: 10, color: '#444', alignSelf: 'center' }}>none = any type</span>}
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <span style={{ fontSize: 10, color: '#444' }}>Other:</span>
+              <input
+                type="text"
+                value={filters.otherVibe}
+                onChange={e => setFilters(f => ({ ...f, otherVibe: e.target.value }))}
+                placeholder="e.g. Indian, sushi..."
+                style={{ flex: 1, padding: '3px 8px', background: '#1a1a1a', border: `1px solid ${filters.otherVibe ? '#3a6a3a' : '#222'}`, borderRadius: 12, color: '#fff', fontSize: 11 }}
+              />
+            </div>
 
-            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Discover</div>
+            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, marginTop: 10 }}>Discover</div>
             <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
               {DISCOVER_CHIPS.map(chip => (
                 <button key={chip.value}
@@ -815,7 +888,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
                     </div>
                   )
                 })}
-                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '' }) }}
+                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' }) }}
                   style={{ width: '100%', background: 'none', border: '1px solid #2a2a2a', borderRadius: 6, color: '#555', fontSize: 11, padding: '5px', cursor: 'pointer', marginTop: 4 }}>
                   ↻ Try different filters
                 </button>
