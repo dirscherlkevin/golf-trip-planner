@@ -13,38 +13,36 @@ export default function PlanningPhase() {
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
-  const [tab, setTab] = useState('courses')
-  const [rounds, setRounds] = useState(null)   // null = not loaded yet
+  const [rounds, setRounds] = useState(null)
   const [loadError, setLoadError] = useState(null)
+  const [lodging, setLodging] = useState(null)
   const [lodgingLocked, setLodgingLocked] = useState(false)
   const [advancing, setAdvancing] = useState(false)
-  const [myBudget, setMyBudget] = useState(null)  // {happy_spend, hard_limit}
+  const [myBudget, setMyBudget] = useState(null)
 
   const loadRounds = () => {
     if (!trip) return
     getRounds(trip.id)
-      .then(data => {
-        setRounds(data)
-        setLoadError(null)
-      })
-      .catch(() => {
-        setLoadError('Failed to load rounds.')
-      })
+      .then(data => { setRounds(data); setLoadError(null) })
+      .catch(() => setLoadError('Failed to load rounds.'))
   }
 
-  const checkLodging = () => {
+  const loadLodgingData = () => {
     if (!trip) return
     if (trip.lodging_skipped) { setLodgingLocked(true); return }
     getLodging(trip.id)
-      .then(data => setLodgingLocked(!!data.locked_option_id))
+      .then(data => {
+        setLodging(data)
+        setLodgingLocked(!!data.options?.some(o => o.is_locked))
+      })
       .catch(err => {
-        if (err.response?.status === 404) setLodgingLocked(false)  // no lodging = not done (unless skipped)
+        if (err.response?.status === 404) { setLodging(null); setLodgingLocked(false) }
       })
   }
 
   useEffect(() => {
     loadRounds()
-    checkLodging()
+    loadLodgingData()
     if (trip?.id) {
       getAvailability(trip.id)
         .then(d => { if (d.own_response) setMyBudget({ happy: d.own_response.happy_spend, hard: d.own_response.hard_limit }) })
@@ -52,7 +50,6 @@ export default function PlanningPhase() {
     }
   }, [trip?.id])
 
-  // Poll every 10s while any round has generation_status === 'pending'
   useEffect(() => {
     if (!trip || !rounds) return
     const anyPending = rounds.some(r => r.generation_status === 'pending')
@@ -68,50 +65,86 @@ export default function PlanningPhase() {
 
   const handleAdvance = async () => {
     setAdvancing(true)
-    try {
-      await lockPhase('planning')
-    } catch {
-      setAdvancing(false)
-    }
+    try { await lockPhase('planning') }
+    catch { setAdvancing(false) }
   }
+
+  // Compute per-person running total (courses + lodging)
+  const lockedCourseTotal = (rounds || []).reduce((sum, r) => {
+    if (!r.locked_course_id) return sum
+    const nom = r.nominations?.find(n => n.id === r.locked_course_id)
+    const cd = nom?.course_data || {}
+    return sum + (parseFloat(cd.green_fee) || 0) + (parseFloat(cd.cart_fee) || 0)
+  }, 0)
+  const hasLockedRounds = (rounds || []).some(r => r.locked_course_id)
+
+  const nights = trip?.trip_start && trip?.trip_end
+    ? Math.round((new Date(trip.trip_end + 'T00:00:00') - new Date(trip.trip_start + 'T00:00:00')) / 86400000)
+    : null
+  const groupSize = (trip?.members?.filter(m => m.joined === 'joined') ?? []).length || 1
+  const lockedLodgingOption = lodging?.options?.find(o => o.is_locked)
+  const lodgingPerPerson = lockedLodgingOption && nights
+    ? ((lockedLodgingOption.option_data?.price_per_night ?? 0) * nights) / groupSize
+    : 0
+  const runningTotal = lockedCourseTotal + lodgingPerPerson
+
+  const overHard = myBudget?.hard != null && runningTotal > myBudget.hard
+  const overHappy = myBudget?.happy != null && !overHard && runningTotal > myBudget.happy
 
   return (
     <div>
       <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Phase 3: Courses + Lodging</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
-        Pick courses for each round and choose where to stay. Vote on your favorites, then the organizer locks them in.
+        Vote on courses and lodging. The organizer locks them in when you're ready.
       </p>
 
-      {/* Tab navigation */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {['courses', 'lodging'].map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={tab === t ? 'btn-primary' : 'btn-ghost'}
-            style={{ textTransform: 'capitalize' }}
-          >
-            {t === 'courses' ? 'Courses' : 'Lodging'}
-          </button>
-        ))}
+      {/* Combined budget banner */}
+      {myBudget && (myBudget.happy || myBudget.hard) && (
+        <div style={{
+          background: overHard ? '#2a0a0a' : overHappy ? '#2a1f00' : '#141f14',
+          border: `1px solid ${overHard ? '#7a1a1a' : overHappy ? '#6a4a00' : '#2a3a2a'}`,
+          borderRadius: 8, padding: '10px 14px', marginBottom: 20,
+          display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', fontSize: 13,
+        }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            Your budget:{' '}
+            {myBudget.happy ? <strong style={{ color: 'var(--accent-green)' }}>${myBudget.happy.toLocaleString()} happy</strong> : null}
+            {myBudget.happy && myBudget.hard ? ' · ' : ''}
+            {myBudget.hard
+              ? <strong style={{ color: '#cc9900' }}>${myBudget.hard.toLocaleString()} max</strong>
+              : <span style={{ color: 'var(--text-muted)' }}>no hard limit</span>}
+          </span>
+          {(hasLockedRounds || lockedLodgingOption) && (
+            <span style={{ color: overHard ? '#f87171' : overHappy ? '#f6ad55' : 'var(--accent-green)', fontWeight: 600 }}>
+              {overHard ? '⚠️ ' : overHappy ? '⚡ ' : '✅ '}
+              Running total: ${runningTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              {lockedLodgingOption && <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 12 }}> (incl. lodging)</span>}
+              {overHard ? ' — over your hard limit!' : overHappy ? ' — over happy spend' : ''}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Courses section */}
+      <CoursesSection
+        trip={trip}
+        rounds={rounds}
+        loadError={loadError}
+        hasRounds={hasRounds}
+        isOrganizer={isOrganizer}
+        myBudget={myBudget}
+        onRoundsSetup={setRounds}
+        onRoundUpdated={loadRounds}
+      />
+
+      {/* Lodging section */}
+      <div style={{ marginTop: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+          <h3 style={{ margin: 0, color: 'var(--accent-green)', fontSize: 18 }}>Lodging</h3>
+          {lodgingLocked && <span style={{ fontSize: 12, color: 'var(--accent-green)' }}>✅ Locked</span>}
+        </div>
+        <LodgingVoting trip={trip} onLodgingUpdated={loadLodgingData} />
       </div>
-
-      {tab === 'courses' && (
-        <CoursesTab
-          trip={trip}
-          rounds={rounds}
-          loadError={loadError}
-          hasRounds={hasRounds}
-          isOrganizer={isOrganizer}
-          myBudget={myBudget}
-          onRoundsSetup={setRounds}
-          onRoundUpdated={loadRounds}
-        />
-      )}
-
-      {tab === 'lodging' && (
-        <LodgingVoting trip={trip} onLodgingUpdated={checkLodging} />
-      )}
 
       {/* Advance to Lock It In */}
       {isOrganizer && hasRounds && (
@@ -126,12 +159,7 @@ export default function PlanningPhase() {
                   All courses and lodging are locked. Advance to review and finalize the trip.
                 </div>
               </div>
-              <button
-                className="btn-primary"
-                onClick={handleAdvance}
-                disabled={advancing}
-                style={{ whiteSpace: 'nowrap', marginLeft: 16 }}
-              >
+              <button className="btn-primary" onClick={handleAdvance} disabled={advancing} style={{ whiteSpace: 'nowrap', marginLeft: 16 }}>
                 {advancing ? 'Advancing...' : 'Advance to Lock It In →'}
               </button>
             </div>
@@ -146,7 +174,7 @@ export default function PlanningPhase() {
   )
 }
 
-function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, myBudget, onRoundsSetup, onRoundUpdated }) {
+function CoursesSection({ trip, rounds, loadError, hasRounds, isOrganizer, myBudget, onRoundsSetup, onRoundUpdated }) {
   const [addingRound, setAddingRound] = useState(false)
   const [addTier, setAddTier] = useState('midrange')
   const [removingId, setRemovingId] = useState(null)
@@ -167,9 +195,7 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, myBudget,
   }
 
   if (!hasRounds) {
-    if (isOrganizer) {
-      return <RoundsSetup trip={trip} onSetup={onRoundsSetup} />
-    }
+    if (isOrganizer) return <RoundsSetup trip={trip} onSetup={onRoundsSetup} />
     return (
       <div className="card">
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Waiting for the organizer to set up rounds...</div>
@@ -183,61 +209,19 @@ function CoursesTab({ trip, rounds, loadError, hasRounds, isOrganizer, myBudget,
 
   const handleAddRound = async () => {
     setAddingRound(true)
-    try {
-      const updated = await addRound(trip.id, addTier)
-      onRoundsSetup(updated)
-    } catch { /* ignore */ } finally {
-      setAddingRound(false)
-    }
+    try { const updated = await addRound(trip.id, addTier); onRoundsSetup(updated) }
+    catch { } finally { setAddingRound(false) }
   }
 
   const handleRemoveRound = async (roundId) => {
     if (!window.confirm('Remove this round? All course nominations and votes will be lost.')) return
     setRemovingId(roundId)
-    try {
-      const updated = await removeRound(trip.id, roundId)
-      onRoundsSetup(updated)
-    } catch { } finally {
-      setRemovingId(null)
-    }
+    try { const updated = await removeRound(trip.id, roundId); onRoundsSetup(updated) }
+    catch { } finally { setRemovingId(null) }
   }
-
-  // Compute running cost total from locked rounds
-  const lockedCostTotal = (rounds || []).reduce((sum, r) => {
-    if (!r.locked_course_id) return sum
-    const nom = r.nominations?.find(n => n.id === r.locked_course_id)
-    const cd = nom?.course_data || {}
-    return sum + (parseFloat(cd.green_fee) || 0) + (parseFloat(cd.cart_fee) || 0)
-  }, 0)
-  const hasLockedRounds = (rounds || []).some(r => r.locked_course_id)
-  const overHard = myBudget?.hard != null && lockedCostTotal > myBudget.hard
-  const overHappy = myBudget?.happy != null && !overHard && lockedCostTotal > myBudget.happy
 
   return (
     <div>
-      {/* Budget summary */}
-      {myBudget && (myBudget.happy || myBudget.hard) && (
-        <div style={{
-          background: overHard ? '#2a0a0a' : overHappy ? '#2a1f00' : '#141f14',
-          border: `1px solid ${overHard ? '#7a1a1a' : overHappy ? '#6a4a00' : '#2a3a2a'}`,
-          borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-          display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', fontSize: 13,
-        }}>
-          <span style={{ color: 'var(--text-secondary)' }}>
-            Your budget: {myBudget.happy ? <strong style={{ color: 'var(--accent-green)' }}>${myBudget.happy.toLocaleString()} happy</strong> : null}
-            {myBudget.happy && myBudget.hard ? ' · ' : ''}
-            {myBudget.hard ? <strong style={{ color: '#cc9900' }}>${myBudget.hard.toLocaleString()} max</strong> : <span style={{ color: 'var(--text-muted)' }}>no hard limit</span>}
-          </span>
-          {hasLockedRounds && (
-            <span style={{ color: overHard ? '#f87171' : overHappy ? '#f6ad55' : 'var(--accent-green)', fontWeight: 600 }}>
-              {overHard ? '⚠️ ' : overHappy ? '⚡ ' : '✅ '}
-              Running total: ${lockedCostTotal.toLocaleString()}
-              {overHard ? ' — over your hard limit!' : overHappy ? ' — over happy spend' : ''}
-            </span>
-          )}
-        </div>
-      )}
-
       {rounds.map(round => (
         <RoundVoting
           key={round.id}

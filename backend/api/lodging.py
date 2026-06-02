@@ -136,6 +136,8 @@ def _generate_lodging_bg(
     nights: int,
     course_names: list[str],
     db_url: str,
+    rooms_needed: int | None = None,
+    beds_needed: int | None = None,
 ):
     """Background task to generate lodging options."""
     from sqlalchemy import create_engine
@@ -148,7 +150,7 @@ def _generate_lodging_bg(
         if not setup:
             return
         try:
-            options = generate_lodging(destination, lodging_type, group_size, nights, course_names)
+            options = generate_lodging(destination, lodging_type, group_size, nights, course_names, rooms_needed, beds_needed)
             for opt_data in options:
                 db.add(LodgingOption(
                     trip_id=trip_id,
@@ -216,6 +218,9 @@ def setup_lodging(
     # Locked course names
     course_names = _get_locked_course_names(trip_id, db)
 
+    rooms_needed = body.rooms_needed
+    beds_needed = body.beds_needed
+
     # Create setup row
     setup = LodgingSetup(
         trip_id=trip_id,
@@ -227,6 +232,8 @@ def setup_lodging(
             "group_size": group_size,
             "nights": nights,
             "course_names": course_names,
+            "rooms_needed": rooms_needed,
+            "beds_needed": beds_needed,
             "_started_at": datetime.now(timezone.utc).isoformat(),
         },
     )
@@ -238,7 +245,8 @@ def setup_lodging(
 
     background_tasks.add_task(
         _generate_lodging_bg,
-        trip_id, setup.id, destination, body.lodging_type, group_size, nights, course_names, db_url
+        trip_id, setup.id, destination, body.lodging_type, group_size, nights, course_names, db_url,
+        rooms_needed, beds_needed,
     )
 
     return _build_setup_out(setup, trip, user.id, db)
@@ -296,9 +304,13 @@ def generate_more_lodging(
     ).count()
     course_names = _get_locked_course_names(trip_id, db)
 
+    stored_inputs = setup.prompt_inputs or {}
+    rooms_needed = stored_inputs.get("rooms_needed")
+    beds_needed = stored_inputs.get("beds_needed")
+
     setup.generation_status = LodgingGenerationStatus.pending
     setup.prompt_inputs = {
-        **(setup.prompt_inputs or {}),
+        **stored_inputs,
         "_started_at": datetime.now(timezone.utc).isoformat(),
     }
     db.commit()
@@ -307,7 +319,8 @@ def generate_more_lodging(
 
     background_tasks.add_task(
         _generate_lodging_bg,
-        trip_id, setup.id, destination, setup.lodging_type.value, group_size, nights, course_names, db_url
+        trip_id, setup.id, destination, setup.lodging_type.value, group_size, nights, course_names, db_url,
+        rooms_needed, beds_needed,
     )
 
 

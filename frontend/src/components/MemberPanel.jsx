@@ -143,8 +143,9 @@ export default function MemberPanel({ trip }) {
       {members.map(m => {
         const isMe = m.user_id === user?.id
         const responded = respondedIds.has(m.user_id)
-        const name = emailToName(m.invite_email)
-        const hcp = m.handicap != null ? `HCP ${m.handicap}` : null
+        const name = isMe && user?.name ? user.name : emailToName(m.invite_email)
+        const effectiveHcp = m.handicap ?? (isMe ? user?.handicap : null)
+        const hcp = effectiveHcp != null ? `HCP ${effectiveHcp}` : null
         const nudgedAgo = fmtNudge(m.last_nudged_at)
 
         return (

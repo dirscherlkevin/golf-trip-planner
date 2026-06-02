@@ -334,6 +334,8 @@ def generate_lodging(
     group_size: int,
     nights: int,
     course_names: list[str],
+    rooms_needed: int | None = None,
+    beds_needed: int | None = None,
 ) -> list[dict]:
     """Generate 3-4 lodging options near a destination."""
     type_instruction = {
@@ -346,13 +348,20 @@ def generate_lodging(
     if course_names:
         courses_note = f"Near these courses: {', '.join(course_names[:3])}."
 
+    rooms_note = ""
+    if rooms_needed:
+        rooms_note = f"\n- Rooms needed: {rooms_needed}"
+    beds_note = ""
+    if beds_needed:
+        beds_note = f"\n- Beds needed: {beds_needed}"
+
     prompt = f"""You are a golf trip lodging expert. Suggest 3-4 lodging options.
 
 Trip details:
 - Destination: {destination}
 - Group size: {group_size} people
 - Nights: {nights}
-- Lodging type: {type_instruction}
+- Lodging type: {type_instruction}{rooms_note}{beds_note}
 {courses_note}
 
 Return ONLY a JSON array. Each object must have:

@@ -393,6 +393,8 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
   const [loadError, setLoadError] = useState(null)
 
   const [selectedType, setSelectedType] = useState('rental')
+  const [roomsNeeded, setRoomsNeeded] = useState('')
+  const [bedsNeeded, setBedsNeeded] = useState('')
   const [settingUp, setSettingUp] = useState(false)
   const [setupError, setSetupError] = useState(null)
 
@@ -436,7 +438,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
     setSettingUp(true)
     setSetupError(null)
     try {
-      const data = await setupLodging(trip.id, selectedType)
+      const data = await setupLodging(trip.id, selectedType, roomsNeeded ? parseInt(roomsNeeded) : undefined, bedsNeeded ? parseInt(bedsNeeded) : undefined)
       setLodging(data)
       setNotSetUp(false)
     } catch {
@@ -499,14 +501,23 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
 
     if (!isOrganizer) {
       return (
-        <div className="card">
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>Waiting for lodging setup...</div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-            The organizer is setting up lodging options. This page will update automatically.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card">
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Waiting for lodging setup...</div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 12 }}>
+              The organizer can search with AI, or you can suggest a place directly below.
+            </div>
+            <button className="btn-ghost" onClick={loadLodging} style={{ fontSize: 12 }}>
+              Refresh now
+            </button>
           </div>
-          <button className="btn-ghost" onClick={loadLodging} style={{ marginTop: 12, fontSize: 12 }}>
-            Refresh now
-          </button>
+          <div className="card">
+            <h3 style={{ marginBottom: 4, fontWeight: 600, marginTop: 0 }}>Suggest Lodging</h3>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
+              Already have a place in mind? Add it and everyone can vote.
+            </div>
+            <ManualLodgingForm tripId={trip.id} onAdded={() => { setNotSetUp(false); loadLodging() }} />
+          </div>
         </div>
       )
     }
@@ -532,6 +543,18 @@ export default function LodgingVoting({ trip, onLodgingUpdated }) {
                   {lt.label}
                 </button>
               ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Rooms needed</label>
+              <input type="number" min="1" value={roomsNeeded} onChange={e => setRoomsNeeded(e.target.value)}
+                placeholder="e.g. 4" style={{ width: 90, padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13 }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Beds needed</label>
+              <input type="number" min="1" value={bedsNeeded} onChange={e => setBedsNeeded(e.target.value)}
+                placeholder="e.g. 6" style={{ width: 90, padding: '6px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: '#fff', fontSize: 13 }} />
             </div>
           </div>
           {setupError && <div style={{ color: '#e55', fontSize: 13, marginBottom: 12 }}>{setupError}</div>}

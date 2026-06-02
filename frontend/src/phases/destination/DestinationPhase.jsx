@@ -245,21 +245,29 @@ export default function DestinationPhase() {
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {suggestion.suggestions.map((dest, i) => (
-              <DestinationCard
-                key={i}
-                trip={trip}
-                destination={dest}
-                index={i}
-                tally={tallies.find(t => t.destination_index === i)}
-                isOrganizer={isOrganizer && !suggestion.locked_destination}
-                isLocked={!!suggestion.locked_destination}
-                plannedRounds={trip?.planned_rounds}
-                onVoted={handleVoted}
-                onLocked={handleLocked}
-                onRemoved={load}
-              />
-            ))}
+            {suggestion.suggestions
+              .filter((dest, i) =>
+                !suggestion.locked_destination ||
+                dest.name === suggestion.locked_destination.name
+              )
+              .map((dest, i) => {
+                const origIndex = suggestion.suggestions.indexOf(dest)
+                return (
+                  <DestinationCard
+                    key={origIndex}
+                    trip={trip}
+                    destination={dest}
+                    index={origIndex}
+                    tally={tallies.find(t => t.destination_index === origIndex)}
+                    isOrganizer={isOrganizer && !suggestion.locked_destination}
+                    isLocked={!!suggestion.locked_destination}
+                    plannedRounds={trip?.planned_rounds}
+                    onVoted={handleVoted}
+                    onLocked={handleLocked}
+                    onRemoved={load}
+                  />
+                )
+              })}
           </div>
 
           {/* Manual destination nomination — open to all members when not locked */}

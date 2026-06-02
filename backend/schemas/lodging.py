@@ -4,6 +4,8 @@ from typing import Any, Optional
 
 class LodgingSetupIn(BaseModel):
     lodging_type: str  # "rental", "hotel", "both"
+    rooms_needed: Optional[int] = None
+    beds_needed: Optional[int] = None
 
 
 class LodgingNominateIn(BaseModel):

@@ -129,11 +129,13 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
             "price_per_night": float(ppn) if ppn is not None else None,
             "address": od.get("address") or od.get("location") or None,
             "beds": od.get("beds"),
+            "rooms": od.get("rooms"),
             "capacity": od.get("capacity"),
             "distance_to_courses": od.get("distance_to_courses"),
             "amenities": od.get("amenities"),
             "booking_link": od.get("booking_link") or None,
             "website": od.get("website") or od.get("booking_link") or None,
+            "notes": od.get("notes") or None,
         }
 
     locked_options = db.query(LodgingOption).filter(
@@ -152,6 +154,21 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
     lodging = _build_lodging_data(locked_options[0]) if locked_options else None
     lodging_all_locked = [_build_lodging_data(o) for o in locked_options] if locked_options else []
 
+    # Add notes to rounds
+    for course in rounds:
+        r_obj = next((r for r in rounds_db if r.id == course["round_id"]), None)
+        course["notes"] = getattr(r_obj, "notes", None) if r_obj else None
+
+    # Per-person cost calculation
+    nights = (trip.trip_end - trip.trip_start).days if trip.trip_start and trip.trip_end else 0
+    member_count = len(joined_members)
+    total_course_per_person = sum((c.get("green_fee") or 0) + (c.get("cart_fee") or 0) for c in rounds)
+    lodging_per_person = 0.0
+    if locked_options and nights:
+        ppn = (locked_options[0].option_data or {}).get("price_per_night") or 0
+        lodging_per_person = float(ppn) * nights / max(member_count, 1)
+    total_per_person = total_course_per_person + lodging_per_person
+
     return {
         "trip_id": trip.id,
         "trip_name": trip.name,
@@ -159,9 +176,14 @@ def get_trip_share(trip_id: int, db: Session = Depends(get_db)):
         "destination": destination,
         "destination_region": destination_region,
         "members": members,
+        "member_count": member_count,
+        "nights": nights,
         "rounds": rounds,
         "lodging": lodging,
         "lodging_all_locked": lodging_all_locked,
         "lodging_booked": bool(trip.lodging_booked),
         "lodging_confirmation": trip.lodging_confirmation,
+        "lodging_per_person": round(lodging_per_person, 2) if lodging_per_person else None,
+        "total_course_per_person": round(total_course_per_person, 2) if total_course_per_person else None,
+        "total_per_person": round(total_per_person, 2) if total_per_person else None,
     }
