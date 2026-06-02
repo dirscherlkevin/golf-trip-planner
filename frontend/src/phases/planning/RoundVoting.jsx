@@ -193,7 +193,7 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
                 onClick={() => handleVote('up')}
                 disabled={voting}
                 style={{
-                  padding: '4px 10px',
+                  padding: '8px 14px',
                   borderRadius: 6,
                   border: '1px solid #555',
                   background: tally.my_vote === 'up' ? 'var(--accent-green)' : '#2a2a2a',
@@ -208,7 +208,7 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
                 onClick={() => handleVote('down')}
                 disabled={voting}
                 style={{
-                  padding: '4px 10px',
+                  padding: '8px 14px',
                   borderRadius: 6,
                   border: '1px solid #555',
                   background: tally.my_vote === 'down' ? '#5a1a1a' : '#2a2a2a',
@@ -236,50 +236,50 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
 
           {isOrganizer && !isLocked && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-              {/* Remove */}
               {!confirmRemove && !confirmLock && (
                 <button className="btn-ghost" onClick={() => setConfirmRemove(true)}
                   style={{ fontSize: 11, padding: '3px 8px', color: '#e55', borderColor: '#e55' }}>
                   Remove
                 </button>
               )}
-              {confirmRemove && (
-                <div style={{ display: 'flex', gap: 6, flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <div style={{ fontSize: 11, color: '#e55' }}>Remove this option?</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn-ghost" onClick={handleRemove} disabled={removing}
-                      style={{ fontSize: 11, padding: '4px 8px', color: '#e55', borderColor: '#e55' }}>
-                      {removing ? '...' : 'Yes, Remove'}
-                    </button>
-                    <button className="btn-ghost" onClick={() => setConfirmRemove(false)}
-                      style={{ fontSize: 11, padding: '4px 8px' }}>Cancel</button>
-                  </div>
-                </div>
-              )}
-              {/* Lock */}
               {!confirmRemove && !confirmLock && (
                 <button className="btn-ghost" onClick={() => setConfirmLock(true)} style={{ fontSize: 12 }}>
                   Lock This Course
                 </button>
               )}
-              {confirmLock && (
-                <div style={{ display: 'flex', gap: 6, flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <div style={{ fontSize: 11, color: '#cc9900' }}>Lock this course?</div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button className="btn-primary" onClick={handleLock} disabled={locking}
-                      style={{ fontSize: 11, padding: '4px 8px' }}>
-                      {locking ? 'Locking...' : 'Yes, Lock'}
-                    </button>
-                    <button className="btn-ghost" onClick={() => setConfirmLock(false)}
-                      style={{ fontSize: 11, padding: '4px 8px' }}>Cancel</button>
-                  </div>
-                  {lockError && <div style={{ fontSize: 11, color: '#e55' }}>{lockError}</div>}
-                </div>
-              )}
             </div>
           )}
         </div>
       </div>
+
+      {confirmRemove && (
+        <div style={{ marginTop: 10, padding: '10px 12px', background: '#2a0a0a', border: '1px solid #7a1a1a', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 13, color: '#e55' }}>Remove this course option?</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn-ghost" onClick={handleRemove} disabled={removing}
+              style={{ fontSize: 12, padding: '6px 12px', color: '#e55', borderColor: '#e55' }}>
+              {removing ? '...' : 'Yes, Remove'}
+            </button>
+            <button className="btn-ghost" onClick={() => setConfirmRemove(false)}
+              style={{ fontSize: 12, padding: '6px 12px' }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {confirmLock && (
+        <div style={{ marginTop: 10, padding: '10px 12px', background: '#1a1a00', border: '1px solid #6a5a00', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <span style={{ fontSize: 13, color: '#cc9900' }}>Lock this course for this round?</span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn-primary" onClick={handleLock} disabled={locking}
+              style={{ fontSize: 12, padding: '6px 12px' }}>
+              {locking ? 'Locking...' : 'Yes, Lock'}
+            </button>
+            <button className="btn-ghost" onClick={() => setConfirmLock(false)}
+              style={{ fontSize: 12, padding: '6px 12px' }}>Cancel</button>
+          </div>
+          {lockError && <div style={{ width: '100%', fontSize: 11, color: '#e55', marginTop: 4 }}>{lockError}</div>}
+        </div>
+      )}
     </div>
   )
 }
@@ -458,7 +458,7 @@ export default function RoundVoting({ round, tripId, isOrganizer, myBudget, lock
                   {['premium', 'midrange', 'value'].map(t => (
                     <button key={t} className={round.tier === t ? 'btn-primary' : 'btn-ghost'}
                       onClick={() => handleTierChange(t)} disabled={changingTier}
-                      style={{ fontSize: 10, padding: '2px 8px', textTransform: 'capitalize' }}>
+                      style={{ fontSize: 13, padding: '6px 12px', textTransform: 'capitalize' }}>
                       {t}
                     </button>
                   ))}
