@@ -743,8 +743,8 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
                 </button>
               ))}
               <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 11, color: filters.hideChains ? '#5a9a5a' : '#666', marginLeft: 'auto' }}>
-                <div style={{ width: 28, height: 16, background: filters.hideChains ? '#2d4a2d' : '#222', borderRadius: 8, position: 'relative' }}>
-                  <div style={{ width: 12, height: 12, background: filters.hideChains ? '#5a9a5a' : '#555', borderRadius: '50%', position: 'absolute', right: filters.hideChains ? 2 : 14, top: 2 }} />
+                <div style={{ width: 28, height: 16, background: filters.hideChains ? '#2d4a2d' : '#222', borderRadius: 8, position: 'relative', transition: 'background 0.2s' }}>
+                  <div style={{ width: 12, height: 12, background: filters.hideChains ? '#5a9a5a' : '#555', borderRadius: '50%', position: 'absolute', right: filters.hideChains ? 2 : 14, top: 2, transition: 'right 0.2s' }} />
                 </div>
                 Hide chains
                 <input type="checkbox" checked={filters.hideChains} onChange={e => setFilters(f => ({ ...f, hideChains: e.target.checked }))} style={{ display: 'none' }} />
