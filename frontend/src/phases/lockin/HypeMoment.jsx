@@ -476,7 +476,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
                   const badge = VIBE_BADGE[s.vibe]
                   const alreadySaved = savedPicks.some(p => p.name === s.name)
                   return (
-                    <div key={i} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
+                    <div key={s.name} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 5, marginBottom: 3 }}>
