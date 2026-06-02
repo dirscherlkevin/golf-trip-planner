@@ -122,3 +122,6 @@ app.include_router(share_router, prefix="/share", tags=["share"])
 
 from api.users import router as users_router
 app.include_router(users_router, prefix="/users", tags=["users"])
+
+from api.restaurants import router as restaurants_router
+app.include_router(restaurants_router, prefix="/trips", tags=["restaurants"])
