@@ -472,7 +472,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
             {suggestions.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <div style={{ fontSize: 11, color: '#5a9a5a', marginBottom: 8 }}>✨ {suggestions.length} spots near this course</div>
-                {suggestions.map((s, i) => {
+                {suggestions.map((s) => {
                   const badge = VIBE_BADGE[s.vibe]
                   const alreadySaved = savedPicks.some(p => p.name === s.name)
                   return (
@@ -766,7 +766,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
             {suggestions.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <div style={{ fontSize: 11, color: '#5a9a5a', marginBottom: 8 }}>✨ {suggestions.length} spots near lodging</div>
-                {suggestions.map((s, i) => {
+                {suggestions.map((s) => {
                   const badge = VIBE_BADGE[s.vibe]
                   const alreadySaved = savedPicks.some(p => p.name === s.name)
                   return (
