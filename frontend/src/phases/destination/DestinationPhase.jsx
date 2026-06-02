@@ -292,7 +292,7 @@ export default function DestinationPhase() {
                   const manualSuggestions = (suggestion?.suggestions || []).filter(s => s.source === 'manual' || s.manually_added)
                   if (manualSuggestions.length > 0) {
                     const ok = window.confirm(
-                      `Regenerating will remove your ${manualSuggestions.length} manually added destination${manualSuggestions.length > 1 ? 's' : ''}. Continue?`
+                      `Regenerating will reset all votes. Your ${manualSuggestions.length} manually added destination${manualSuggestions.length > 1 ? 's' : ''} will be kept. Continue?`
                     )
                     if (!ok) return
                   }

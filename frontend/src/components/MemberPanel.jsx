@@ -165,7 +165,7 @@ export default function MemberPanel({ trip }) {
                 {!editingHandicap ? (
                   <button className="btn-ghost" onClick={() => { setHandicapStr((m.handicap ?? user?.handicap)?.toString() ?? ''); setEditingHandicap(true) }}
                     style={{ fontSize: 12, padding: '1px 6px', color: '#888', alignSelf: 'flex-start' }}>
-                    {m.handicap != null ? `✏️ Edit HCP` : '+ Add HCP'}
+                    {effectiveHcp != null ? `✏️ Edit HCP` : '+ Add HCP'}
                   </button>
                 ) : (
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>

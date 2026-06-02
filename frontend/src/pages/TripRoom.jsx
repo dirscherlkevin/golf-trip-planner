@@ -13,14 +13,14 @@ import LockInPhase from '../phases/lockin/LockInPhase'
 import HypeMoment from '../phases/lockin/HypeMoment'
 
 function LodgingPhase() {
-  const { trip } = useTripStore()
+  const { trip, loadTrip } = useTripStore()
   return (
     <div>
       <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Lodging</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
         Vote on where to stay. The organizer locks it in when ready.
       </p>
-      <LodgingVoting trip={trip} onLodgingUpdated={() => {}} />
+      <LodgingVoting trip={trip} onLodgingUpdated={() => loadTrip(trip?.id)} />
     </div>
   )
 }

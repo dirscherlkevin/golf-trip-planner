@@ -138,7 +138,7 @@ def generate_destination_suggestions(
             public_courses_only=body.public_courses_only,
         )
         # Dedup: re-append manual destinations not covered by AI results (case-insensitive name match)
-        ai_names_lower = {s["name"].lower() for s in results}
+        ai_names_lower = {s.get("name", "").lower() for s in results if s.get("name")}
         for manual in existing_manual:
             if manual.get("name", "").lower() not in ai_names_lower:
                 results.append(manual)
