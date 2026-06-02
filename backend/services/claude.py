@@ -510,3 +510,66 @@ Write only the announcement text — no emojis, no hashtags, no quotes around th
         messages=[{"role": "user", "content": prompt}],
     ))
     return message.content[0].text.strip()
+
+
+def suggest_restaurants(
+    location: str,
+    group_size: int,
+    vibe_types: list,
+    discover_modes: list,
+    hide_chains: bool,
+    extra_notes: str,
+) -> list:
+    """Return 4-5 restaurant suggestions near location as a list of dicts."""
+    from urllib.parse import quote_plus
+
+    vibe_str = ", ".join(vibe_types) if vibe_types else "any cuisine"
+    chain_note = (
+        " Do NOT include chain restaurants (e.g. Applebee's, Chili's, Olive Garden, TGI Fridays, Buffalo Wild Wings)."
+        if hide_chains else ""
+    )
+    if discover_modes:
+        if "top_rated" in discover_modes and "hidden_gem" in discover_modes:
+            discover_note = "Include a mix of highly-rated local favorites AND lesser-known hidden gems."
+        elif "top_rated" in discover_modes:
+            discover_note = "Focus on highly-rated, well-reviewed restaurants."
+        else:
+            discover_note = "Focus on lesser-known local gems that tourists often miss."
+    else:
+        discover_note = "Include a good variety."
+    extra = f" Additional preferences: {extra_notes.strip()}." if extra_notes.strip() else ""
+
+    prompt = f"""You are a local dining expert. Suggest 4-5 restaurants near {location} for a golf group of {group_size} people finishing their round.
+
+Cuisine preference: {vibe_str}{chain_note}
+{discover_note}{extra}
+
+Return ONLY a JSON array. Each object must have exactly these keys:
+{{
+  "name": "Restaurant name",
+  "cuisine": "Short type label, e.g. Steakhouse, Brewery, American Grill",
+  "price_range": "$" or "$$" or "$$$",
+  "vibe": "top_rated" or "hidden_gem" or "both",
+  "reason": "1-2 sentences — why great for a golf group, conversational and specific",
+  "address": "Neighborhood or area only, e.g. 'downtown Northfield' or '2 miles from the course'",
+  "phone": "Phone number string or null if unknown",
+  "maps_search_query": "Best Google Maps search string, e.g. 'Tavern on the Town Northfield MN'"
+}}
+
+Return only the JSON array, no other text."""
+
+    client = _client()
+    message = _call_with_retry(lambda: client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=2000,
+        messages=[{"role": "user", "content": prompt}],
+    ))
+    results = _parse_json_response(message.content[0].text)
+    if not isinstance(results, list):
+        raise ValueError("Expected a JSON array of restaurant suggestions")
+
+    for r in results:
+        query = r.get("maps_search_query") or r.get("name", "")
+        r["maps_url"] = f"https://www.google.com/maps/search/?api=1&query={quote_plus(query)}"
+
+    return results
