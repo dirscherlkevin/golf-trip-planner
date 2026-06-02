@@ -7,7 +7,7 @@ import { getAvailability } from '../../api/availability'
 import RoundsSetup from './RoundsSetup'
 import RoundVoting from './RoundVoting'
 
-export default function PlanningPhase() {
+export default function PlanningPhase({ onGoToLodging }) {
   const { trip, lockPhase } = useTripStore()
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
@@ -133,9 +133,22 @@ export default function PlanningPhase() {
         onRoundUpdated={loadRounds}
       />
 
+      {/* Courses done → nudge to Lodging tab */}
+      {isOrganizer && allRoundsLocked && !lodgingLocked && (
+        <div style={{ marginTop: 24, padding: '14px 18px', background: '#1a2a1a', borderRadius: 10, border: '1px solid var(--accent-green)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--accent-green)', marginBottom: 2 }}>Courses locked — next up: Lodging</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Head to the Lodging tab to pick where you're staying.</div>
+          </div>
+          <button className="btn-primary" onClick={onGoToLodging} style={{ whiteSpace: 'nowrap', marginLeft: 16 }}>
+            Go to Lodging →
+          </button>
+        </div>
+      )}
+
       {/* Advance to Lock It In */}
       {isOrganizer && hasRounds && (
-        <div style={{ marginTop: 32, padding: '16px 20px', background: readyToAdvance ? '#1a2a1a' : '#141414', borderRadius: 10, border: readyToAdvance ? '1px solid var(--accent-green)' : '1px solid #2a2a2a' }}>
+        <div style={{ marginTop: 16, padding: '16px 20px', background: readyToAdvance ? '#1a2a1a' : '#141414', borderRadius: 10, border: readyToAdvance ? '1px solid var(--accent-green)' : '1px solid #2a2a2a' }}>
           {readyToAdvance ? (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>

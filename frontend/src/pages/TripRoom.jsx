@@ -199,7 +199,8 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
         (() => {
           if (trip?.status === 'finalized') return <HypeMoment key={refreshKey} trip={trip} isOrganizer={isOrganizer} />
           const Component = PHASE_COMPONENTS[viewPhase]
-          return Component ? <Component key={refreshKey} /> : null
+          const extraProps = viewPhase === 'courses' ? { onGoToLodging: () => setActiveTab('lodging') } : {}
+          return Component ? <Component key={refreshKey} {...extraProps} /> : null
         })()
       ) : trip?.status === 'finalized' ? (
         <HypeMoment key={refreshKey} trip={trip} isOrganizer={isOrganizer} />
