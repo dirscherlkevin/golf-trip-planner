@@ -201,6 +201,11 @@ export default function SharePage() {
               </div>
             </div>
           )}
+          {data.total_per_person > 0 && (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 6 }}>
+              Fees are AI-estimated — verify before booking
+            </div>
+          )}
           {isMember && (
             <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
               You're a member of this trip — you can edit notes below.
@@ -268,7 +273,7 @@ export default function SharePage() {
                     {r.green_fee != null && (
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ color: 'var(--accent-green)', fontSize: 20, fontWeight: 800 }}>${r.green_fee}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>green fee</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>green fee (est.)</div>
                         {r.cart_fee != null && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>+${r.cart_fee} cart</div>}
                       </div>
                     )}
@@ -331,6 +336,17 @@ export default function SharePage() {
                   </div>
                 )}
               </div>
+              {(data.trip_start || data.trip_end) && (
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, marginBottom: 4 }}>
+                  {data.trip_start && (
+                    <span>Check in: {new Date(data.trip_start + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  )}
+                  {data.trip_start && data.trip_end && <span style={{ margin: '0 8px', opacity: 0.4 }}>·</span>}
+                  {data.trip_end && (
+                    <span>Check out: {new Date(data.trip_end + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  )}
+                </div>
+              )}
               <NotesEditor
                 initialNotes={data.lodging.notes}
                 readOnly={!isMember}
