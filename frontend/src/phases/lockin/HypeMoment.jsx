@@ -1069,16 +1069,31 @@ export default function HypeMoment({ trip, isOrganizer }) {
 
           {data.member_flights?.some(m => m.flights?.arrival || m.flights?.departure) && (
             <Section title="Crew Flights">
-              {data.member_flights.filter(m => m.flights?.arrival || m.flights?.departure).map((m, i) => {
-                const fmt = (f) => [f?.flight_number, f?.airport, f?.date, f?.time].filter(Boolean).join(' · ')
-                return (
-                  <div key={i} style={{ background: '#111', border: '1px solid #2a3a2a', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, color: '#fff', marginBottom: 6 }}>{m.name}</div>
-                    {m.flights?.arrival && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 3 }}>✈️ Arrives: {fmt(m.flights.arrival)}</div>}
-                    {m.flights?.departure && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>🛫 Departs: {fmt(m.flights.departure)}</div>}
+              {(() => {
+                const fmtTime = t => { if (!t) return null; const m = t.match(/^(\d{1,2}):(\d{2})$/); if (!m) return t; const h = parseInt(m[1]); return `${h%12||12}:${m[2]} ${h>=12?'PM':'AM'}` }
+                const fmtDateHdr = iso => { try { return new Date(iso+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) } catch { return iso } }
+                const all = []
+                data.member_flights.forEach(m => {
+                  if (m.flights?.arrival) all.push({ ...m.flights.arrival, icon: '✈️', name: m.name })
+                  if (m.flights?.departure) all.push({ ...m.flights.departure, icon: '🛫', name: m.name })
+                })
+                all.sort((a, b) => ((a.date||'9999')+(a.time||'99:99')).localeCompare((b.date||'9999')+(b.time||'99:99')))
+                const groups = {}, order = []
+                all.forEach(f => { const k = f.date||''; if (!groups[k]) { groups[k]=[]; order.push(k) } groups[k].push(f) })
+                return order.map(day => (
+                  <div key={day} style={{ marginBottom: 14 }}>
+                    {day && <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>{fmtDateHdr(day)}</div>}
+                    {groups[day].map((f, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                        <span>{f.icon}</span>
+                        <span style={{ color: '#fff', minWidth: 68 }}>{fmtTime(f.time) || '—'}</span>
+                        <span>{[f.flight_number, f.airport].filter(Boolean).join(' · ')}</span>
+                        <span style={{ color: 'var(--text-muted)', marginLeft: 'auto', paddingLeft: 8 }}>— {f.name}</span>
+                      </div>
+                    ))}
                   </div>
-                )
-              })}
+                ))
+              })()}
             </Section>
           )}
 
