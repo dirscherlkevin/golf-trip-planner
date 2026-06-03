@@ -7,8 +7,23 @@ from database import get_db
 from models.user import User
 from schemas.user import UserCreate, UserOut, Token, GoogleLoginIn
 from services.auth import hash_password, verify_password, create_access_token, get_user_from_token
+import threading
+import time as _time
 
 router = APIRouter()
+
+_auth_rl_lock = threading.Lock()
+_auth_rl: dict = {}  # email -> [timestamps]
+
+def _check_auth_rate_limit(email: str):
+    now = _time.time()
+    cutoff = now - 300  # 5-minute window
+    with _auth_rl_lock:
+        calls = [t for t in _auth_rl.get(email, []) if t > cutoff]
+        if len(calls) >= 10:
+            raise HTTPException(status_code=429, detail="Too many attempts. Please wait a few minutes.")
+        calls.append(now)
+        _auth_rl[email] = calls
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
@@ -19,6 +34,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 @router.post("/register", response_model=Token)
 def register(data: UserCreate, db: Session = Depends(get_db)):
+    _check_auth_rate_limit(data.email.lower())
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     user = User(
@@ -33,6 +49,7 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    _check_auth_rate_limit(form.username.lower())
     user = db.query(User).filter(User.email == form.username).first()
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid credentials")

@@ -85,7 +85,7 @@ export default function SharePage() {
         if (err === 404) setError("This trip isn't locked in yet.")
         else setError("Failed to load trip.")
       })
-  }, [id])
+  }, [id, token])
 
   const isMember = !!(user && data?.is_member)
 
