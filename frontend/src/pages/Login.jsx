@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 
 export default function Login() {
@@ -8,6 +8,8 @@ export default function Login() {
   const [serverStatus, setServerStatus] = useState(null)
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle)
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from?.pathname || '/'
 
   const checkServer = async () => {
     setServerStatus('checking')
@@ -24,7 +26,7 @@ export default function Login() {
     setLoading(true)
     try {
       await loginWithGoogle()
-      navigate('/')
+      navigate(from, { replace: true })
     } catch (err) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
         setLoading(false)

@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuthStore } from './store/auth'
 import Login from './pages/Login'
@@ -9,7 +9,8 @@ import SharePage from './pages/SharePage'
 
 function PrivateRoute({ children }) {
   const token = useAuthStore((s) => s.token)
-  return token ? children : <Navigate to="/login" replace />
+  const location = useLocation()
+  return token ? children : <Navigate to="/login" state={{ from: location }} replace />
 }
 
 function SpinupScreen({ slow }) {
