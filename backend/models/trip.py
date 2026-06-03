@@ -48,3 +48,7 @@ class TripMember(Base):
     flights = Column(JSONB, nullable=True)
 
     trip = relationship("Trip", back_populates="members")
+
+    @property
+    def name(self):
+        return None  # populated manually via _inject_names after user lookup

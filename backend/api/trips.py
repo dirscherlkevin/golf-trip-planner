@@ -107,6 +107,17 @@ def list_pending_invites(db: Session = Depends(get_db), user: User = Depends(get
         })
     return result
 
+def _inject_names(out: TripOut, db: Session) -> None:
+    """Populate member.name from the users table without a SQLAlchemy relationship."""
+    user_ids = [m.user_id for m in out.members if m.user_id]
+    if not user_ids:
+        return
+    users = db.query(User).filter(User.id.in_(user_ids)).all()
+    name_map = {u.id: u.name or u.email.split('@')[0].title() for u in users}
+    for m in out.members:
+        if m.user_id and m.user_id in name_map:
+            m.name = name_map[m.user_id]
+
 @router.get("/{trip_id}", response_model=TripOut)
 def get_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = _get_trip_for_member(trip_id, user.id, db)
@@ -133,6 +144,7 @@ def get_trip(trip_id: int, db: Session = Depends(get_db), user: User = Depends(g
 
     out = TripOut.model_validate(trip)
     out = out.model_copy(update={"current_phase": current_phase, "user_action_pending": action_pending})
+    _inject_names(out, db)
     return out
 
 @router.post("/{trip_id}/invite", response_model=InviteOut)
@@ -279,6 +291,44 @@ def update_member_flights(trip_id: int, member_id: int, body: _FlightsBody, db: 
     member.flights = body.flights
     db.commit()
     return {"ok": True}
+
+class _TripUpdateBody(BaseModel):
+    name: Optional[str] = None
+    trip_start: Optional[str] = None  # ISO date string YYYY-MM-DD
+    trip_end: Optional[str] = None
+
+@router.patch("/{trip_id}")
+def update_trip(trip_id: int, body: _TripUpdateBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    from datetime import date as _date
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip or trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can edit trip details")
+    if body.name is not None:
+        if not body.name.strip():
+            raise HTTPException(status_code=400, detail="Name cannot be empty")
+        trip.name = body.name.strip()
+    if body.trip_start is not None:
+        trip.trip_start = _date.fromisoformat(body.trip_start) if body.trip_start else None
+    if body.trip_end is not None:
+        trip.trip_end = _date.fromisoformat(body.trip_end) if body.trip_end else None
+    db.commit()
+    db.refresh(trip)
+    out = TripOut.model_validate(trip)
+    _inject_names(out, db)
+    return out
+
+@router.delete("/{trip_id}/members/{member_id}", status_code=204)
+def remove_member(trip_id: int, member_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip or trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can remove members")
+    member = db.query(TripMember).filter(TripMember.id == member_id, TripMember.trip_id == trip_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    if member.user_id == user.id:
+        raise HTTPException(status_code=400, detail="Cannot remove yourself from the trip")
+    db.delete(member)
+    db.commit()
 
 @router.post("/{trip_id}/nudge/{target_user_id}", status_code=204)
 def nudge_member(trip_id: int, target_user_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):

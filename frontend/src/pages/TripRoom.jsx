@@ -286,6 +286,27 @@ export default function TripRoom() {
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
 
+  const [editingTrip, setEditingTrip] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editStart, setEditStart] = useState('')
+  const [editEnd, setEditEnd] = useState('')
+  const [savingTrip, setSavingTrip] = useState(false)
+
+  const startTripEdit = () => {
+    setEditName(trip.name)
+    setEditStart(trip.trip_start || '')
+    setEditEnd(trip.trip_end || '')
+    setEditingTrip(true)
+  }
+  const saveTripEdit = async () => {
+    setSavingTrip(true)
+    try {
+      await client.patch(`/trips/${trip.id}`, { name: editName, trip_start: editStart || null, trip_end: editEnd || null })
+      setEditingTrip(false)
+      loadTrip(trip.id)
+    } finally { setSavingTrip(false) }
+  }
+
   // M1 — responsive MemberPanel
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [showMembers, setShowMembers] = useState(false)
@@ -342,7 +363,38 @@ export default function TripRoom() {
                 </button>
               )}
             </div>
-            <h1 style={{ color: 'var(--accent-green)', fontSize: 24, margin: 0 }}>{trip.name}</h1>
+            {editingTrip ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
+                <input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Trip name"
+                  style={{ fontSize: 18, fontWeight: 700, padding: '5px 10px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 6, color: 'var(--accent-green)', width: '100%', boxSizing: 'border-box' }} />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Start date</label>
+                    <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)}
+                      style={{ padding: '4px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#ccc', fontSize: 13, colorScheme: 'dark' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>End date</label>
+                    <input type="date" value={editEnd} onChange={e => setEditEnd(e.target.value)}
+                      style={{ padding: '4px 8px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 5, color: '#ccc', fontSize: 13, colorScheme: 'dark' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="btn-primary" onClick={saveTripEdit} disabled={savingTrip || !editName.trim()} style={{ fontSize: 12, padding: '4px 14px' }}>
+                    {savingTrip ? '...' : 'Save'}
+                  </button>
+                  <button className="btn-ghost" onClick={() => setEditingTrip(false)} style={{ fontSize: 12, padding: '4px 10px' }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h1 style={{ color: 'var(--accent-green)', fontSize: 24, margin: 0 }}>{trip.name}</h1>
+                {isOrganizer && (
+                  <button className="btn-ghost" onClick={startTripEdit} title="Edit trip name and dates"
+                    style={{ fontSize: 12, padding: '2px 7px', color: 'var(--text-muted)', flexShrink: 0 }}>✏️</button>
+                )}
+              </div>
+            )}
             <div style={{ marginTop: 6 }}>
               <CostEstimate tripId={trip.id} trip={trip} isOrganizer={user?.id === trip?.organizer_id} />
             </div>

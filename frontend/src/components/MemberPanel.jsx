@@ -3,6 +3,18 @@ import { useAuthStore } from '../store/auth'
 import { useTripStore } from '../store/trip'
 import client from '../api/client'
 
+function CopyButton({ label, getValue }) {
+  const [copied, setCopied] = useState(false)
+  const handle = async () => {
+    try { await navigator.clipboard.writeText(getValue()); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { }
+  }
+  return (
+    <button className="btn-ghost" onClick={handle} style={{ fontSize: 11, padding: '1px 6px', color: copied ? 'var(--accent-green)' : '#888' }}>
+      {copied ? '✓ Copied' : label}
+    </button>
+  )
+}
+
 function emailToName(email) {
   if (!email) return 'Unknown'
   return email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -28,6 +40,8 @@ export default function MemberPanel({ trip }) {
   const openPhase = phases.find(p => p.status === 'open')?.phase ?? null
   const [availability, setAvailability] = useState(null)
   const [nudging, setNudging] = useState({})
+  const [removing, setRemoving] = useState({})
+  const [confirmRemove, setConfirmRemove] = useState(null)
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteUrl, setInviteUrl] = useState('')
@@ -56,6 +70,22 @@ export default function MemberPanel({ trip }) {
   const members = trip?.members?.filter(m => m.joined === 'joined') ?? []
   const pending = trip?.members?.filter(m => m.joined !== 'joined') ?? []
   const nonResponders = members.filter(m => m.user_id && !respondedIds.has(m.user_id))
+
+  const removeMember = async (memberId) => {
+    setRemoving(r => ({ ...r, [memberId]: true }))
+    try {
+      await client.delete(`/trips/${trip.id}/members/${memberId}`)
+      setConfirmRemove(null)
+      loadTrip(trip.id)
+    } catch { } finally {
+      setRemoving(r => { const n = { ...r }; delete n[memberId]; return n })
+    }
+  }
+
+  const copyInviteLink = async (token) => {
+    const url = `${window.location.origin}/join/${token}`
+    try { await navigator.clipboard.writeText(url) } catch { }
+  }
 
   const nudge = async (userId) => {
     setNudging(n => ({ ...n, [userId]: true }))
@@ -143,7 +173,7 @@ export default function MemberPanel({ trip }) {
       {members.map(m => {
         const isMe = m.user_id === user?.id
         const responded = respondedIds.has(m.user_id)
-        const name = isMe && user?.name ? user.name : emailToName(m.invite_email)
+        const name = m.name || (isMe && user?.name) || emailToName(m.invite_email)
         const effectiveHcp = m.handicap ?? (isMe ? user?.handicap : null)
         const hcp = effectiveHcp != null ? `HCP ${effectiveHcp}` : null
         const nudgedAgo = fmtNudge(m.last_nudged_at)
@@ -205,6 +235,23 @@ export default function MemberPanel({ trip }) {
                 {nudgedAgo && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>last {nudgedAgo}</span>}
               </div>
             )}
+            {isOrganizer && !isMe && (
+              <div style={{ marginLeft: 20, marginTop: 2 }}>
+                {confirmRemove === m.id ? (
+                  <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: '#e55' }}>Remove?</span>
+                    <button className="btn-ghost" onClick={() => removeMember(m.id)} disabled={removing[m.id]}
+                      style={{ fontSize: 11, padding: '1px 6px', color: '#e55', borderColor: '#e55' }}>
+                      {removing[m.id] ? '...' : 'Yes'}
+                    </button>
+                    <button className="btn-ghost" onClick={() => setConfirmRemove(null)} style={{ fontSize: 11, padding: '1px 5px' }}>✕</button>
+                  </div>
+                ) : (
+                  <button className="btn-ghost" onClick={() => setConfirmRemove(m.id)}
+                    style={{ fontSize: 11, padding: '1px 6px', color: '#888' }}>Remove</button>
+                )}
+              </div>
+            )}
           </div>
         )
       })}
@@ -212,9 +259,28 @@ export default function MemberPanel({ trip }) {
       {pending.length > 0 && (
         <div style={{ marginTop: 4, marginBottom: 4 }}>
           {pending.map(m => (
-            <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: 12, color: 'var(--text-muted)' }}>
-              <span>📨</span>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.invite_email ?? 'Pending'}</span>
+            <div key={m.id} style={{ marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                <span>📨</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{m.invite_email ?? 'Pending'}</span>
+              </div>
+              {isOrganizer && m.invite_token && (
+                <div style={{ marginLeft: 18, marginTop: 2, display: 'flex', gap: 5, alignItems: 'center' }}>
+                  <CopyButton label="Copy invite link" getValue={() => `${window.location.origin}/join/${m.invite_token}`} />
+                  {confirmRemove === m.id ? (
+                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                      <button className="btn-ghost" onClick={() => removeMember(m.id)} disabled={removing[m.id]}
+                        style={{ fontSize: 11, padding: '1px 6px', color: '#e55', borderColor: '#e55' }}>
+                        {removing[m.id] ? '...' : 'Cancel invite'}
+                      </button>
+                      <button className="btn-ghost" onClick={() => setConfirmRemove(null)} style={{ fontSize: 11, padding: '1px 5px' }}>✕</button>
+                    </div>
+                  ) : (
+                    <button className="btn-ghost" onClick={() => setConfirmRemove(m.id)}
+                      style={{ fontSize: 11, padding: '1px 6px', color: '#888' }}>Cancel</button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

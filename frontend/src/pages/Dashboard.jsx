@@ -210,6 +210,11 @@ export default function Dashboard() {
                       {PHASE_LABELS[trip.current_phase] || trip.current_phase}
                     </span>
                   )}
+                  {trip.budget_happy_spend > 0 && (
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                      · Budget ${Math.round(trip.budget_happy_spend).toLocaleString()}/pp
+                    </span>
+                  )}
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} onClick={e => e.stopPropagation()}>
@@ -244,7 +249,7 @@ export default function Dashboard() {
       )}
 
       <PendingInvites onJoined={handleJoined} />
-      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, marginTop: 32 }}>v0.6.0</div>
+      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, marginTop: 32 }}>built {__BUILD_DATE__}</div>
     </div>
   )
 }

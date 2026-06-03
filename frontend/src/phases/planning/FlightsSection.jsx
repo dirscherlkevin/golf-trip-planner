@@ -87,9 +87,8 @@ function MemberFlightCard({ member, tripId, canEdit, onSaved }) {
     }
   }
 
-  const displayName = member.invite_email
-    ? member.invite_email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-    : `Member ${member.id}`
+  const displayName = member.name
+    || (member.invite_email ? member.invite_email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : `Member ${member.id}`)
 
   return (
     <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
