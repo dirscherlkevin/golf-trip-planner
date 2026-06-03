@@ -376,7 +376,7 @@ Return ONLY a JSON array. Each object must have:
   "beds": 5,
   "capacity": 10,
   "distance_to_courses": "5 min to Course A, 15 min to Course B",
-  "website": "Real working URL. For hotels: specific property page on the chain site (e.g. https://www.marriott.com/en-us/hotels/mspwe-name/overview/). For rentals: Airbnb or VRBO search URL for the destination area (e.g. https://www.airbnb.com/s/Scottsdale--AZ/homes or https://www.vrbo.com/vacation-rentals/usa/arizona/scottsdale) — do NOT invent listing IDs.",
+  "website": "Specific hotel property page URL on the chain's website (e.g. https://www.marriott.com/en-us/hotels/mspwe-name/overview/). Use the real URL for this property — do not invent paths.",
   "highlights": "2-sentence description of why this works for a golf group"
 }}
 

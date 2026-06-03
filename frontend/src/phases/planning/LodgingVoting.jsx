@@ -13,12 +13,7 @@ import {
   unlockLodgingOption,
   removeLodgingOption,
 } from '../../api/lodging'
-
-const LODGING_TYPES = [
-  { value: 'rental', label: 'Rental House' },
-  { value: 'hotel', label: 'Hotel' },
-  { value: 'both', label: 'Show Both' },
-]
+import { getDestinations } from '../../api/destinations'
 
 function LodgingOptionCard({ option, tripId, isLocked, isOrganizer, onUpdated }) {
   const { id, option_data, vote_tally } = option
@@ -457,6 +452,30 @@ function ManualLodgingForm({ tripId, onAdded }) {
   )
 }
 
+function RentalSearchButtons({ destinationName }) {
+  const q = encodeURIComponent(destinationName || '')
+  const airbnbUrl = q ? `https://www.airbnb.com/s/${q}/homes` : 'https://www.airbnb.com'
+  const vrboUrl = q ? `https://www.vrbo.com/search?q=${q}` : 'https://www.vrbo.com'
+  return (
+    <div className="card">
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Search Rental Platforms</div>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+        Find a vacation rental directly on Airbnb or VRBO{destinationName ? ` near ${destinationName}` : ''}.
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <a href={airbnbUrl} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'inline-block', padding: '8px 16px', borderRadius: 6, border: '1px solid #555', background: '#2a2a2a', color: '#fff', fontSize: 13, textDecoration: 'none' }}>
+          Search Airbnb →
+        </a>
+        <a href={vrboUrl} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'inline-block', padding: '8px 16px', borderRadius: 6, border: '1px solid #555', background: '#2a2a2a', color: '#fff', fontSize: 13, textDecoration: 'none' }}>
+          Search VRBO →
+        </a>
+      </div>
+    </div>
+  )
+}
+
 export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) {
   const user = useAuthStore(s => s.user)
   const isOrganizer = user?.id === trip?.organizer_id
@@ -466,9 +485,9 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
 
-  const [selectedType, setSelectedType] = useState('rental')
   const [roomsNeeded, setRoomsNeeded] = useState('')
   const [bedsNeeded, setBedsNeeded] = useState('')
+  const [destinationName, setDestinationName] = useState('')
   const [settingUp, setSettingUp] = useState(false)
   const [setupError, setSetupError] = useState(null)
 
@@ -503,6 +522,11 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
 
   useEffect(() => {
     loadLodging()
+    if (trip?.id) {
+      getDestinations(trip.id)
+        .then(d => setDestinationName(d.suggestion?.locked_destination?.name || ''))
+        .catch(() => {})
+    }
   }, [trip?.id])
 
   // Poll every 5s while pending
@@ -518,7 +542,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
     setSettingUp(true)
     setSetupError(null)
     try {
-      const data = await setupLodging(trip.id, selectedType, roomsNeeded ? parseInt(roomsNeeded) : undefined, bedsNeeded ? parseInt(bedsNeeded) : undefined)
+      const data = await setupLodging(trip.id, 'hotel', roomsNeeded ? parseInt(roomsNeeded) : undefined, bedsNeeded ? parseInt(bedsNeeded) : undefined)
       setLodging(data)
       setNotSetUp(false)
     } catch {
@@ -598,6 +622,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
             </div>
             <ManualLodgingForm tripId={trip.id} onAdded={() => { setNotSetUp(false); loadLodging() }} />
           </div>
+          <RentalSearchButtons destinationName={destinationName} />
         </div>
       )
     }
@@ -609,21 +634,6 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
           <h3 style={{ marginBottom: 4, fontWeight: 600, marginTop: 0 }}>Find Lodging with AI</h3>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
             AI will suggest options based on your destination and group size.
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>What type of lodging?</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {LODGING_TYPES.map(lt => (
-                <button
-                  key={lt.value}
-                  onClick={() => setSelectedType(lt.value)}
-                  className={selectedType === lt.value ? 'btn-primary' : 'btn-ghost'}
-                  style={{ fontSize: 13 }}
-                >
-                  {lt.label}
-                </button>
-              ))}
-            </div>
           </div>
           <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
             <div>
@@ -660,6 +670,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
           </div>
           <ManualLodgingForm tripId={trip.id} onAdded={() => { setNotSetUp(false); loadLodging() }} />
         </div>
+        <RentalSearchButtons destinationName={destinationName} />
       </div>
     )
   }
@@ -752,6 +763,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
             </div>
             <ManualLodgingForm tripId={trip.id} onAdded={loadLodging} />
           </div>
+          <RentalSearchButtons destinationName={destinationName} />
         </div>
       )}
     </div>
