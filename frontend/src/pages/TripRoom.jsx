@@ -254,8 +254,8 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
         })}
       </div>
 
-      {/* Locked-phase read-only banner */}
-      {viewPhase && phases.find(p => p.phase === viewBackendPhase)?.status === 'locked' && (
+      {/* Locked-phase read-only banner — suppressed on Flights tab since it stays editable */}
+      {viewPhase && viewPhase !== 'flights' && phases.find(p => p.phase === viewBackendPhase)?.status === 'locked' && (
         <div style={{
           fontSize: 12, color: 'var(--text-muted)', background: '#1a1a1a',
           border: '1px solid #2a2a2a', borderRadius: 6, padding: '6px 12px',
@@ -267,7 +267,7 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
 
       {viewPhase ? (
         (() => {
-          if (trip?.status === 'finalized') return <HypeMoment key={refreshKey} trip={trip} isOrganizer={isOrganizer} />
+          if (trip?.status === 'finalized' && viewPhase !== 'flights') return <HypeMoment key={refreshKey} trip={trip} isOrganizer={isOrganizer} />
           const Component = PHASE_COMPONENTS[viewPhase]
           const extraProps = viewPhase === 'courses' ? { onGoToLodging: () => setActiveTab('lodging') } : {}
           return Component ? <Component key={refreshKey} {...extraProps} /> : null
