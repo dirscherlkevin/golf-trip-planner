@@ -69,7 +69,7 @@ function MemberFlightCard({ member, tripId, canEdit, onSaved }) {
   return (
     <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 8, padding: '12px 14px', marginBottom: 10 }}>
       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>
-        {member.name || member.invite_email || 'Member'}
+        {member.invite_email ? member.invite_email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : `Member ${member.id}`}
       </div>
       <FlightFields label="✈️ Arrival" value={arrival} onChange={setArrival} readOnly={!canEdit} />
       <FlightFields label="🛫 Departure" value={departure} onChange={setDeparture} readOnly={!canEdit} />

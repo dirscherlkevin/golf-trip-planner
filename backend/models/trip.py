@@ -48,10 +48,3 @@ class TripMember(Base):
     flights = Column(JSONB, nullable=True)
 
     trip = relationship("Trip", back_populates="members")
-    user_rel = relationship("User", foreign_keys=[user_id])
-
-    @property
-    def name(self):
-        if self.user_rel:
-            return self.user_rel.name or self.user_rel.email.split('@')[0].title()
-        return self.invite_email.split('@')[0].title() if self.invite_email else None
