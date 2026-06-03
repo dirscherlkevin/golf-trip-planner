@@ -1,10 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import get_db
 from api.auth import get_current_user
 from models.trip import Trip, TripMember
 from models.user import User
+
+_optional_token = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 from models.destination import DestinationSuggestion
 from models.round import TripRound, CourseNomination
 from models.lodging import LodgingOption
@@ -25,7 +29,7 @@ def _fmt_date(d) -> str:
 
 
 @router.get("/{identifier}")
-def get_trip_share(identifier: str, db: Session = Depends(get_db)):
+def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Optional[str] = Depends(_optional_token)):
     import re
     _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
     if _UUID_RE.match(identifier):
@@ -227,6 +231,14 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db)):
 
     restaurant_lodging_picks.sort(key=lambda x: len(x["up_votes"]), reverse=True)
 
+    # Determine membership from optional auth token
+    is_member = False
+    if token:
+        from services.auth import get_user_from_token
+        requester = get_user_from_token(token, db)
+        if requester:
+            is_member = any(m.user_id == requester.id for m in joined_members)
+
     return {
         "trip_id": trip.id,
         "trip_name": trip.name,
@@ -244,6 +256,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db)):
         "lodging_per_person": round(lodging_per_person, 2) if lodging_per_person else None,
         "total_course_per_person": round(total_course_per_person, 2) if total_course_per_person else None,
         "total_per_person": round(total_per_person, 2) if total_per_person else None,
+        "is_member": is_member,
         "share_tagline": trip.share_tagline or None,
         "share_token": trip.share_token,
         "trip_start": trip.trip_start.isoformat() if trip.trip_start else None,
