@@ -109,10 +109,6 @@ export default function SharePage() {
   const mapLink = (name, location) =>
     `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([name, location].filter(Boolean).join(' '))}`
 
-  const baseDomain = (url) => {
-    if (!url) return null
-    try { const u = new URL(url); return `${u.protocol}//${u.hostname}` } catch { return url }
-  }
 
   const handleEmail = () => {
     const subject = encodeURIComponent(`${data.trip_name} — Golf Trip!`)
@@ -142,7 +138,7 @@ export default function SharePage() {
       data.lodging ? `${data.lodging.name}${data.lodging.type ? ` (${data.lodging.type})` : ''}` : null,
       data.lodging?.price_per_night ? `  $${data.lodging.price_per_night}/night total` : null,
       data.lodging_per_person ? `  ~$${Math.round(data.lodging_per_person).toLocaleString()}/person for the trip` : null,
-      (data.lodging?.website || data.lodging?.booking_link) ? `  Website: ${baseDomain(data.lodging.website || data.lodging.booking_link)}` : null,
+      (data.lodging?.website || data.lodging?.booking_link) ? `  Website: ${data.lodging.website || data.lodging.booking_link}` : null,
       (data.lodging?.address || data.lodging?.name) ? `  Map: ${mapLink(data.lodging.address || data.lodging.name, '')}` : null,
       data.lodging?.notes ? `  Notes: ${data.lodging.notes}` : null,
       ``,
@@ -344,7 +340,7 @@ export default function SharePage() {
               />
               <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
                 {(data.lodging.website || data.lodging.booking_link) && (
-                  <a href={baseDomain(data.lodging.website || data.lodging.booking_link)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-green)', fontSize: 13, textDecoration: 'none', opacity: 0.8 }}>
+                  <a href={data.lodging.website || data.lodging.booking_link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-green)', fontSize: 13, textDecoration: 'none', opacity: 0.8 }}>
                     🌐 Visit website →
                   </a>
                 )}
