@@ -81,8 +81,7 @@ function MemberFlightCard({ member, tripId, canEdit, onSaved }) {
         flights: Object.keys(flights).length ? flights : null,
       })
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      onSaved()
+      setTimeout(() => setSaved(false), 2500)
     } finally {
       setSaving(false)
     }
