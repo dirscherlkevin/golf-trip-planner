@@ -50,7 +50,6 @@ function LodgingPhase() {
         Vote on where to stay. The organizer locks it in when ready.
       </p>
       <LodgingVoting trip={trip} onLodgingUpdated={() => {}} onLockChange={setLodgingLocked} />
-      <FlightsSection trip={trip} />
 
       {isOrganizer && allCoursesLocked && (
         <div style={{ marginTop: 24, padding: '16px 20px', background: lodgingLocked ? '#1a2a1a' : '#141414', borderRadius: 10, border: lodgingLocked ? '1px solid var(--accent-green)' : '1px solid #2a2a2a' }}>
@@ -134,11 +133,25 @@ function TodoBanner({ phases, user, trip, refreshKey }) {
   )
 }
 
+function FlightsPhase() {
+  const { trip, loadTrip } = useTripStore()
+  return (
+    <div>
+      <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Flights</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: 13 }}>
+        Track when everyone arrives and departs.
+      </p>
+      <FlightsSection trip={trip} onUpdated={() => loadTrip(trip.id)} />
+    </div>
+  )
+}
+
 const PHASE_COMPONENTS = {
   availability: AvailabilityPhase,
   destination: DestinationPhase,
   courses: PlanningPhase,
   lodging: LodgingPhase,
+  flights: FlightsPhase,
   locked_in: LockInPhase,
 }
 
@@ -147,6 +160,7 @@ const PHASE_LABELS = {
   destination: 'Destinations',
   courses: 'Courses',
   lodging: 'Lodging',
+  flights: 'Flights',
   locked_in: 'Lock It In',
 }
 
@@ -172,6 +186,7 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
       return [
         { ...p, displayPhase: 'courses' },
         { ...p, displayPhase: 'lodging' },
+        { ...p, displayPhase: 'flights' },
       ]
     }
     return [{ ...p, displayPhase: p.phase }]
@@ -195,7 +210,7 @@ function PhaseGate({ phases, isOrganizer, onReopen, trip, refreshKey }) {
           const isPending = p.status === 'pending'
           const isActive = viewPhase === p.displayPhase
           // Only show reopen on the 'courses' tab, not the 'lodging' tab (same backend phase)
-          const canReopen = isOrganizer && prevLockedPhase?.phase === backendPhase(p.displayPhase) && REOPENABLE.has(backendPhase(p.displayPhase)) && p.displayPhase !== 'lodging'
+          const canReopen = isOrganizer && prevLockedPhase?.phase === backendPhase(p.displayPhase) && REOPENABLE.has(backendPhase(p.displayPhase)) && p.displayPhase !== 'lodging' && p.displayPhase !== 'flights'
           const clickable = !isPending
 
           return (

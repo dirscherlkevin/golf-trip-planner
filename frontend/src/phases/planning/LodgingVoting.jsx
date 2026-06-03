@@ -631,9 +631,9 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* AI card */}
         <div className="card">
-          <h3 style={{ marginBottom: 4, fontWeight: 600, marginTop: 0 }}>Find Lodging with AI</h3>
+          <h3 style={{ marginBottom: 4, fontWeight: 600, marginTop: 0 }}>Find Hotel with AI</h3>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
-            AI will suggest options based on your destination and group size.
+            AI will suggest hotels based on your destination and group size.
           </div>
           <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
             <div>
@@ -650,7 +650,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
           {setupError && <div style={{ color: '#e55', fontSize: 13, marginBottom: 12 }}>{setupError}</div>}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <button className="btn-primary" onClick={handleSetup} disabled={settingUp}>
-              {settingUp ? 'Setting up...' : 'Find Lodging Options with AI'}
+              {settingUp ? 'Setting up...' : 'Find Hotel Options with AI'}
             </button>
             <button className="btn-ghost" onClick={async () => {
               try { await client.patch(`/trips/${trip.id}/lodging-skipped`, { skipped: true }) } catch {}
@@ -662,6 +662,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
           </div>
         </div>
 
+        <RentalSearchButtons destinationName={destinationName} />
         {/* Manual card */}
         <div className="card">
           <h3 style={{ marginBottom: 4, fontWeight: 600, marginTop: 0 }}>Add Lodging Manually</h3>
@@ -670,7 +671,6 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
           </div>
           <ManualLodgingForm tripId={trip.id} onAdded={() => { setNotSetUp(false); loadLodging() }} />
         </div>
-        <RentalSearchButtons destinationName={destinationName} />
       </div>
     )
   }
@@ -755,6 +755,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
               )}
             </div>
           )}
+          <RentalSearchButtons destinationName={destinationName} />
           {/* Manual card */}
           <div className="card">
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Add Lodging Manually</div>
@@ -763,7 +764,6 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
             </div>
             <ManualLodgingForm tripId={trip.id} onAdded={loadLodging} />
           </div>
-          <RentalSearchButtons destinationName={destinationName} />
         </div>
       )}
     </div>

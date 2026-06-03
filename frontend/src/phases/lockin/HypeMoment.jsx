@@ -1067,6 +1067,21 @@ export default function HypeMoment({ trip, isOrganizer }) {
             </Section>
           )}
 
+          {data.member_flights?.some(m => m.flights?.arrival || m.flights?.departure) && (
+            <Section title="Crew Flights">
+              {data.member_flights.filter(m => m.flights?.arrival || m.flights?.departure).map((m, i) => {
+                const fmt = (f) => [f?.flight_number, f?.airport, f?.date, f?.time].filter(Boolean).join(' · ')
+                return (
+                  <div key={i} style={{ background: '#111', border: '1px solid #2a3a2a', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#fff', marginBottom: 6 }}>{m.name}</div>
+                    {m.flights?.arrival && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 3 }}>✈️ Arrives: {fmt(m.flights.arrival)}</div>}
+                    {m.flights?.departure && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>🛫 Departs: {fmt(m.flights.departure)}</div>}
+                  </div>
+                )
+              })}
+            </Section>
+          )}
+
         </>
       )}
     </div>
