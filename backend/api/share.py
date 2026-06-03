@@ -73,10 +73,15 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
     )
     member_user_ids = [m.user_id for m in joined_members if m.user_id is not None]
     members = []
+    member_flights = []
     if member_user_ids:
         users = db.query(User).filter(User.id.in_(member_user_ids)).all()
         user_map = {u.id: (u.name or _email_to_display_name(u.email)) for u in users}
         members = [user_map[uid] for uid in member_user_ids if uid in user_map]
+        member_flights = [
+            {"name": user_map[m.user_id], "flights": m.flights or {}}
+            for m in joined_members if m.user_id and m.user_id in user_map
+        ]
 
     # Rounds
     rounds_db = (
@@ -262,6 +267,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
         "trip_start": trip.trip_start.isoformat() if trip.trip_start else None,
         "trip_end": trip.trip_end.isoformat() if trip.trip_end else None,
         "restaurant_lodging_picks": restaurant_lodging_picks,
+        "member_flights": member_flights,
     }
 
 

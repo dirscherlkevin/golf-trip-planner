@@ -355,6 +355,27 @@ export default function SharePage() {
           </section>
         )}
 
+        {/* Crew Flights */}
+        {data.member_flights?.some(m => m.flights?.arrival || m.flights?.departure) && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader>Crew Flights</SectionHeader>
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {data.member_flights.filter(m => m.flights?.arrival || m.flights?.departure).map((m, i) => {
+                const a = m.flights?.arrival
+                const d = m.flights?.departure
+                const fmt = (f) => [f?.flight_number, f?.airport, f?.date, f?.time].filter(Boolean).join(' · ')
+                return (
+                  <div key={i} style={{ background: '#111b11', border: '1px solid #243524', borderRadius: 10, padding: '12px 16px' }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#fff', marginBottom: 6 }}>{m.name}</div>
+                    {a && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 3 }}>✈️ Arrives: {fmt(a)}</div>}
+                    {d && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>🛫 Departs: {fmt(d)}</div>}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Email export */}
         <div style={{ textAlign: 'center', marginTop: 40, paddingTop: 24, borderTop: '1px solid #1f2d1f' }}>
           <button onClick={handleEmail} style={{ background: '#1a2a1a', border: '1px solid var(--accent-green)', borderRadius: 8, color: 'var(--accent-green)', fontSize: 13, padding: '10px 20px', cursor: 'pointer' }}>

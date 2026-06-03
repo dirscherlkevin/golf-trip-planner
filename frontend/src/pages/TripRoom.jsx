@@ -9,6 +9,7 @@ import AvailabilityPhase from '../phases/availability/AvailabilityPhase'
 import DestinationPhase from '../phases/destination/DestinationPhase'
 import PlanningPhase from '../phases/planning/PlanningPhase'
 import LodgingVoting from '../phases/planning/LodgingVoting'
+import FlightsSection from '../phases/planning/FlightsSection'
 import LockInPhase from '../phases/lockin/LockInPhase'
 import HypeMoment from '../phases/lockin/HypeMoment'
 import { getRounds } from '../api/rounds'
@@ -49,6 +50,7 @@ function LodgingPhase() {
         Vote on where to stay. The organizer locks it in when ready.
       </p>
       <LodgingVoting trip={trip} onLodgingUpdated={() => {}} onLockChange={setLodgingLocked} />
+      <FlightsSection trip={trip} />
 
       {isOrganizer && allCoursesLocked && (
         <div style={{ marginTop: 24, padding: '16px 20px', background: lodgingLocked ? '#1a2a1a' : '#141414', borderRadius: 10, border: lodgingLocked ? '1px solid var(--accent-green)' : '1px solid #2a2a2a' }}>

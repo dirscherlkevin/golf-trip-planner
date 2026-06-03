@@ -1,5 +1,6 @@
 import uuid
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Date, Boolean, Float, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -44,5 +45,13 @@ class TripMember(Base):
     joined_at = Column(DateTime(timezone=True), nullable=True)
     handicap = Column(Float, nullable=True)
     last_nudged_at = Column(DateTime(timezone=True), nullable=True)
+    flights = Column(JSONB, nullable=True)
 
     trip = relationship("Trip", back_populates="members")
+    user_rel = relationship("User", foreign_keys=[user_id])
+
+    @property
+    def name(self):
+        if self.user_rel:
+            return self.user_rel.name or self.user_rel.email.split('@')[0].title()
+        return self.invite_email.split('@')[0].title() if self.invite_email else None

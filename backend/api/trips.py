@@ -263,6 +263,23 @@ def update_handicap(trip_id: int, body: _HandicapBody, db: Session = Depends(get
     db.commit()
     return {"ok": True, "handicap": member.handicap}
 
+class _FlightsBody(BaseModel):
+    flights: Optional[dict] = None
+
+@router.patch("/{trip_id}/members/{member_id}/flights")
+def update_member_flights(trip_id: int, member_id: int, body: _FlightsBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    member = db.query(TripMember).filter(TripMember.id == member_id, TripMember.trip_id == trip_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+    if trip.organizer_id != user.id and member.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    member.flights = body.flights
+    db.commit()
+    return {"ok": True}
+
 @router.post("/{trip_id}/nudge/{target_user_id}", status_code=204)
 def nudge_member(trip_id: int, target_user_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     trip = db.query(Trip).filter(Trip.id == trip_id).first()

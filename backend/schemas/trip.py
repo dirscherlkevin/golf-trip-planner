@@ -12,6 +12,8 @@ class TripMemberOut(BaseModel):
     user_id: Optional[int]
     handicap: Optional[float] = None
     last_nudged_at: Optional[datetime] = None
+    name: Optional[str] = None
+    flights: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 
