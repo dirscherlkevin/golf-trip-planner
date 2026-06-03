@@ -376,7 +376,7 @@ Return ONLY a JSON array. Each object must have:
   "beds": 5,
   "capacity": 10,
   "distance_to_courses": "5 min to Course A, 15 min to Course B",
-  "booking_link": "https://vrbo.com/... or https://marriott.com/... (realistic placeholder OK)",
+  "website": "https://www.vrbo.com or https://www.marriott.com (main website homepage ONLY — no specific property/room URLs, no paths beyond the root domain)",
   "highlights": "2-sentence description of why this works for a golf group"
 }}
 
