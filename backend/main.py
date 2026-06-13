@@ -34,7 +34,7 @@ app = FastAPI(title="Golf Trip Planner API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://golftrip-af5aa.web.app", "http://localhost:5173"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,64 +42,73 @@ app.add_middleware(
 
 Base.metadata.create_all(bind=engine)
 
-# Additive column migrations (safe to re-run with IF NOT EXISTS)
+import logging as _logging
+_mlog = _logging.getLogger("migrations")
+
+# Additive migrations — each wrapped independently so one failure doesn't block startup
+_MIGRATIONS = [
+    "ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS tee_time VARCHAR(255)",
+    "ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS round_date DATE",
+    "ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS booked BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS confirmation_number VARCHAR(255)",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS public_courses_only BOOLEAN NOT NULL DEFAULT TRUE",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_booked BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_confirmation VARCHAR(255)",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_skipped BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS handicap FLOAT",
+    "ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS handicap FLOAT",
+    "ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS last_nudged_at TIMESTAMP WITH TIME ZONE",
+    "ALTER TABLE lodging_options ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS notes TEXT",
+    "ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS golfers_per_tee INTEGER",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS share_tagline TEXT",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_happy_spend FLOAT",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_hard_limit FLOAT",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS share_token VARCHAR(36)",
+    "ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS flights JSONB",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_golf_per_person FLOAT",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_lodging_per_person FLOAT",
+    "ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS green_fee_override FLOAT",
+    "ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS cart_fee_override FLOAT",
+    "UPDATE trips SET share_token = gen_random_uuid()::text WHERE share_token IS NULL",
+    "ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user",
+    """DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_dest_vote_trip_user_dest') THEN
+        ALTER TABLE destination_votes ADD CONSTRAINT uq_dest_vote_trip_user_dest UNIQUE (trip_id, user_id, destination_index);
+      END IF;
+    END $$""",
+    "ALTER TABLE restaurant_picks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL",
+    """CREATE TABLE IF NOT EXISTS restaurant_picks (
+        id           SERIAL PRIMARY KEY,
+        trip_id      INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+        round_id     INTEGER REFERENCES trip_rounds(id) ON DELETE SET NULL,
+        name         TEXT NOT NULL,
+        cuisine      TEXT,
+        price_range  TEXT,
+        vibe         TEXT,
+        reason       TEXT,
+        address      TEXT,
+        phone        TEXT,
+        maps_url     TEXT,
+        created_at   TIMESTAMP DEFAULT NOW()
+    )""",
+    """CREATE TABLE IF NOT EXISTS restaurant_votes (
+        id         SERIAL PRIMARY KEY,
+        pick_id    INTEGER NOT NULL REFERENCES restaurant_picks(id) ON DELETE CASCADE,
+        user_id    INTEGER,
+        user_name  TEXT NOT NULL,
+        vote       TEXT NOT NULL CHECK (vote IN ('up', 'down')),
+        voted_at   TIMESTAMP DEFAULT NOW(),
+        UNIQUE(pick_id, user_id)
+    )""",
+]
+
 with engine.connect() as _conn:
-    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS tee_time VARCHAR(255)"))
-    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS round_date DATE"))
-    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS booked BOOLEAN NOT NULL DEFAULT FALSE"))
-    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS confirmation_number VARCHAR(255)"))
-    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS public_courses_only BOOLEAN NOT NULL DEFAULT TRUE"))
-    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_booked BOOLEAN NOT NULL DEFAULT FALSE"))
-    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_confirmation VARCHAR(255)"))
-    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS lodging_skipped BOOLEAN NOT NULL DEFAULT FALSE"))
-    _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS handicap FLOAT"))
-    _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS handicap FLOAT"))
-    _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS last_nudged_at TIMESTAMP WITH TIME ZONE"))
-    _conn.execute(text("ALTER TABLE lodging_options ADD COLUMN IF NOT EXISTS is_locked BOOLEAN NOT NULL DEFAULT FALSE"))
-    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS notes TEXT"))
-    _conn.execute(text("ALTER TABLE trip_rounds ADD COLUMN IF NOT EXISTS golfers_per_tee INTEGER"))
-    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS share_tagline TEXT"))
-    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_happy_spend FLOAT"))
-    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget_hard_limit FLOAT"))
-    _conn.execute(text("ALTER TABLE trips ADD COLUMN IF NOT EXISTS share_token VARCHAR(36)"))
-    _conn.execute(text("ALTER TABLE trip_members ADD COLUMN IF NOT EXISTS flights JSONB"))
-    _conn.execute(text("UPDATE trips SET share_token = gen_random_uuid()::text WHERE share_token IS NULL"))
-    _conn.execute(text("ALTER TABLE destination_votes DROP CONSTRAINT IF EXISTS uq_dest_vote_trip_user"))
-    _conn.execute(text("""
-        DO $$ BEGIN
-          IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uq_dest_vote_trip_user_dest') THEN
-            ALTER TABLE destination_votes ADD CONSTRAINT uq_dest_vote_trip_user_dest UNIQUE (trip_id, user_id, destination_index);
-          END IF;
-        END $$
-    """))
-    _conn.execute(text("ALTER TABLE restaurant_picks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL"))
-    _conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS restaurant_picks (
-            id           SERIAL PRIMARY KEY,
-            trip_id      INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-            round_id     INTEGER REFERENCES trip_rounds(id) ON DELETE SET NULL,
-            name         TEXT NOT NULL,
-            cuisine      TEXT,
-            price_range  TEXT,
-            vibe         TEXT,
-            reason       TEXT,
-            address      TEXT,
-            phone        TEXT,
-            maps_url     TEXT,
-            created_at   TIMESTAMP DEFAULT NOW()
-        )
-    """))
-    _conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS restaurant_votes (
-            id         SERIAL PRIMARY KEY,
-            pick_id    INTEGER NOT NULL REFERENCES restaurant_picks(id) ON DELETE CASCADE,
-            user_id    INTEGER,
-            user_name  TEXT NOT NULL,
-            vote       TEXT NOT NULL CHECK (vote IN ('up', 'down')),
-            voted_at   TIMESTAMP DEFAULT NOW(),
-            UNIQUE(pick_id, user_id)
-        )
-    """))
+    for _stmt in _MIGRATIONS:
+        try:
+            _conn.execute(text(_stmt))
+        except Exception as _e:
+            _mlog.warning("Migration skipped (%s): %.120s", type(_e).__name__, _stmt.strip().split('\n')[0])
     _conn.commit()
 
 from api.auth import router as auth_router

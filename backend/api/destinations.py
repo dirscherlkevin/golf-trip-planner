@@ -54,10 +54,36 @@ def _build_vote_tallies(trip_id: int, user_id: int, num_suggestions: int, db: Se
         tallies.append(DestinationVoteTally(destination_index=i, up_votes=up, down_votes=down, my_vote=my_vote))
     return tallies
 
+def _bg_generate_destinations(suggestion_id: int, params: dict, existing_manual: list):
+    """Background task: calls Claude and updates suggestion row."""
+    from database import SessionLocal
+    db = SessionLocal()
+    try:
+        from models.destination import DestinationSuggestion, GenerationStatus
+        suggestion = db.query(DestinationSuggestion).filter(DestinationSuggestion.id == suggestion_id).first()
+        if not suggestion:
+            return
+        try:
+            results = generate_destinations(**params)
+            ai_names_lower = {s.get("name", "").lower() for s in results if s.get("name")}
+            for manual in existing_manual:
+                if manual.get("name", "").lower() not in ai_names_lower:
+                    results.append(manual)
+            suggestion.suggestions = results
+            suggestion.generation_status = GenerationStatus.complete
+            suggestion.generated_at = datetime.now(timezone.utc)
+        except Exception as e:
+            suggestion.generation_status = GenerationStatus.failed
+            suggestion.prompt_inputs = {**(suggestion.prompt_inputs or {}), "error": str(e)}
+        db.commit()
+    finally:
+        db.close()
+
 @router.post("/{trip_id}/destinations/generate", response_model=DestinationSuggestionOut)
 def generate_destination_suggestions(
     trip_id: int,
     body: GenerateDestinationsIn,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -122,32 +148,21 @@ def generate_destination_suggestions(
         if s.get("source") == "manual"
     ]
 
-    # Call Claude synchronously (kept simple for now)
-    try:
-        results = generate_destinations(
-            trip_start=str(trip.trip_start),
-            trip_end=str(trip.trip_end),
-            group_size=group_size,
-            skill_mix=body.skill_mix,
-            budget_median=budget_median,
-            budget_max=budget_max,
-            country=body.country,
-            tier_filter=body.tier_filter,
-            planned_rounds=body.planned_rounds,
-            region=body.region,
-            public_courses_only=body.public_courses_only,
-        )
-        # Dedup: re-append manual destinations not covered by AI results (case-insensitive name match)
-        ai_names_lower = {s.get("name", "").lower() for s in results if s.get("name")}
-        for manual in existing_manual:
-            if manual.get("name", "").lower() not in ai_names_lower:
-                results.append(manual)
-        suggestion.suggestions = results
-        suggestion.generation_status = GenerationStatus.complete
-        suggestion.generated_at = datetime.now(timezone.utc)
-    except Exception as e:
-        suggestion.generation_status = GenerationStatus.failed
-        suggestion.prompt_inputs = {**suggestion.prompt_inputs, "error": str(e)}
+    # Dispatch to background task — returns immediately, frontend polls GET /destinations
+    params = dict(
+        trip_start=str(trip.trip_start),
+        trip_end=str(trip.trip_end),
+        group_size=group_size,
+        skill_mix=body.skill_mix,
+        budget_median=budget_median,
+        budget_max=budget_max,
+        country=body.country,
+        tier_filter=body.tier_filter,
+        planned_rounds=body.planned_rounds,
+        region=body.region,
+        public_courses_only=body.public_courses_only,
+    )
+    background_tasks.add_task(_bg_generate_destinations, suggestion.id, params, existing_manual)
 
     db.commit()
     db.refresh(suggestion)

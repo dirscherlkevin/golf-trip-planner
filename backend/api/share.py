@@ -35,10 +35,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
     if _UUID_RE.match(identifier):
         trip = db.query(Trip).filter(Trip.share_token == identifier).first()
     else:
-        try:
-            trip = db.query(Trip).filter(Trip.id == int(identifier)).first()
-        except ValueError:
-            raise HTTPException(status_code=404, detail="Trip not found")
+        raise HTTPException(status_code=404, detail="Trip not found")
     # 1. Load trip; 404 if not found
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")

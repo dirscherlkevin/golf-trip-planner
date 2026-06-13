@@ -19,6 +19,8 @@ def _check_auth_rate_limit(email: str):
     now = _time.time()
     cutoff = now - 300  # 5-minute window
     with _auth_rl_lock:
+        if len(_auth_rl) > 10000:  # evict on runaway growth (brute-force scenario)
+            _auth_rl.clear()
         calls = [t for t in _auth_rl.get(email, []) if t > cutoff]
         if len(calls) >= 10:
             raise HTTPException(status_code=429, detail="Too many attempts. Please wait a few minutes.")

@@ -87,7 +87,7 @@ export default function DestinationPhase() {
     const status = data?.suggestion?.generation_status
     // Poll if: no data yet, or status is pending
     if (data === null || status === 'pending') {
-      const timer = setTimeout(load, 15000)  // poll every 15 seconds
+      const timer = setTimeout(load, 5000)  // poll every 5s while pending
       return () => clearTimeout(timer)
     }
   }, [trip?.id, data])
