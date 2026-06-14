@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import client from '../../api/client'
 import { suggestRestaurants, getSavedPicks, saveRestaurantPick, voteOnPick, deleteRestaurantPick } from '../../api/restaurants'
 import NotesEditor from '../../components/NotesEditor'
+import ItineraryView from '../../components/ItineraryView'
 
 const TIER_COLORS = { premium: '#cc9900', midrange: 'var(--accent-green)', value: '#6699cc' }
 
@@ -1135,6 +1136,12 @@ export default function HypeMoment({ trip, isOrganizer }) {
                   ))
                 : <LodgingCard lodging={data.lodging} tripId={trip.id} isOrganizer={isOrganizer} initialBooked={data.lodging_booked} initialConfirmation={data.lodging_confirmation} />
               }
+            </Section>
+          )}
+
+          {(data.trip_start && data.trip_end) && (
+            <Section title="Day-by-Day Itinerary">
+              <ItineraryView data={data} />
             </Section>
           )}
 

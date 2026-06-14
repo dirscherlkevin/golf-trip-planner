@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuthStore } from '../store/auth'
 import NotesEditor from '../components/NotesEditor'
+import ItineraryView from '../components/ItineraryView'
 
 const VIBE_BADGE = {
   top_rated:  { label: '⭐ Top Rated', color: '#cc9900', bg: 'rgba(204,153,0,0.1)',    border: 'rgba(204,153,0,0.3)' },
@@ -351,6 +352,16 @@ export default function SharePage() {
                 )}
               </div>
               <RestaurantPicks picks={data.restaurant_lodging_picks} label="Dining picks — near lodging" />
+            </div>
+          </section>
+        )}
+
+        {/* Day-by-Day Itinerary */}
+        {data.trip_start && data.trip_end && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader>Day-by-Day Itinerary</SectionHeader>
+            <div style={{ marginTop: 14 }}>
+              <ItineraryView data={data} />
             </div>
           </section>
         )}

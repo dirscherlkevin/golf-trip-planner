@@ -271,6 +271,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
         "trip_end": trip.trip_end.isoformat() if trip.trip_end else None,
         "restaurant_lodging_picks": restaurant_lodging_picks,
         "member_flights": member_flights,
+        "car_rentals": trip.car_rentals or [],
     }
 
 
