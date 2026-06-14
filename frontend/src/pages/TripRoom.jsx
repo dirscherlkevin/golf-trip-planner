@@ -46,9 +46,13 @@ function LodgingPhase() {
   return (
     <div>
       <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Lodging</h2>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
         Vote on where to stay. The organizer locks it in when ready.
       </p>
+      <div style={{ marginBottom: 16, padding: '8px 14px', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 8 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Running cost/person</div>
+        <CostEstimate tripId={trip.id} trip={trip} isOrganizer={isOrganizer} refreshKey={lodgingLocked ? 'locked' : 'open'} />
+      </div>
       <LodgingVoting trip={trip} onLodgingUpdated={() => {}} onLockChange={setLodgingLocked} />
 
       {isOrganizer && allCoursesLocked && (

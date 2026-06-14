@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import client from '../api/client'
 
-export default function CostEstimate({ tripId, trip, isOrganizer }) {
+export default function CostEstimate({ tripId, trip, isOrganizer, refreshKey }) {
   const [estimate, setEstimate] = useState(null)
 
   useEffect(() => {
     if (!tripId) return
     client.get(`/trips/${tripId}/cost`).then(r => setEstimate(r.data)).catch(() => {})
-  }, [tripId])
+  }, [tripId, refreshKey])
 
   if (!estimate) {
     return <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Cost estimate loading...</div>
