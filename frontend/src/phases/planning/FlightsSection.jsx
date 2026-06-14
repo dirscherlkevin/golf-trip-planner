@@ -75,7 +75,7 @@ function MemberFlightCard({ member, tripId, canEdit, onSaved }) {
 
   const hasData = (f) => Object.values(f).some(v => v && v.trim())
   const hasAny = hasData(arrival) || hasData(departure)
-  const [editing, setEditing] = useState(!hasAny)
+  const [editing, setEditing] = useState(canEdit && !hasAny)
 
   const displayName = member.name
     || (member.invite_email ? member.invite_email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : `Member ${member.id}`)
@@ -92,6 +92,7 @@ function MemberFlightCard({ member, tripId, canEdit, onSaved }) {
       setSaved(true)
       setEditing(false)
       setTimeout(() => setSaved(false), 2500)
+      onSaved?.()
     } finally {
       setSaving(false)
     }

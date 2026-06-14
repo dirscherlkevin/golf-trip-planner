@@ -1145,9 +1145,20 @@ export default function HypeMoment({ trip, isOrganizer }) {
             </Section>
           )}
 
-          {data.member_flights?.some(m => m.flights?.arrival || m.flights?.departure) && (
-            <Section title="Crew Flights">
-              {(() => {
+          {(data.member_flights?.some(m => m.flights?.arrival || m.flights?.departure) || data.car_rentals?.length > 0) && (
+            <Section title="Transportation">
+              {data.car_rentals?.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>🚗 Car Rentals</div>
+                  {data.car_rentals.map((r, i) => (
+                    <div key={i} style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      <span style={{ color: '#fff' }}>{r.name}</span>
+                      {r.seats > 0 && <span style={{ color: 'var(--text-muted)' }}> · {r.seats} seat{r.seats !== 1 ? 's' : ''} available</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {data.member_flights?.some(m => m.flights?.arrival || m.flights?.departure) && (() => {
                 const fmtTime = t => { if (!t) return null; const m = t.match(/^(\d{1,2}):(\d{2})$/); if (!m) return t; const h = parseInt(m[1]); return `${h%12||12}:${m[2]} ${h>=12?'PM':'AM'}` }
                 const fmtDateHdr = iso => { try { return new Date(iso+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) } catch { return iso } }
                 const all = []
