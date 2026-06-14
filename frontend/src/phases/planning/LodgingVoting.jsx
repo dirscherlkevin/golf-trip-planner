@@ -667,7 +667,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
         <div className="card">
           <h3 style={{ marginBottom: 4, fontWeight: 600, marginTop: 0 }}>Add Lodging Manually</h3>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14 }}>
-            Already have a place in mind? Add it directly.
+            Already found a place? Add it here and everyone can vote.
           </div>
           <ManualLodgingForm tripId={trip.id} onAdded={() => { setNotSetUp(false); loadLodging() }} />
         </div>
@@ -760,7 +760,7 @@ export default function LodgingVoting({ trip, onLodgingUpdated, onLockChange }) 
           <div className="card">
             <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Add Lodging Manually</div>
             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
-              Already have a place in mind? Add it directly.
+              Already found a place? Add it here and everyone can vote.
             </div>
             <ManualLodgingForm tripId={trip.id} onAdded={loadLodging} />
           </div>

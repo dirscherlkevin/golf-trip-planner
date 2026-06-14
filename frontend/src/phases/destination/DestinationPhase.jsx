@@ -9,7 +9,8 @@ import DestinationCard from './DestinationCard'
 function ManualDestinationForm({ showForm, setShowForm, name, setName, region, setRegion, cost, setCost, adding, error, setError, onAdd }) {
   return (
     <div style={{ marginTop: 16, padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a', marginBottom: 12 }}>
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Suggest a Destination</div>
+      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Suggest a Destination</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Got a place in mind? Suggest it and the crew can vote.</div>
       {!showForm ? (
         <button className="btn-ghost" onClick={() => setShowForm(true)} style={{ fontSize: 13 }}>
           + Add Manually

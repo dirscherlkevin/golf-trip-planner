@@ -93,6 +93,7 @@ class SuggestRequest(BaseModel):
     discover_modes: List[str] = []
     hide_chains: bool = False
     extra_notes: str = ""
+    dietary_filters: List[str] = []
 
 
 class SavePickRequest(BaseModel):
@@ -136,6 +137,7 @@ def suggest(
         discover_modes=body.discover_modes,
         hide_chains=body.hide_chains,
         extra_notes=body.extra_notes,
+        dietary_filters=body.dietary_filters,
     )
     return results
 

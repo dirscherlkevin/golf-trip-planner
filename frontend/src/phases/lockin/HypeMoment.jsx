@@ -191,6 +191,14 @@ const DISCOVER_CHIPS = [
   { label: '💎 Hidden Gem', value: 'hidden_gem' },
 ]
 
+const DIETARY_CHIPS = [
+  { label: '🌾 Gluten Free', value: 'gluten free' },
+  { label: '🥗 Vegetarian', value: 'vegetarian' },
+  { label: '🌿 Vegan', value: 'vegan' },
+  { label: '🥜 Nut-Free', value: 'nut-free' },
+  { label: '🥛 Dairy-Free', value: 'dairy-free' },
+]
+
 const VIBE_BADGE = {
   top_rated:  { label: '⭐ Top Rated', color: '#cc9900', bg: 'rgba(204,153,0,0.1)',    border: 'rgba(204,153,0,0.3)' },
   hidden_gem: { label: '💎 Hidden Gem', color: '#6699cc', bg: 'rgba(102,153,204,0.1)', border: 'rgba(102,153,204,0.3)' },
@@ -203,7 +211,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
   const [showMoreDetails, setShowMoreDetails] = useState(false)
 
   const [restDrawerOpen, setRestDrawerOpen] = useState(false)
-  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' })
+  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '', dietary: [] })
   const [suggestions, setSuggestions] = useState([])
   const [loadingSuggest, setLoadingSuggest] = useState(false)
   const [savedPicks, setSavedPicks] = useState([])
@@ -227,6 +235,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
         discover_modes: filters.discover,
         hide_chains: filters.hideChains,
         extra_notes: filters.extraNotes,
+        dietary_filters: filters.dietary,
       })
       setSuggestions(results)
     } catch { /* silent */ }
@@ -515,6 +524,18 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
               </label>
             </div>
 
+            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, marginTop: 10 }}>Dietary</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+              {DIETARY_CHIPS.map(chip => (
+                <button key={chip.value}
+                  onClick={() => toggleChip('dietary', chip.value)}
+                  style={{ background: filters.dietary.includes(chip.value) ? '#1a2a1a' : 'none', border: `1px solid ${filters.dietary.includes(chip.value) ? '#3a6a3a' : '#2a2a2a'}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, color: filters.dietary.includes(chip.value) ? '#7ab87a' : '#666', cursor: 'pointer' }}>
+                  {chip.label}
+                </button>
+              ))}
+              {filters.dietary.length === 0 && <span style={{ fontSize: 10, color: '#444', alignSelf: 'center' }}>none = no restrictions</span>}
+            </div>
+
             <input
               placeholder="Anything else? (patio, live music, cheap...)"
               value={filters.extraNotes}
@@ -570,7 +591,7 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
                     </div>
                   )
                 })}
-                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' }) }}
+                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '', dietary: [] }) }}
                   style={{ width: '100%', background: 'none', border: '1px solid #2a2a2a', borderRadius: 6, color: '#555', fontSize: 11, padding: '5px', cursor: 'pointer', marginTop: 4 }}>
                   ↻ Try different filters
                 </button>
@@ -587,7 +608,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
   const [booked, setBooked] = useState(initialBooked ?? false)
   const [confirmation, setConfirmation] = useState(initialConfirmation ?? '')
   const [restDrawerOpen, setRestDrawerOpen] = useState(false)
-  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' })
+  const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '', dietary: [] })
   const [suggestions, setSuggestions] = useState([])
   const [loadingSuggest, setLoadingSuggest] = useState(false)
   const [savedPicks, setSavedPicks] = useState([])
@@ -611,6 +632,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
         discover_modes: filters.discover,
         hide_chains: filters.hideChains,
         extra_notes: filters.extraNotes,
+        dietary_filters: filters.dietary,
       })
       setSuggestions(results)
     } catch { /* silent */ }
@@ -847,6 +869,18 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
               </label>
             </div>
 
+            <div style={{ fontSize: 10, color: '#666', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, marginTop: 10 }}>Dietary</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+              {DIETARY_CHIPS.map(chip => (
+                <button key={chip.value}
+                  onClick={() => toggleChip('dietary', chip.value)}
+                  style={{ background: filters.dietary.includes(chip.value) ? '#1a2a1a' : 'none', border: `1px solid ${filters.dietary.includes(chip.value) ? '#3a6a3a' : '#2a2a2a'}`, borderRadius: 20, padding: '3px 10px', fontSize: 11, color: filters.dietary.includes(chip.value) ? '#7ab87a' : '#666', cursor: 'pointer' }}>
+                  {chip.label}
+                </button>
+              ))}
+              {filters.dietary.length === 0 && <span style={{ fontSize: 10, color: '#444', alignSelf: 'center' }}>none = no restrictions</span>}
+            </div>
+
             <input
               placeholder="Anything else? (patio, live music, cheap...)"
               value={filters.extraNotes}
@@ -902,7 +936,7 @@ function LodgingCard({ lodging, tripId, isOrganizer, initialBooked, initialConfi
                     </div>
                   )
                 })}
-                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '' }) }}
+                <button onClick={() => { setSuggestions([]); setFilters({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '', dietary: [] }) }}
                   style={{ width: '100%', background: 'none', border: '1px solid #2a2a2a', borderRadius: 6, color: '#555', fontSize: 11, padding: '5px', cursor: 'pointer', marginTop: 4 }}>
                   ↻ Try different filters
                 </button>

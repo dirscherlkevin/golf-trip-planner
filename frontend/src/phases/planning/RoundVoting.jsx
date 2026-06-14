@@ -644,7 +644,8 @@ export default function RoundVoting({ round, tripId, isOrganizer, myBudget, lock
         {/* Add manually */}
         {!isLocked && (
           <div style={{ marginTop: 16, padding: '12px 14px', background: '#141414', borderRadius: 8, border: '1px solid #2a2a2a' }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>Add a Course Manually</div>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Add a Course Manually</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Know a great course? Nominate it for the group to consider.</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 8 }}>
               {[
                 { label: 'Course name *', val: manualName, set: setManualName, ph: 'e.g. Pebble Beach' },

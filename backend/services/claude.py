@@ -520,6 +520,7 @@ def suggest_restaurants(
     discover_modes: list,
     hide_chains: bool,
     extra_notes: str,
+    dietary_filters: list = None,
 ) -> list:
     """Return 4-5 restaurant suggestions near location as a list of dicts."""
     vibe_str = ", ".join(vibe_types) if vibe_types else "any cuisine"
@@ -537,11 +538,15 @@ def suggest_restaurants(
     else:
         discover_note = "Include a good variety."
     extra = f" Additional preferences: {extra_notes.strip()}." if extra_notes.strip() else ""
+    dietary_note = (
+        f" Dietary requirements — ALL suggestions must accommodate: {', '.join(dietary_filters)}."
+        if dietary_filters else ""
+    )
 
     prompt = f"""You are a local dining expert. Suggest 4-5 restaurants near {location} for a golf group of {group_size} people finishing their round.
 
 Cuisine preference: {vibe_str}{chain_note}
-{discover_note}{extra}
+{discover_note}{extra}{dietary_note}
 
 Return ONLY a JSON array. Each object must have exactly these keys:
 {{
