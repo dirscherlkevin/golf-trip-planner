@@ -934,7 +934,7 @@ export default function HypeMoment({ trip, isOrganizer }) {
   const [generatingTagline, setGeneratingTagline] = useState(false)
 
   useEffect(() => {
-    client.get('/share/' + trip.id)
+    client.get('/share/' + (trip.share_token || trip.id))
       .then(r => { setData(r.data); setLoading(false) })
       .catch(() => { setError('Failed to load trip summary.'); setLoading(false) })
   }, [trip.id])
