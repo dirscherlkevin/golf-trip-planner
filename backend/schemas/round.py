@@ -50,5 +50,7 @@ class TripRoundOut(BaseModel):
     confirmation_number: Optional[str] = None
     notes: Optional[str] = None
     golfers_per_tee: Optional[int] = None
+    green_fee_override: Optional[float] = None
+    cart_fee_override: Optional[float] = None
 
     model_config = {"from_attributes": True}

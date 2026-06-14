@@ -676,6 +676,29 @@ class _BookedBody(_BM):
     booked: bool
     confirmation_number: _Opt[str] = None
 
+class _FeesBody(_BM):
+    green_fee_override: _Opt[float] = None
+    cart_fee_override: _Opt[float] = None
+
+@router.patch("/{trip_id}/rounds/{round_id}/fees")
+def set_round_fees(
+    trip_id: int,
+    round_id: int,
+    body: _FeesBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    trip = _get_trip_member(trip_id, user.id, db)
+    if trip.organizer_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organizer can set fee overrides")
+    trip_round = db.query(TripRound).filter(TripRound.id == round_id, TripRound.trip_id == trip_id).first()
+    if not trip_round:
+        raise HTTPException(status_code=404, detail="Round not found")
+    trip_round.green_fee_override = body.green_fee_override
+    trip_round.cart_fee_override = body.cart_fee_override
+    db.commit()
+    return {"ok": True}
+
 @router.patch("/{trip_id}/rounds/{round_id}/booked")
 def set_round_booked(
     trip_id: int,

@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Enum, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, Float, ForeignKey, Enum, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from database import Base
@@ -31,6 +31,8 @@ class TripRound(Base):
     round_date = Column(Date, nullable=True)
     booked = Column(Boolean, nullable=False, default=False, server_default='false')
     confirmation_number = Column(String, nullable=True)
+    green_fee_override = Column(Float, nullable=True)
+    cart_fee_override = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class CourseNomination(Base):

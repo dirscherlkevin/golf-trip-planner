@@ -209,6 +209,11 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
   const [booked, setBooked] = useState(round.booked ?? false)
   const [confirmation, setConfirmation] = useState(round.confirmation_number ?? '')
   const [showMoreDetails, setShowMoreDetails] = useState(false)
+  const [editingFee, setEditingFee] = useState(false)
+  const [feeGreen, setFeeGreen] = useState('')
+  const [feeCart, setFeeCart] = useState('')
+  const [savingFee, setSavingFee] = useState(false)
+  const [feeOverride, setFeeOverride] = useState({ green: round.green_fee_override, cart: round.cart_fee_override })
 
   const [restDrawerOpen, setRestDrawerOpen] = useState(false)
   const [filters, setFilters] = useState({ vibes: [], discover: [], hideChains: false, extraNotes: '', otherVibe: '', dietary: [] })
@@ -288,8 +293,10 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
 
   const handleConfirmationBlur = () => saveBooked(booked, confirmation)
 
-  const feeStr = round.green_fee
-    ? `$${round.green_fee}${round.cart_fee ? ` + $${round.cart_fee} cart` : ''}`
+  const effectiveGreen = feeOverride.green != null ? feeOverride.green : round.green_fee
+  const effectiveCart = feeOverride.cart != null ? feeOverride.cart : round.cart_fee
+  const feeStr = effectiveGreen != null
+    ? `$${effectiveGreen}${effectiveCart != null ? ` + $${effectiveCart} cart` : ''}${feeOverride.green != null ? ' (actual)' : ''}`
     : null
   const ratingStr = (round.rating || round.slope)
     ? [round.rating && `Rating ${round.rating}`, round.slope && `Slope ${round.slope}`, round.par && `Par ${round.par}`].filter(Boolean).join(' · ')
@@ -349,7 +356,34 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          {feeStr && <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent-green)' }}>{feeStr}</div>}
+          {editingFee ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+              <input type="number" value={feeGreen} onChange={e => setFeeGreen(e.target.value)} placeholder="Green fee"
+                style={{ width: 90, padding: '3px 6px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 4, color: '#fff', fontSize: 12 }} />
+              <input type="number" value={feeCart} onChange={e => setFeeCart(e.target.value)} placeholder="Cart fee"
+                style={{ width: 90, padding: '3px 6px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 4, color: '#fff', fontSize: 12 }} />
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }} disabled={savingFee} onClick={async () => {
+                  setSavingFee(true)
+                  const g = feeGreen ? parseFloat(feeGreen) : null
+                  const c = feeCart ? parseFloat(feeCart) : null
+                  await client.patch(`/trips/${tripId}/rounds/${round.round_id}/fees`, { green_fee_override: g, cart_fee_override: c })
+                  setSavingFee(false)
+                  setFeeOverride({ green: g, cart: c })
+                  setEditingFee(false)
+                }}>{savingFee ? '...' : 'Save'}</button>
+                <button className="btn-ghost" style={{ fontSize: 11, padding: '2px 6px', color: '#666' }} onClick={() => setEditingFee(false)}>✕</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              {feeStr && <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent-green)' }}>{feeStr}</div>}
+              {isOrganizer && (
+                <button onClick={() => { setFeeGreen(String(feeOverride.green ?? round.green_fee ?? '')); setFeeCart(String(feeOverride.cart ?? round.cart_fee ?? '')); setEditingFee(true) }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, padding: 0 }}>✏️ Edit fees</button>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
             {round.website && (
               <a href={round.website} target="_blank" rel="noopener noreferrer"

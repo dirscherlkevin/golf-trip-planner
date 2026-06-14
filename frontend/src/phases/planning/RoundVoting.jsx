@@ -29,10 +29,14 @@ function CourseDetail({ label, value }) {
   )
 }
 
-function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lockedNomId, onUpdated, myBudget, lockedCostSoFar }) {
+function NominationCard({ nomination, tripId, roundId, round, isLocked, isOrganizer, lockedNomId, onUpdated, myBudget, lockedCostSoFar }) {
   const { id, course_data, vote_tally } = nomination
   const cd = course_data || {}
   const tally = vote_tally || {}
+  const [editingFee, setEditingFee] = useState(false)
+  const [feeGreen, setFeeGreen] = useState('')
+  const [feeCart, setFeeCart] = useState('')
+  const [savingFee, setSavingFee] = useState(false)
 
   const [confirmLock, setConfirmLock] = useState(false)
   const [locking, setLocking] = useState(false)
@@ -90,8 +94,11 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
     marginBottom: 10,
   }
 
-  const feeStr = cd.green_fee
-    ? `$${cd.green_fee}${cd.cart_fee ? ` + $${cd.cart_fee} cart` : ''}`
+  const isThisLockedCheck = lockedNomId === id
+  const effectiveGreenFee = (isThisLockedCheck && round?.green_fee_override != null) ? round.green_fee_override : cd.green_fee
+  const effectiveCartFee = (isThisLockedCheck && round?.cart_fee_override != null) ? round.cart_fee_override : cd.cart_fee
+  const feeStr = effectiveGreenFee != null
+    ? `$${effectiveGreenFee}${effectiveCartFee != null ? ` + $${effectiveCartFee} cart` : ''}${isThisLockedCheck && round?.green_fee_override != null ? ' (actual)' : ''}`
     : null
 
   const ratingStr = (cd.rating || cd.slope)
@@ -134,7 +141,34 @@ function NominationCard({ nomination, tripId, roundId, isLocked, isOrganizer, lo
           )}
           <CourseDetail label="Rating" value={ratingStr} />
           <CourseDetail label="Yardage" value={yardageStr} />
-          <CourseDetail label="Green fee" value={feeStr} />
+          {editingFee ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+              <input type="number" value={feeGreen} onChange={e => setFeeGreen(e.target.value)} placeholder="Green fee"
+                style={{ width: 90, padding: '3px 6px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 4, color: '#fff', fontSize: 12 }} />
+              <input type="number" value={feeCart} onChange={e => setFeeCart(e.target.value)} placeholder="Cart fee"
+                style={{ width: 80, padding: '3px 6px', background: '#1a1a1a', border: '1px solid #444', borderRadius: 4, color: '#fff', fontSize: 12 }} />
+              <button className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }} disabled={savingFee} onClick={async () => {
+                setSavingFee(true)
+                await client.patch(`/trips/${tripId}/rounds/${roundId}/fees`, {
+                  green_fee_override: feeGreen ? parseFloat(feeGreen) : null,
+                  cart_fee_override: feeCart ? parseFloat(feeCart) : null,
+                })
+                setSavingFee(false)
+                setEditingFee(false)
+                onUpdated()
+              }}>{savingFee ? '...' : 'Save'}</button>
+              <button className="btn-ghost" style={{ fontSize: 11, padding: '2px 6px', color: '#666' }} onClick={() => setEditingFee(false)}>Cancel</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+              {feeStr && <CourseDetail label="Green fee" value={feeStr} />}
+              {!feeStr && <CourseDetail label="Green fee" value={null} />}
+              {isThisLockedCheck && isOrganizer && (
+                <button onClick={() => { setFeeGreen(String(round?.green_fee_override ?? cd.green_fee ?? '')); setFeeCart(String(round?.cart_fee_override ?? cd.cart_fee ?? '')); setEditingFee(true) }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, padding: 0 }}>✏️</button>
+              )}
+            </div>
+          )}
           <CourseDetail label="Walking" value={cd.walking_policy} />
           <CourseDetail label="Architect" value={cd.architect} />
           <CourseDetail label="Pace of play" value={cd.pace_of_play} />
@@ -524,6 +558,7 @@ export default function RoundVoting({ round, tripId, isOrganizer, myBudget, lock
               nomination={nom}
               tripId={tripId}
               roundId={round.id}
+              round={round}
               isLocked={isLocked}
               isOrganizer={isOrganizer}
               lockedNomId={lockedNomId}

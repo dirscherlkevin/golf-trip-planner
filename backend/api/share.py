@@ -101,6 +101,8 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
             "course_location": "",
             "green_fee": None,
             "cart_fee": None,
+            "green_fee_override": None,
+            "cart_fee_override": None,
             "rating": None,
             "slope": None,
             "par": None,
@@ -121,10 +123,12 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
                 cd = nomination.course_data
                 course["course_name"] = cd.get("name", "TBD")
                 course["course_location"] = cd.get("location", "")
-                gf = cd.get("green_fee")
+                gf = r.green_fee_override if r.green_fee_override is not None else cd.get("green_fee")
                 course["green_fee"] = float(gf) if gf is not None else None
-                cf = cd.get("cart_fee")
+                cf = r.cart_fee_override if r.cart_fee_override is not None else cd.get("cart_fee")
                 course["cart_fee"] = float(cf) if cf is not None else None
+                course["green_fee_override"] = r.green_fee_override
+                course["cart_fee_override"] = r.cart_fee_override
                 course["rating"] = cd.get("rating")
                 course["slope"] = cd.get("slope")
                 course["par"] = cd.get("par")

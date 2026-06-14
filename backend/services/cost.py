@@ -31,16 +31,19 @@ def compute_cost_estimate(trip_id: int, db: Session) -> dict:
 
     for rnd in rounds:
         if rnd.locked_course_id is not None:
-            # Use the locked nomination's fees
-            nomination = db.query(CourseNomination).filter(
-                CourseNomination.id == rnd.locked_course_id
-            ).first()
-            fee = 0.0
-            if nomination and nomination.course_data:
-                green_fee = nomination.course_data.get("green_fee")
-                cart_fee = nomination.course_data.get("cart_fee")
-                fee = (float(green_fee) if green_fee is not None else 0.0) + \
-                      (float(cart_fee) if cart_fee is not None else 0.0)
+            # Use override fees if set, else fall back to nomination's course_data
+            if rnd.green_fee_override is not None:
+                fee = rnd.green_fee_override + (rnd.cart_fee_override or 0.0)
+            else:
+                nomination = db.query(CourseNomination).filter(
+                    CourseNomination.id == rnd.locked_course_id
+                ).first()
+                fee = 0.0
+                if nomination and nomination.course_data:
+                    green_fee = nomination.course_data.get("green_fee")
+                    cart_fee = nomination.course_data.get("cart_fee")
+                    fee = (float(green_fee) if green_fee is not None else 0.0) + \
+                          (float(cart_fee) if cart_fee is not None else 0.0)
             rounds_low += fee
             rounds_high += fee
         else:
