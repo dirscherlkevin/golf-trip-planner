@@ -167,11 +167,16 @@ def get_picks(
     result = []
     for p in picks:
         votes = db.execute(
-            text("SELECT user_id, user_name, vote FROM restaurant_votes WHERE pick_id = :pid"),
+            text("""
+                SELECT rv.user_id, rv.vote, COALESCE(u.name, rv.user_name, 'Unknown') AS display_name
+                FROM restaurant_votes rv
+                LEFT JOIN users u ON u.id = rv.user_id
+                WHERE rv.pick_id = :pid
+            """),
             {"pid": p.id},
         ).fetchall()
-        up_voters = [v.user_name for v in votes if v.vote == "up"]
-        down_voters = [v.user_name for v in votes if v.vote == "down"]
+        up_voters = [v.display_name for v in votes if v.vote == "up"]
+        down_voters = [v.display_name for v in votes if v.vote == "down"]
         my_vote = next((v.vote for v in votes if v.user_id == user.id), None)
         result.append({
             "id": p.id,

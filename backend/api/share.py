@@ -202,8 +202,9 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
     ).fetchall()
     votes_raw = db.execute(
         text("""
-            SELECT rv.pick_id, rv.user_name, rv.vote
+            SELECT rv.pick_id, rv.vote, COALESCE(u.name, rv.user_name, 'Unknown') AS user_name
             FROM restaurant_votes rv
+            LEFT JOIN users u ON u.id = rv.user_id
             JOIN restaurant_picks rp ON rp.id = rv.pick_id
             WHERE rp.trip_id = :tid
         """),
