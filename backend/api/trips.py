@@ -292,6 +292,23 @@ def update_member_flights(trip_id: int, member_id: int, body: _FlightsBody, db: 
     db.commit()
     return {"ok": True}
 
+class _CarRentalsBody(BaseModel):
+    car_rentals: Optional[list] = None
+
+@router.patch("/{trip_id}/car_rentals")
+def update_car_rentals(trip_id: int, body: _CarRentalsBody, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    trip = db.query(Trip).filter(Trip.id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    member = db.query(TripMember).filter(
+        TripMember.trip_id == trip_id, TripMember.user_id == user.id, TripMember.joined == "joined"
+    ).first()
+    if not member:
+        raise HTTPException(status_code=403, detail="Not a member of this trip")
+    trip.car_rentals = body.car_rentals
+    db.commit()
+    return {"ok": True}
+
 class _TripUpdateBody(BaseModel):
     name: Optional[str] = None
     trip_start: Optional[str] = None  # ISO date string YYYY-MM-DD

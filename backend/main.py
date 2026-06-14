@@ -77,6 +77,7 @@ _MIGRATIONS = [
         ALTER TABLE destination_votes ADD CONSTRAINT uq_dest_vote_trip_user_dest UNIQUE (trip_id, user_id, destination_index);
       END IF;
     END $$""",
+    "ALTER TABLE trips ADD COLUMN IF NOT EXISTS car_rentals JSONB",
     "ALTER TABLE restaurant_picks ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP DEFAULT NULL",
     """CREATE TABLE IF NOT EXISTS restaurant_picks (
         id           SERIAL PRIMARY KEY,

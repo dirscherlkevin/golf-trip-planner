@@ -34,6 +34,7 @@ class TripOut(BaseModel):
     current_phase: Optional[str] = None
     user_action_pending: bool = False
     share_token: Optional[str] = None
+    car_rentals: Optional[list] = None
 
     model_config = {"from_attributes": True}
 

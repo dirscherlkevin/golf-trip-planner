@@ -137,9 +137,9 @@ function FlightsPhase() {
   const { trip, loadTrip } = useTripStore()
   return (
     <div>
-      <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Flights</h2>
+      <h2 style={{ color: 'var(--accent-green)', marginBottom: 4 }}>Transportation</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: 13 }}>
-        Track when everyone arrives and departs.
+        Track flights, arrivals, and who&apos;s got a rental car.
       </p>
       <FlightsSection trip={trip} onUpdated={() => loadTrip(trip.id)} />
     </div>
@@ -160,7 +160,7 @@ const PHASE_LABELS = {
   destination: 'Destinations',
   courses: 'Courses',
   lodging: 'Lodging',
-  flights: 'Flights',
+  flights: 'Transportation',
   locked_in: 'Lock It In',
 }
 
