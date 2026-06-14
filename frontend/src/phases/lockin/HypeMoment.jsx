@@ -331,7 +331,10 @@ function CourseCard({ round, tripId, isOrganizer, dateOptions }) {
             )}
           </div>
           {round.course_location && (
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>📍 {round.course_location}</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>📍 {round.course_location}</div>
+          )}
+          {round.description && (
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: 8, lineHeight: 1.4 }}>{round.description}</div>
           )}
           <DetailRow label="Rating" value={ratingStr} />
           <DetailRow label="Yardage" value={yardageStr} />

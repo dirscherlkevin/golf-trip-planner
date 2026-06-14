@@ -198,6 +198,7 @@ Return ONLY a JSON array. Each object must have:
 {{
   "name": "Course name",
   "location": "City, State",
+  "description": "One plain-English sentence: what makes this course special, who it suits, and what it's best known for",
   "rating": 72.5,
   "slope": 128,
   "par": 72,

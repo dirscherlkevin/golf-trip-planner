@@ -114,6 +114,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
             "rating_source": None,
             "ranking": None,
             "yardage_options": None,
+            "description": None,
         }
         if r.locked_course_id:
             nomination = db.query(CourseNomination).filter(
@@ -140,6 +141,7 @@ def get_trip_share(identifier: str, db: Session = Depends(get_db), token: Option
                 course["rating_source"] = cd.get("rating_source") or None
                 course["ranking"] = cd.get("ranking") or None
                 course["yardage_options"] = cd.get("yardage_options")
+                course["description"] = cd.get("description") or None
         rounds.append(course)
 
     # Lodging — collect all options with is_locked=True
